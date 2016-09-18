@@ -1,6 +1,6 @@
 #include "render.h"
 #include "intersection.h"
-
+#include "disney.h"
 
 inline void GenerateRay(Camera& camera, int rasterX, int rasterY, Vec3& origin, Vec3& dir, Random& rand)
 {
@@ -80,11 +80,6 @@ void LambertSample(const Vec3& n, const Vec3& woWorld, Vec3& wiWorld, float& pdf
 
 	wiWorld = m_localToWorld * wiLocal;
 	*/
-}
-
-inline Color BRDF(const Material& mat, const Vec3& p, const Vec3& n, const Vec3& wi, const Vec3& wo)
-{
-	return LambertBRDF(n, wi, wo, mat.reflectance);
 }
 
 inline void Sample(const Primitive& p, Vec3& pos, float& area, Random& rand)
@@ -356,7 +351,7 @@ Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Ve
         else
         {
             // hit nothing, terminate loop
-        	totalRadiance += pathThroughput*Vec4(0.02f, 0.2, 0.4f);
+        	totalRadiance += pathThroughput*Vec4(0.1f, 0.2, 0.3f);
             break;
         }
     }
@@ -394,7 +389,6 @@ Color ForwardTraceUniform(const Scene& scene, const Vec3& startOrigin, const Vec
             const Vec3 p = rayOrigin + rayDir*t;
 
 	        totalRadiance += hit->material.emission * pathThroughput;
-
 
             // update position and path direction
             const Vec3 outDir = Mat33(u, v, n)*UniformSampleHemisphere(rand);

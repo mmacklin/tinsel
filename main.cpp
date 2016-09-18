@@ -181,11 +181,18 @@ Scene* TestScene1()
     g_flySpeed = 0.05f*Length(maxExtent-minExtent);   
 */
     // add primitives
-    Primitive sphere;
-    sphere.type = eSphere;
-    sphere.sphere.radius = 0.5f;
-    sphere.transform = TranslationMatrix(Vec3(0.0f, 0.5f, 0.0f));
-    sphere.material.reflectance = Color(.82f, .67f, .16f);
+    for (int i=0; i < 10; ++i)
+    {
+        Primitive sphere;
+        sphere.type = eSphere;
+        sphere.sphere.radius = 0.5f;
+        sphere.transform = TranslationMatrix(Vec3(-5.0f + i*1.2f, 0.5f, 0.0f));
+        sphere.lastTransform = TranslationMatrix(Vec3(-4.0f + i*1.2f, 0.5f, 0.0f));
+        //sphere.material.reflectance = Color(.82f, .67f, .16f);
+        sphere.material.metallic = float(i)/9;
+
+        scene->AddPrimitive(sphere);
+    }
 
     Primitive plane;
     plane.type = ePlane;
@@ -193,16 +200,17 @@ Scene* TestScene1()
     plane.plane.plane[1] = 1.0f;
     plane.plane.plane[2] = 0.0f;
     plane.plane.plane[3] = 0.0f;
+    plane.material.color = Color(0.25);
 
     Primitive light;
     light.type = eSphere;
     light.sphere.radius = 1.0f;
-    light.transform = TranslationMatrix(Vec3(4.0f));
-    light.material.reflectance = Vec4(0.0f);
+    light.transform = TranslationMatrix(Vec3(0.0f, 4.0f, 4.0f));
+    //light.material.reflectance = Vec4(0.0f);
     light.material.emission = Vec4(10.0f);
     light.light = true;
 
-    scene->AddPrimitive(sphere);
+    
     scene->AddPrimitive(plane);
     scene->AddPrimitive(light);
  //   scene->AddLight(light);
