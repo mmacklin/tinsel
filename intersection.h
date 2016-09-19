@@ -4,14 +4,14 @@
 
 
 template <typename T>
-CUDA_CALLABLE inline void Sort2(T& a, T& b)
+CUDA_CALLABLE CUDA_CALLABLE inline void Sort2(T& a, T& b)
 {
 	if (b < a)
 		Swap(a, b);
 }
 
 template <typename T>
-CUDA_CALLABLE inline void Sort3(T& a, T& b, T& c)
+CUDA_CALLABLE CUDA_CALLABLE inline void Sort3(T& a, T& b, T& c)
 {
 	if (b < a)
 		Swap(a, b);
@@ -25,7 +25,7 @@ CUDA_CALLABLE inline void Sort3(T& a, T& b, T& c)
 }
 
 template <typename T>
-CUDA_CALLABLE inline bool SolveQuadratic(T a, T b, T c, T& minT, T& maxT)
+CUDA_CALLABLE CUDA_CALLABLE inline bool SolveQuadratic(T a, T b, T c, T& minT, T& maxT)
 {
 	if (a == 0.0f && b == 0.0f)
 	{
@@ -52,7 +52,7 @@ CUDA_CALLABLE inline bool SolveQuadratic(T a, T b, T c, T& minT, T& maxT)
 
 
 // intersection routines
-inline bool IntersectRaySphere(const Vec3& sphereOrigin, float sphereRadius, const Vec3& rayOrigin, const Vec3& rayDir, float& t, Vec3* hitNormal=NULL)
+CUDA_CALLABLE inline bool IntersectRaySphere(const Vec3& sphereOrigin, float sphereRadius, const Vec3& rayOrigin, const Vec3& rayDir, float& t, Vec3* hitNormal=NULL)
 {
 	Vec3 d(sphereOrigin-rayOrigin);
 	float deltaSq = LengthSq(d);
@@ -96,7 +96,7 @@ inline bool IntersectRaySphere(const Vec3& sphereOrigin, float sphereRadius, con
 
 
 // alternative ray sphere intersect, returns closest and furthest t values
-inline bool IntersectRaySphere(const Vec3& sphereOrigin, float sphereRadius, const Vec3& rayOrigin, const Vec3& rayDir, float& minT, float &maxT, Vec3* hitNormal=NULL)
+CUDA_CALLABLE inline bool IntersectRaySphere(const Vec3& sphereOrigin, float sphereRadius, const Vec3& rayOrigin, const Vec3& rayDir, float& minT, float &maxT, Vec3* hitNormal=NULL)
 {
 	Vec3 q = rayOrigin-sphereOrigin;
 
@@ -118,7 +118,7 @@ inline bool IntersectRaySphere(const Vec3& sphereOrigin, float sphereRadius, con
 	return r;
 }
 
-inline bool IntersectRayPlane(const Vec3& p, const Vec3& dir, const Vec4& plane, float& t)
+CUDA_CALLABLE inline bool IntersectRayPlane(const Vec3& p, const Vec3& dir, const Vec4& plane, float& t)
 {
     float d = Dot(plane, Vec4(dir, 0.0f));
     
@@ -134,7 +134,7 @@ inline bool IntersectRayPlane(const Vec3& p, const Vec3& dir, const Vec4& plane,
 	return (t > 0.0f);	
 }
 
-inline bool IntersectLineSegmentPlane(const Vec3& start, const Vec3& end, const Vec4& plane, Vec3& out)
+CUDA_CALLABLE inline bool IntersectLineSegmentPlane(const Vec3& start, const Vec3& end, const Vec4& plane, Vec3& out)
 {
 	Vec3 u(end - start);
 
@@ -150,7 +150,7 @@ inline bool IntersectLineSegmentPlane(const Vec3& start, const Vec3& end, const 
 }
 
 // Moller and Trumbore's method
-inline bool IntersectRayTriTwoSided(const Vec3& p, const Vec3& dir, const Vec3& a, const Vec3& b, const Vec3& c, float& t, float& u, float& v, float& w, float& sign)//Vec3* normal)
+CUDA_CALLABLE inline bool IntersectRayTriTwoSided(const Vec3& p, const Vec3& dir, const Vec3& a, const Vec3& b, const Vec3& c, float& t, float& u, float& v, float& w, float& sign)//Vec3* normal)
 {
     Vec3 ab = b - a;
     Vec3 ac = c - a;
@@ -183,7 +183,7 @@ inline bool IntersectRayTriTwoSided(const Vec3& p, const Vec3& dir, const Vec3& 
 
 
 // mostly taken from Real Time Collision Detection - p192
-inline bool IntersectRayTri(const Vec3& p, const Vec3& dir, const Vec3& a, const Vec3& b, const Vec3& c,  float& t, float& u, float& v, float& w, Vec3* normal)
+CUDA_CALLABLE inline bool IntersectRayTri(const Vec3& p, const Vec3& dir, const Vec3& a, const Vec3& b, const Vec3& c,  float& t, float& u, float& v, float& w, Vec3* normal)
 {
 	const Vec3 ab = b-a;
 	const Vec3 ac = c-a;
@@ -227,7 +227,7 @@ inline bool IntersectRayTri(const Vec3& p, const Vec3& dir, const Vec3& a, const
 }
 /*
 // mostly taken from Real Time Collision Detection - p192
-CUDA_CALLABLE inline bool IntersectSegmentTri(const Vec3& p, const Vec3& q, const Vec3& a, const Vec3& b, const Vec3& c,  float& t, float& u, float& v, float& w, Vec3* normal, float expand)
+CUDA_CALLABLE CUDA_CALLABLE inline bool IntersectSegmentTri(const Vec3& p, const Vec3& q, const Vec3& a, const Vec3& b, const Vec3& c,  float& t, float& u, float& v, float& w, Vec3* normal, float expand)
 {
 	const Vec3 ab = b-a;
 	const Vec3 ac = c-a;
@@ -276,10 +276,10 @@ CUDA_CALLABLE inline bool IntersectSegmentTri(const Vec3& p, const Vec3& q, cons
 }
 */
 
-CUDA_CALLABLE inline float ScalarTriple(const Vec3& a, const Vec3& b, const Vec3& c) { return Dot(Cross(a, b), c); }
+CUDA_CALLABLE CUDA_CALLABLE inline float ScalarTriple(const Vec3& a, const Vec3& b, const Vec3& c) { return Dot(Cross(a, b), c); }
 
 // mostly taken from Real Time Collision Detection - p192
-CUDA_CALLABLE inline bool IntersectSegmentTri(const Vec3& p, const Vec3& q, const Vec3& a, const Vec3& b, const Vec3& c,  float& t, float& u, float& v, float& w, Vec3* normal, float expand)
+CUDA_CALLABLE CUDA_CALLABLE inline bool IntersectSegmentTri(const Vec3& p, const Vec3& q, const Vec3& a, const Vec3& b, const Vec3& c,  float& t, float& u, float& v, float& w, Vec3* normal, float expand)
 {
 	const Vec3 pq = q-p;
 	const Vec3 pa = a-p;
@@ -299,7 +299,7 @@ CUDA_CALLABLE inline bool IntersectSegmentTri(const Vec3& p, const Vec3& q, cons
 }
 
 // RTCD 5.1.5, page 142
-CUDA_CALLABLE inline  Vec3 ClosestPointOnTriangle(const Vec3& a, const Vec3& b, const Vec3& c, const Vec3 p)
+CUDA_CALLABLE CUDA_CALLABLE inline  Vec3 ClosestPointOnTriangle(const Vec3& a, const Vec3& b, const Vec3& c, const Vec3 p)
 {
 	Vec3 ab = b- a;
 	Vec3 ac = c-a;
@@ -350,7 +350,7 @@ CUDA_CALLABLE inline  Vec3 ClosestPointOnTriangle(const Vec3& a, const Vec3& b, 
 }
 
 
-CUDA_CALLABLE inline float SqDistPointSegment(Vec3 a, Vec3 b, Vec3 c)
+CUDA_CALLABLE CUDA_CALLABLE inline float SqDistPointSegment(Vec3 a, Vec3 b, Vec3 c)
 {
 	Vec3 ab = b-a, ac=c-a, bc=c-b;
 	float e = Dot(ac, ab);
@@ -365,7 +365,7 @@ CUDA_CALLABLE inline float SqDistPointSegment(Vec3 a, Vec3 b, Vec3 c)
 	return Dot(ac, ac) - e*e/f;
 }
 
-CUDA_CALLABLE inline bool PointInTriangle(Vec3 a, Vec3 b, Vec3 c, Vec3 p)
+CUDA_CALLABLE CUDA_CALLABLE inline bool PointInTriangle(Vec3 a, Vec3 b, Vec3 c, Vec3 p)
 {
 	a -= p; b -= p; c-= p;
 
@@ -402,10 +402,10 @@ CUDA_CALLABLE inline bool PointInTriangle(Vec3 a, Vec3 b, Vec3 c, Vec3 p)
 }
 
 
-inline float minf(const float a, const float b) { return a < b ? a : b; }
-inline float maxf(const float a, const float b) { return a > b ? a : b; }
+CUDA_CALLABLE inline float minf(const float a, const float b) { return a < b ? a : b; }
+CUDA_CALLABLE inline float maxf(const float a, const float b) { return a > b ? a : b; }
 
-inline bool IntersectRayAABBOmpf(const Vec3& pos, const Vec3& rcp_dir, const Vec3& min, const Vec3& max, float& t) {
+CUDA_CALLABLE inline bool IntersectRayAABBOmpf(const Vec3& pos, const Vec3& rcp_dir, const Vec3& min, const Vec3& max, float& t) {
        
     float
         l1	= (min.x - pos.x) * rcp_dir.x,
@@ -432,7 +432,7 @@ inline bool IntersectRayAABBOmpf(const Vec3& pos, const Vec3& rcp_dir, const Vec
 }
 
 
-inline bool IntersectRayAABB(const Vec3& start, const Vec3& dir, const Vec3& min, const Vec3& max, float& t, Vec3* normal)
+CUDA_CALLABLE inline bool IntersectRayAABB(const Vec3& start, const Vec3& dir, const Vec3& min, const Vec3& max, float& t, Vec3* normal)
 {
 	//! calculate candidate plane on each axis
 	float tx = -1.0f, ty = -1.0f, tz = -1.0f;
@@ -530,7 +530,7 @@ inline bool IntersectRayAABB(const Vec3& start, const Vec3& dir, const Vec3& min
 }
 
 // construct a plane equation such that ax + by + cz + dw = 0
-inline Vec4 PlaneFromPoints(const Vec3& p, const Vec3& q, const Vec3& r)
+CUDA_CALLABLE inline Vec4 PlaneFromPoints(const Vec3& p, const Vec3& q, const Vec3& r)
 {
 	Vec3 e0 = q-p;
 	Vec3 e1 = r-p;
@@ -540,7 +540,7 @@ inline Vec4 PlaneFromPoints(const Vec3& p, const Vec3& q, const Vec3& r)
 	return Vec4(n.x, n.y, n.z, -Dot(p, n));
 }
 
-inline bool IntersectPlaneAABB(const Vec4& plane, const Vec3& center, const Vec3& extents)
+CUDA_CALLABLE inline bool IntersectPlaneAABB(const Vec4& plane, const Vec3& center, const Vec3& extents)
 {
 	float radius = Abs(extents.x*plane.x) + Abs(extents.y*plane.y) + Abs(extents.z*plane.z);
 	float delta = Dot(center, Vec3(plane)) + plane.w;

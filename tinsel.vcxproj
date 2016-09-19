@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{850139DE-1ED9-421A-AF5C-CF79EB2CFE5F}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectName>Tinsel</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <AdditionalLibraryDirectories>freeglut\lib\x64;$(CUDA_PATH_V7_5)\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PreprocessorDefinitions>_ITERATOR_DEBUG_LEVEL=0</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Link>
+      <AdditionalLibraryDirectories>freeglut\lib\x64;$(CUDA_PATH_V7_5)\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <ClCompile>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PreprocessorDefinitions>_ITERATOR_DEBUG_LEVEL=0</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="mesh.cpp" />
+    <ClCompile Include="platform.cpp" />
+    <ClCompile Include="render.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="bvh.h" />
+    <ClInclude Include="camera.h" />
+    <ClInclude Include="disney.h" />
+    <ClInclude Include="intersection.h" />
+    <ClInclude Include="maths.h" />
+    <ClInclude Include="mesh.h" />
+    <ClInclude Include="render.h" />
+    <ClInclude Include="scene.h" />
+    <ClInclude Include="skylight.h" />
+    <ClInclude Include="tests\testMaterials.h" />
+    <ClInclude Include="tests\testMesh.h" />
+    <ClInclude Include="tests\testMotionBlur.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="render.cu">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O0 -g -G --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MTd,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c render.cu -o $(Configuration)\rendercuda.obj</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\rendercuda.obj</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O3 --resource-usage --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DNDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c render.cu -o rendercuda.obj</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">rendercuda.obj</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

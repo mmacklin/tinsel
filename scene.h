@@ -12,7 +12,7 @@ struct Material
 {
 	Material() 
 	{	
-		color = Color(0.82f, 0.67f, 0.16f);
+		color = SrgbToLinear(Color(0.82f, 0.67f, 0.16f));
 		emission = Color(0.0f);
 		metallic = 0.0;
 		subsurface = 0.0f;
@@ -106,33 +106,11 @@ struct Scene
 	typedef std::vector<Light> LightArray;
 
 	PrimitiveArray primitives;
-	LightArray lights;
 	
-	float skyTheta;
-	float skyPhi;
-	float skyTurbidity;
-
-	Scene() 
-		: skyTheta(kPi/2.1f)
-		, skyPhi(kPi/1.5f)
-		, skyTurbidity(2.0f)
-	{		
-	}
+	Color sky;
 	
 	void AddPrimitive(const Primitive& p)
 	{
 		primitives.push_back(p);
-	}
-
-	void AddLight(const Light& l)
-	{
-		lights.push_back(l);
 	}	
-
-	void SetSkyParams(float theta, float phi, float turbidity)
-	{
-		skyTheta = theta;
-		skyPhi = phi;
-		skyTurbidity = turbidity;
-	}
 };

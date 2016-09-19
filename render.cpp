@@ -2,139 +2,9 @@
 #include "intersection.h"
 #include "disney.h"
 
-inline void GenerateRay(Camera& camera, int rasterX, int rasterY, Vec3& origin, Vec3& dir, Random& rand)
-{
-	float xoff = rand.Randf(-0.5f, 0.5f);
-	float yoff = rand.Randf(-0.5f, 0.5f);
-
-	Vec3 p = TransformPoint(camera.rasterToWorld, Vec3(float(rasterX) + 0.5f + xoff, float(rasterY) + 0.5f + yoff, 0.0f));
-
-    origin = Vec3(camera.cameraToWorld.GetCol(3));
-	dir = Normalize(p-origin);
-}
-
-inline void GenerateRayNoJitter(Camera& camera, int rasterX, int rasterY, Vec3& origin, Vec3& dir)
-{
-	Vec3 p = TransformPoint(camera.rasterToWorld, Vec3(float(rasterX) + 0.5f, float(rasterY) + 0.5f, 0.0f));
-
-    origin = Vec3(camera.cameraToWorld.GetCol(3));
-	dir = Normalize(p-origin);
-}
-
-//-------------
-
-// cosTheta should be the angle between the wi and wh
-inline Color Schlick(const Color& c, float cosTheta)
-{
-	return c + (Color(1.0f, 1.0f, 1.0f)-c)*powf(1.0f-cosTheta, 5.0f);
-}
-
-inline Color BlinnBRDF(const Vec3& n, const Vec3& wi, const Vec3& wo, const Color& reflectance, float exponent)
-{
-	// calculate half-angle
-	Vec3 wh = Normalize(wi+wo);
-
-	float NdotWh = Abs(Dot(wh, n));
-	float NdotWo = Abs(Dot(wo, n));
-	float NdotWi = Abs(Dot(wi, n));
-	float WodotWh = Abs(Dot(wo, wh));
-
-	//if (Dot(wo, wi) < 0.0f)
-		//return Colour::kBlack;
-
-	Color f = Schlick(reflectance, WodotWh);
-
-	// geometric term
-	float g = Min(1.0f, Min((2.0f * NdotWh * NdotWo / WodotWh),
-					     	(2.0f * NdotWh *NdotWi / WodotWh)));
-
-	float d = (exponent + 2.0f) * kInv2Pi * powf(Abs(Dot(wh, n)), exponent);
-
-	return f  * d * g / (4.0f * NdotWi * NdotWo + 1.0e-4f);
-}
-
-
-Color LambertBRDF(const Vec3& n, const Vec3& wi, const Vec3& wo, const Color& reflectance)
-{
-	return reflectance*kInvPi;
-}
-
-
-float LambertPdf(const Vec3& wo, const Vec3& wi)
-{
-	float pdf = wi.z * kInvPi;
-
-	if (pdf == 0.0f)
-		pdf = REAL_MAX;	
-
-	return pdf;
-}
-
-void LambertSample(const Vec3& n, const Vec3& woWorld, Vec3& wiWorld, float& pdf, Random& rand)
-{
-	/*
-	// generate a sample on the hemisphere weighted by cosTheta term
-	Vec3 wiLocal = CosineSampleHemisphere(rand);
-
-	pdf = Pdf(Vec3(0.0), wiLocal);
-
-	wiWorld = m_localToWorld * wiLocal;
-	*/
-}
-
-inline void Sample(const Primitive& p, Vec3& pos, float& area, Random& rand)
-{
-	switch (p.type)
-	{
-		case eSphere:
-		{
-			pos = TransformPoint(p.transform, UniformSampleSphere(rand)*p.sphere.radius);
-			
-			// todo: handle scaling in transform matrix
-			area = 4.0f*kPi*p.sphere.radius*p.sphere.radius;  
-
-			break;
-		}
-		case ePlane:
-		{
-			assert(0);
-			return;
-		}
-		case eMesh:
-		{
-			assert(0);
-			return;
-		}
-	}
-}
-
-inline bool Intersect(const Primitive& p, const Vec3& rayOrigin, const Vec3& rayDir, float& t, Vec3* normal)
-{
-	switch (p.type)
-	{
-		case eSphere:
-		{
-			bool hit = IntersectRaySphere(Vec3(p.transform.GetCol(3)), p.sphere.radius, rayOrigin, rayDir, t, normal);
-			return hit;
-		}
-		case ePlane:
-		{
-			bool hit = IntersectRayPlane(rayOrigin, rayDir, (const Vec4&)p.plane, t);
-			if (hit && normal)
-				*normal = (const Vec3&)p.plane;
-
-			return hit;
-		}
-		case eMesh:
-		{
-			return false;
-		}
-	}
-}
-
 
 // trace a ray against the scene returning the closest intersection
-inline bool Trace(const Scene& scene, const Vec3& rayOrigin, const Vec3& rayDir, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
+inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
 	// disgard hits closer than this distance to avoid self intersection artifacts
 	const float kEpsilon = 0.001f;
@@ -150,7 +20,7 @@ inline bool Trace(const Scene& scene, const Vec3& rayOrigin, const Vec3& rayDir,
 
 		const Primitive& primitive = *iter;
 
-		if (Intersect(primitive, rayOrigin, rayDir, t, &n))
+		if (Intersect(primitive, ray, t, &n))
 		{
 			if (t < minT && t > kEpsilon)
 			{
@@ -170,11 +40,11 @@ inline bool Trace(const Scene& scene, const Vec3& rayOrigin, const Vec3& rayDir,
 
 
 
-inline Color SampleLights(const Scene& scene, const Primitive& primitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, Random& rand)
+inline Color SampleLights(const Scene& scene, const Primitive& primitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Color sum(0.0f);
 
-	for (int i=0; i < scene.primitives.size(); ++i)
+	for (int i=0; i < int(scene.primitives.size()); ++i)
 	{
 		// assume all lights are area lights for now
 		const Primitive& lightPrimitive = scene.primitives[i];
@@ -201,10 +71,10 @@ inline Color SampleLights(const Scene& scene, const Primitive& primitive, const 
 			float t;
 			Vec3 ln;
 			const Primitive* hit;
-			if (Trace(scene, surfacePos, wi, t, ln, &hit))
+			if (Trace(scene, Ray(surfacePos, wi, time), t, ln, &hit))
 			{
-				// did we hit the light prim?
-				if (hit == &lightPrimitive)
+				// did we hit a light prim (doesn't have to be the one we're sampling, useful for portals which don't themselves emit)
+				if (hit->light)
 				{
 					const Color f = BRDF(primitive.material, surfacePos, surfaceNormal, wi, wo);
 
@@ -215,13 +85,13 @@ inline Color SampleLights(const Scene& scene, const Primitive& primitive, const 
 					{
 						const float lightPdf = (t*t) / (nl*lightArea);
 					
-						L += f * lightPrimitive.material.emission * Clamp(Dot(wi, surfaceNormal), 0.0f, 1.0f)  / lightPdf;
+						L += f * hit->material.emission * Clamp(Dot(wi, surfaceNormal), 0.0f, 1.0f)  / lightPdf;
 					}
 				}
 			}		
 		}
 	
-		sum += L / numSamples;
+		sum += L / float(numSamples);
 	}
 
 	return sum;
@@ -307,6 +177,7 @@ Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Ve
 
     Vec3 rayOrigin = startOrigin;
     Vec3 rayDir = startDir;
+	float rayTime = rand.Randf();
 
     float t = 0.0f;
     Vec3 n(rayDir);
@@ -317,7 +188,7 @@ Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Ve
     for (int i=0; i < kMaxPathDepth; ++i)
     {
         // find closest hit
-        if (Trace(scene, rayOrigin, rayDir, t, n, &hit))
+        if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
         {	
             // calculate a basis for this hit point
             Vec3 u, v;
@@ -333,16 +204,17 @@ Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Ve
 			}
 
     	    // integral of Le over hemisphere
-            totalRadiance += SampleLights(scene, *hit, p, n, -rayDir, rand);
+            totalRadiance += SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
 
             // update position and path direction
             const Vec3 outDir = Mat33(u, v, n)*UniformSampleHemisphere(rand);
+			
 
             // reflectance
             Color f = BRDF(hit->material, p, n, -rayDir, outDir);
 
             // update throughput with primitive reflectance
-            pathThroughput *= f * Clamp(Dot(n, outDir), 0.0f, 1.0f) / kInv2Pi;
+            pathThroughput *= f * Clamp(Dot(n, outDir), 0.0f, 1.0f) / kInv2Pi;			
 
             // update path direction
             rayDir = outDir;
@@ -351,7 +223,7 @@ Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Ve
         else
         {
             // hit nothing, terminate loop
-        	totalRadiance += pathThroughput*Vec4(0.1f, 0.2, 0.3f);
+        	totalRadiance += pathThroughput*scene.sky;
             break;
         }
     }
@@ -369,6 +241,7 @@ Color ForwardTraceUniform(const Scene& scene, const Vec3& startOrigin, const Vec
 
     Vec3 rayOrigin = startOrigin;
     Vec3 rayDir = startDir;
+	float rayTime = 1.0f;
 
     float t = 0.0f;
     Vec3 n(rayDir);
@@ -379,7 +252,7 @@ Color ForwardTraceUniform(const Scene& scene, const Vec3& startOrigin, const Vec
     for (int i=0; i < kMaxPathDepth; ++i)
     {
         // find closest hit
-        if (Trace(scene, rayOrigin, rayDir, t, n, &hit))
+        if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
         {	
 
             // calculate a basis for this hit point
@@ -491,7 +364,7 @@ Color Debug(const Scene& scene, const Vec3& rayOrigin, const Vec3& rayDir)
 	float t;
 	Vec3 n;
 	const Primitive* p;
-	if (Trace(scene, rayOrigin, rayDir, t, n, &p))
+	if (Trace(scene, Ray(rayOrigin, rayDir, 1.0f), t, n, &p))
 	{
 		return Color(0.5f*n.x+0.5f, 0.5f*n.y+0.5f, 0.5f*n.z+0.5f, 1.0);
 	}
@@ -509,59 +382,62 @@ struct CpuRenderer : public Renderer
 
 	void Render(Camera* camera, Color* output, int width, int height, int samplesPerPixel, RenderMode mode)
 	{
-	    for (int j=0; j < height; ++j)
-	    {
-	        for (int i=0; i < width; ++i)
-	        {
-	            Vec3 origin;
-	            Vec3 dir;
+		for (int k=0; k < samplesPerPixel; ++k)
+		{
+			for (int j=0; j < height; ++j)
+			{
+				for (int i=0; i < width; ++i)
+				{
+					Vec3 origin;
+					Vec3 dir;
 
-	            // generate a ray         
-	            switch (mode)
-	            {
-	                case ePathTrace:
-	                {
-						GenerateRay(*camera, i, j, origin, dir, rand);
+					// generate a ray         
+					switch (mode)
+					{
+						case ePathTrace:
+						{
+							GenerateRay(*camera, i, j, origin, dir, rand);
 
-				        //output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
-				        output[(height-1-j)*width+i] += ForwardTraceExplicit(*scene, origin, dir, rand);
-	                    break;
-	                }
-	                case eNormals:
-	                {
-						GenerateRayNoJitter(*camera, i, j, origin, dir);
+							//output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
+							output[(height-1-j)*width+i] += ForwardTraceExplicit(*scene, origin, dir, rand);
+							break;
+						}
+						case eNormals:
+						{
+							GenerateRayNoJitter(*camera, i, j, origin, dir);
 
-	                    const Primitive* p;
-	                    float t;
-	                    Vec3 n;
+							const Primitive* p;
+							float t;
+							Vec3 n;
 
-	                    if (Trace(*scene, origin, dir, t, n, &p))
-	                    {
-	                        n = n*0.5f+0.5f;
-	                        output[(height-1-j)*width+i] = Color(n.x, n.y, n.z, 1.0f);
-	                    }
-	                    else
-	                    {
-	                        output[(height-1-j)*width+i] = Color(0.0f);
-	                    }
-	                    break;
-	                }
-	                case eComplexity:
-	                {
-	                	/*
-						job.camera.GenerateRayNoJitter(i, j, origin, dir);
+							if (Trace(*scene, Ray(origin, dir, 1.0f), t, n, &p))
+							{
+								n = n*0.5f+0.5f;
+								output[(height-1-j)*width+i] = Color(n.x, n.y, n.z, 1.0f);
+							}
+							else
+							{
+								output[(height-1-j)*width+i] = Color(0.0f);
+							}
+							break;
+						}
+						case eComplexity:
+						{
+	                		/*
+							job.camera.GenerateRayNoJitter(i, j, origin, dir);
 
-	                    const Primitive* p;
-	                    job.scene->Trace(origin, dir, t, n, &p);
+							const Primitive* p;
+							job.scene->Trace(origin, dir, t, n, &p);
 
-	                    // visualise traversal
-	                    job.output[(g_height-1-j)*g_width+i] = Color(AABBTree::GetTraceDepth() / 100.0f);
-						*/
-	                    break;
-	                }
-	            }
-	        }
-	    }
+							// visualise traversal
+							job.output[(g_height-1-j)*g_width+i] = Color(AABBTree::GetTraceDepth() / 100.0f);
+							*/
+							break;
+						}
+					}
+				}
+			}
+		}
 	}
 };
 
