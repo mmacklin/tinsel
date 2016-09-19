@@ -155,6 +155,9 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 			// intersect against bvh
 			p.mesh.mesh->bvh.QueryRay(query, ray.origin, ray.dir);
 
+			// todo: interpolate normals
+			
+
 			outT = query.closestT;
 			*outNormal = query.closestNormal;
 

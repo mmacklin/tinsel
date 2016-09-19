@@ -13,6 +13,23 @@ struct GPUScene
 	Color sky;
 };
 
+struct GPUBVH
+{
+	Vec3 lower;
+	Vec3 upper;
+
+	int leftIndex;
+	int rightIndex : 31;
+	bool leaf : 1;
+};
+
+struct GPUMesh
+{
+	Vec3* positions;
+	Vec3* normals;
+	int* indices;
+};
+
 // trace a ray against the scene returning the closest intersection
 __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {

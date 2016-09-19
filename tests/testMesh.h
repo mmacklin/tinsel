@@ -26,11 +26,12 @@ Scene* TestMesh()
     //Mesh* lightMesh = ImportMeshFromPly("models/bunny/reconstruction/bun_zipper_res4.ply");
     //lightMesh->Transform(TranslationMatrix(Vec3(-0.0f, 0.5f, 0.0f)));
 
+/*  
 	Mesh* tet = CreateTetrahedron();
     tet->Transform(TranslationMatrix(Vec3(0.0f, 1.0f, 0.0f)));
 	tet->RebuildBVH();
 
-/*	
+
     printf("nodes: %d\n", tet->bvh.nodes.size());
 
     for (int i=0; i < tet->bvh.nodes.size(); ++i)
