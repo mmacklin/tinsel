@@ -302,6 +302,29 @@ struct VertexKey
 	}
 };
 
+void Mesh::RebuildBVH()
+{
+	const int numTris = indices.size()/3;
+	
+	if (numTris)
+	{
+		std::vector<Bounds> triangleBounds(numTris);
+
+		for (int i=0; i < numTris; ++i)
+		{
+			const int a = indices[i*3+0];
+			const int b = indices[i*3+1];
+			const int c = indices[i*3+2];
+
+			triangleBounds[i].AddPoint(a);
+			triangleBounds[i].AddPoint(b);
+			triangleBounds[i].AddPoint(c);
+		}
+	
+		bvh.Build(&triangleBounds[0], numTris);
+	}
+}
+
 Mesh* ImportMeshFromObj(const char* path)
 {
     ifstream file(path);
@@ -503,6 +526,7 @@ Mesh* ImportMeshFromObj(const char* path)
     }
         
     //cout << "Imported mesh " << path << " in " << (GetSeconds()-startTime)*1000.f << "ms" << endl;
+	m->RebuildBVH();
 
     return m;
 }
@@ -650,20 +674,22 @@ Mesh* CreateTetrahedron()
 {
 	Mesh* m = new Mesh();
 
-	const Vec3 vertices[4] = 
+	const float dimValue = 1.0f / sqrtf(2.0f);
+	const Vec3 vertices[4] =
 	{
-		Vec3(-1.0f, 0.0f, -1.0f/sqrtf(2.0f)),
-		Vec3(1.0f, 0.0f, -1.0f/sqrtf(2.0f)),
-		Vec3(0.0f, 1.0f, 1.0f/sqrtf(2.0f)),
-		Vec3(0.0f, -1.0f, 1.0f/sqrtf(2.0f))
+		Vec3(-1.0f, 0.0f, -dimValue),
+		Vec3(1.0f, 0.0f, -dimValue),
+		Vec3(0.0f, 0.0f + 1.0f, dimValue),
+		Vec3(0.0f, 0.0f, dimValue)
 	};
 
 	const int indices[12] = 
 	{
-		0, 1, 2,
-		2, 1, 3,
+		//winding order is counter-clockwise
+		0, 2, 1,
+		2, 3, 1,
 		2, 0, 3,
-		0, 3, 1
+		3, 0, 1
 	};
 
 	m->positions.assign(vertices, vertices+4);
@@ -677,3 +703,103 @@ Mesh* CreateTetrahedron()
 
 
 
+
+
+Mesh* CreateSphere(int slices, int segments, float radius)
+{
+	float dTheta = kPi / slices;
+	float dPhi = k2Pi / segments;
+
+	int vertsPerRow = segments + 1;
+
+	Mesh* mesh = new Mesh();
+
+	for (int i = 0; i <= slices; ++i)
+	{
+		float theta = dTheta*i;
+
+		for (int j = 0; j <= segments; ++j)
+		{
+			float phi = dPhi*j;
+
+			float x = sinf(theta)*cosf(phi);
+			float y = cosf(theta);
+			float z = sinf(theta)*sinf(phi);
+
+			mesh->positions.push_back(Vec3(x, y, z)*radius);
+			mesh->normals.push_back(Vec3(x, y, z));
+
+			if (i > 0 && j > 0)
+			{
+				int a = i*vertsPerRow + j;
+				int b = (i - 1)*vertsPerRow + j;
+				int c = (i - 1)*vertsPerRow + j - 1;
+				int d = i*vertsPerRow + j - 1;
+
+				// add a quad for this slice
+				mesh->indices.push_back(b);
+				mesh->indices.push_back(a);
+				mesh->indices.push_back(d);
+
+				mesh->indices.push_back(b);
+				mesh->indices.push_back(d);
+				mesh->indices.push_back(c);
+			}
+		}
+	}
+
+	return mesh;
+}
+
+Mesh* CreateCapsule(int slices, int segments, float radius, float halfHeight)
+{
+	float dTheta = kPi / (slices * 2);
+	float dPhi = k2Pi / segments;
+
+	int vertsPerRow = segments + 1;
+
+	Mesh* mesh = new Mesh();
+
+	float theta = 0.0f;
+
+	for (int i = 0; i <= 2 * slices + 1; ++i)
+	{
+		for (int j = 0; j <= segments; ++j)
+		{
+			float phi = dPhi*j;
+
+			float x = sinf(theta)*cosf(phi);
+			float y = cosf(theta);
+			float z = sinf(theta)*sinf(phi);
+
+			// add y offset based on which hemisphere we're in
+			float yoffset = (i < slices) ? halfHeight : -halfHeight;
+
+			mesh->positions.push_back(Vec3(x, y, z)*radius + Vec3(0.0f, yoffset, 0.0f));
+			mesh->normals.push_back(Vec3(x, y, z));
+
+			if (i > 0 && j > 0)
+			{
+				int a = i*vertsPerRow + j;
+				int b = (i - 1)*vertsPerRow + j;
+				int c = (i - 1)*vertsPerRow + j - 1;
+				int d = i*vertsPerRow + j - 1;
+
+				// add a quad for this slice
+				mesh->indices.push_back(b);
+				mesh->indices.push_back(a);
+				mesh->indices.push_back(d);
+
+				mesh->indices.push_back(b);
+				mesh->indices.push_back(d);
+				mesh->indices.push_back(c);
+			}
+		}
+
+		// don't update theta for the middle slice
+		if (i != slices)
+			theta += dTheta;
+	}
+
+	return mesh;
+}

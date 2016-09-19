@@ -1,13 +1,12 @@
 #pragma once
 
-#pragma once
 
-Scene* TestMaterials()
+Scene* TestMesh()
 {
     Scene* scene = new Scene();
 
 
-    Mesh* mesh = ImportMeshFromObj("../../data/happy.obj");
+    Mesh* buddha = ImportMeshFromObj("../../data/happy.obj");
     //Mesh* mesh = ImportMeshFromPly("../../data/thearena.ply");
     //Mesh* mesh = ImportMeshFromPly("models/bunny/reconstruction/bun_zipper_res4.ply");
     //Mesh* mesh = ImportMeshFromPly("models/happy_recon/happy_vrip_res3.ply");
@@ -23,6 +22,8 @@ Scene* TestMaterials()
     //Mesh* lightMesh = ImportMeshFromPly("models/bunny/reconstruction/bun_zipper_res4.ply");
     //lightMesh->Transform(TranslationMatrix(Vec3(-0.0f, 0.5f, 0.0f)));
 
+	Mesh* tet = CreateTetrahedron();
+	tet->RebuildBVH();
 	
     Material plaster;
 	plaster.color = Color(0.94f, 0.94f, 0.94f);
@@ -30,10 +31,9 @@ Scene* TestMaterials()
 	plaster.specular = 0.1;
 
 	Primitive mesh;
-	mesh.mesh = mesh;
-	mesh.bvh.Build(Bounds)
-	
-	
+	mesh.type = eMesh;
+	mesh.mesh.mesh = tet;
+		
 
     Primitive plane;
     plane.type = ePlane;
@@ -46,13 +46,14 @@ Scene* TestMaterials()
     Primitive light;
     light.type = eSphere;
     light.sphere.radius = 1.0f;
-    light.transform = TranslationMatrix(Vec3(0.0f, 6.0f, 6.0f));
+    light.transform = TranslationMatrix(Vec3(0.0f, 6.0f, 0.0f));
 	light.lastTransform = light.transform;
     light.material.color = Vec4(0.0f);
     light.material.emission = Vec4(15.0f);
     light.light = true;
 
     
+	scene->AddPrimitive(mesh);
     scene->AddPrimitive(plane);
 	scene->AddPrimitive(light);
 

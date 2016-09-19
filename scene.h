@@ -60,7 +60,6 @@ struct PlaneGeometry
 struct MeshGeometry
 {
 	Mesh* mesh;
-	BVH* bvh;
 };
 
 struct Primitive

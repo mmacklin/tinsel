@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "maths.h"
+#include "bvh.h"
 
 struct Mesh
 {
@@ -16,12 +17,16 @@ struct Mesh
 
     void GetBounds(Vec3& minExtents, Vec3& maxExtents) const;
 
+	void RebuildBVH();
+
     std::vector<Vec3> positions;
     std::vector<Vec3> normals;
     std::vector<Vec2> texcoords[2];
     std::vector<Color> Colors;
 
     std::vector<int> indices;
+
+	BVH bvh;
 };
 
 // create mesh from file
@@ -35,4 +40,5 @@ Mesh* ImportMesh(const char* path);
 Mesh* CreateQuadMesh(float size, float y=0.0f);
 Mesh* CreateDiscMesh(float radius, int segments);
 Mesh* CreateTetrahedron();
-
+Mesh* CreateSphere(int slices, int segments, float radius = 1.0f);
+Mesh* CreateCapsule(int slices, int segments, float radius = 1.0f, float halfHeight = 1.0f);

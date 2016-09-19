@@ -98,7 +98,7 @@ struct Ray
 	float time;
 };
 
-CUDA_CALLABLE inline  bool Intersect(const Primitive& p, const Ray& ray, float& t, Vec3* normal)
+CUDA_CALLABLE inline  bool Intersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
 {
 	const Mat44 transform = InterpolateTransform(p.lastTransform, p.transform, ray.time);
 
@@ -106,20 +106,75 @@ CUDA_CALLABLE inline  bool Intersect(const Primitive& p, const Ray& ray, float& 
 	{
 		case eSphere:
 		{
-			bool hit = IntersectRaySphere(Vec3(transform.GetCol(3)), p.sphere.radius, ray.origin, ray.dir, t, normal);
+			bool hit = IntersectRaySphere(Vec3(transform.GetCol(3)), p.sphere.radius, ray.origin, ray.dir, outT, outNormal);
 			return hit;
 		}
 		case ePlane:
 		{
-			bool hit = IntersectRayPlane(ray.origin, ray.dir, (const Vec4&)p.plane, t);
-			if (hit && normal)
-				*normal = (const Vec3&)p.plane;
+			bool hit = IntersectRayPlane(ray.origin, ray.dir, (const Vec4&)p.plane, outT);
+			if (hit && outNormal)
+				*outNormal = (const Vec3&)p.plane;
 
 			return hit;
 		}
 		case eMesh:
 		{
-			return false;
+			struct MeshQuery
+			{
+				MeshQuery(const Mesh* m) : mesh(m) {}
+				
+				inline void operator()(int i)
+				{
+
+				}
+				
+				const Mesh* mesh;
+				
+				float t;
+				Vec3 normal;
+
+				bool hit;
+			};
+
+			MeshQuery query(p.mesh.mesh);
+
+			// intersect against bvh
+			p.mesh.mesh->bvh.QueryRay(query, ray.origin, ray.dir);
+
+			if (query.hit)
+			
+			return query.hit;
+
+			/*
+			float closestT = FLT_MAX;
+			Vec3 closestNormal;
+
+			const int numTris = p.mesh.mesh->indices.size()/3;
+
+			for (int i=0; i < numTris; ++i)
+			{
+				float t, u, v, w;
+				Vec3 n;
+
+				const Vec3 a = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+0]];
+				const Vec3 b = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+1]];
+				const Vec3 c = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+2]];
+
+				if (IntersectRayTri(ray.origin, ray.dir, a, b, c, t, u, v, w, &n))
+				{
+					if (t > 0.0f && t < closestT)
+					{
+						closestT = t;
+						closestNormal = n;
+					}
+				}
+			}
+
+			outT = closestT;
+			*outNormal = closestNormal;
+
+			return closestT < FLT_MAX;
+			*/
 		}
 	}
 

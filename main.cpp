@@ -146,7 +146,7 @@ void InitFrameBuffer()
 
 void Init()
 {
-    g_scene = TestMaterials();
+    g_scene = TestMesh();
 
     // create renderer
     g_renderer = CreateCpuRenderer(g_scene);
