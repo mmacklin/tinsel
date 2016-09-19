@@ -7,6 +7,7 @@
 #include <limits>
 
 #include <stdint.h>
+#include <float.h>
 
 #define USE_DOUBLE_PRECISION 0
 
@@ -262,7 +263,7 @@ CUDA_CALLABLE inline Vec3 Abs(const Vec3& a) { return Vec3(Abs(a.x), Abs(a.y), A
 
 CUDA_CALLABLE inline Vec3 Max(const Vec3& a, const Vec3& b)
 {
-	return Vec3(Max(a.x, b.x), Max(a.y, b.y), Max(a.z, b.y));
+	return Vec3(Max(a.x, b.x), Max(a.y, b.y), Max(a.z, b.z));
 }
 
 CUDA_CALLABLE inline Vec3 Min(const Vec3& a, const Vec3& b)
@@ -874,8 +875,10 @@ struct Bounds
 	{
 		if (p.x < lower.x ||
 			p.y < lower.y ||
+			p.z < lower.z ||
 			p.x > upper.x ||
-			p.y > upper.y)
+			p.y > upper.y ||
+			p.z > upper.z)
 		{
 			return false;
 		}
@@ -889,8 +892,10 @@ struct Bounds
 	{
 		if (lower.x > b.upper.x ||
 			lower.y > b.upper.y ||
+			lower.z > b.upper.z ||
 			upper.x < b.lower.x ||
-			upper.y < b.lower.y)
+			upper.y < b.lower.y ||
+			upper.z < b.lower.z)
 		{
 			return false;
 		}

@@ -221,7 +221,7 @@ CUDA_CALLABLE inline bool IntersectRayTri(const Vec3& p, const Vec3& dir, const 
 
 	// optionally write out normal (todo: this branch is a performance concern, should probably remove)
 	if (normal)
-		*normal = n;
+		*normal = Normalize(n);
 
 	return true;
 }

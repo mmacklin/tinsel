@@ -220,10 +220,12 @@ public:
 	}
 
 	template <typename Func>
-	void QueryRay(Func f, const Vec3& start, const Vec3& dir)
+	void QueryRay(Func& f, const Vec3& start, const Vec3& dir)
 	{
 		if (nodes.empty())
 			return;
+
+		const Vec3 rcpDir(1.0f/dir.x, 1.0f/dir.y, 1.0f/dir.z);
 
 		Node* stack[64];
 		stack[0] = &nodes[0];
@@ -235,7 +237,9 @@ public:
 			Node* n = stack[--count];
 
 			float t;
-			if (IntersectRayAABB(start, dir, n->bounds.lower, n->bounds.upper, t, NULL))
+			//if (IntersectRayAABB(start, dir, n->bounds.lower, n->bounds.upper, t, NULL))
+			
+			if (IntersectRayAABBOmpf(start, rcpDir, n->bounds.lower, n->bounds.upper, t))
 			{
 				if (n->leaf)
 				{	
@@ -247,7 +251,7 @@ public:
 				else
 				{
 					stack[count++] = &nodes[n->leftIndex];
-					stack[count++] = &nodes[n->rightIndex];					
+					stack[count++] = &nodes[n->rightIndex];
 				}
 			}
 		}		
@@ -382,7 +386,8 @@ private:
 		}
 		else
 		{
-			int split = PartitionObjectsMidPoint(start, end, node.bounds);
+			//const int split = PartitionObjectsMidPoint(start, end, node.bounds);
+			const int split = PartitionObjectsMedian(start, end, node.bounds);
 
 			if (split == start || split == end)
 			{

@@ -98,7 +98,37 @@ struct Ray
 	float time;
 };
 
-CUDA_CALLABLE inline  bool Intersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
+struct MeshQuery
+{
+	MeshQuery(const Mesh* m, const Ray& r) : mesh(m), ray(r), closestT(FLT_MAX) {}
+	
+	inline void operator()(int i)
+	{	
+		float t, u, v, w;
+		Vec3 n;
+
+		const Vec3& a = mesh->positions[mesh->indices[i*3+0]];
+		const Vec3& b = mesh->positions[mesh->indices[i*3+1]];
+		const Vec3& c = mesh->positions[mesh->indices[i*3+2]];
+
+		if (IntersectRayTri(ray.origin, ray.dir, a, b, c, t, u, v, w, &n))
+		{
+			if (t > 0.0f && t < closestT)
+			{
+				closestT = t;
+				closestNormal = n;
+			}
+		}
+	}
+	
+	const Mesh* mesh;
+	const Ray ray;
+	
+	float closestT;
+	Vec3 closestNormal;
+};
+
+CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
 {
 	const Mat44 transform = InterpolateTransform(p.lastTransform, p.transform, ray.time);
 
@@ -119,35 +149,21 @@ CUDA_CALLABLE inline  bool Intersect(const Primitive& p, const Ray& ray, float& 
 		}
 		case eMesh:
 		{
-			struct MeshQuery
-			{
-				MeshQuery(const Mesh* m) : mesh(m) {}
-				
-				inline void operator()(int i)
-				{
-
-				}
-				
-				const Mesh* mesh;
-				
-				float t;
-				Vec3 normal;
-
-				bool hit;
-			};
-
-			MeshQuery query(p.mesh.mesh);
+#if 1
+			MeshQuery query(p.mesh.mesh, ray);
 
 			// intersect against bvh
 			p.mesh.mesh->bvh.QueryRay(query, ray.origin, ray.dir);
 
-			if (query.hit)
-			
-			return query.hit;
+			outT = query.closestT;
+			*outNormal = query.closestNormal;
 
-			/*
+			return outT < FLT_MAX;
+			
+#else
 			float closestT = FLT_MAX;
 			Vec3 closestNormal;
+			bool hit = false;
 
 			const int numTris = p.mesh.mesh->indices.size()/3;
 
@@ -156,9 +172,9 @@ CUDA_CALLABLE inline  bool Intersect(const Primitive& p, const Ray& ray, float& 
 				float t, u, v, w;
 				Vec3 n;
 
-				const Vec3 a = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+0]];
-				const Vec3 b = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+1]];
-				const Vec3 c = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+2]];
+				const Vec3& a = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+0]];
+				const Vec3& b = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+1]];
+				const Vec3& c = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+2]];
 
 				if (IntersectRayTri(ray.origin, ray.dir, a, b, c, t, u, v, w, &n))
 				{
@@ -166,6 +182,7 @@ CUDA_CALLABLE inline  bool Intersect(const Primitive& p, const Ray& ray, float& 
 					{
 						closestT = t;
 						closestNormal = n;
+						hit = true;
 					}
 				}
 			}
@@ -173,8 +190,9 @@ CUDA_CALLABLE inline  bool Intersect(const Primitive& p, const Ray& ray, float& 
 			outT = closestT;
 			*outNormal = closestNormal;
 
-			return closestT < FLT_MAX;
-			*/
+			return hit;
+#endif
+			
 		}
 	}
 

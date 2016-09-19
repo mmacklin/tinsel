@@ -6,7 +6,11 @@ Scene* TestMesh()
     Scene* scene = new Scene();
 
 
-    Mesh* buddha = ImportMeshFromObj("../../data/happy.obj");
+    Mesh* buddha = ImportMeshFromObj("data/octopus.obj");
+    
+    buddha->Normalize(4.0f);
+    buddha->RebuildBVH();
+
     //Mesh* mesh = ImportMeshFromPly("../../data/thearena.ply");
     //Mesh* mesh = ImportMeshFromPly("models/bunny/reconstruction/bun_zipper_res4.ply");
     //Mesh* mesh = ImportMeshFromPly("models/happy_recon/happy_vrip_res3.ply");
@@ -23,16 +27,39 @@ Scene* TestMesh()
     //lightMesh->Transform(TranslationMatrix(Vec3(-0.0f, 0.5f, 0.0f)));
 
 	Mesh* tet = CreateTetrahedron();
+    tet->Transform(TranslationMatrix(Vec3(0.0f, 1.0f, 0.0f)));
 	tet->RebuildBVH();
-	
+
+/*	
+    printf("nodes: %d\n", tet->bvh.nodes.size());
+
+    for (int i=0; i < tet->bvh.nodes.size(); ++i)
+    {
+        const BVH::Node& node = tet->bvh.nodes[i];
+
+        printf("node %d : (%f, %f, %f) - (%f, %f, %f), [%d, %d] leaf: %d\n", 
+            i, 
+            node.bounds.lower.x, node.bounds.lower.y, node.bounds.lower.z, 
+            node.bounds.upper.x, node.bounds.upper.y, node.bounds.upper.z,
+            node.leftIndex, node.rightIndex, node.leaf);
+    }
+*/
+
     Material plaster;
 	plaster.color = Color(0.94f, 0.94f, 0.94f);
 	plaster.roughness = 0.75;
 	plaster.specular = 0.1;
 
+    Material gold;
+    gold.color = Color(1.0f, 0.71f, 0.29f);
+    gold.roughness = 0.5f;
+    gold.metallic = 1.0f;
+
+
 	Primitive mesh;
 	mesh.type = eMesh;
-	mesh.mesh.mesh = tet;
+	mesh.mesh.mesh = buddha;
+    mesh.material = gold;
 		
 
     Primitive plane;

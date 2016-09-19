@@ -312,9 +312,9 @@ void Mesh::RebuildBVH()
 
 		for (int i=0; i < numTris; ++i)
 		{
-			const int a = indices[i*3+0];
-			const int b = indices[i*3+1];
-			const int c = indices[i*3+2];
+			const Vec3 a = positions[indices[i*3+0]];
+			const Vec3 b = positions[indices[i*3+1]];
+			const Vec3 c = positions[indices[i*3+2]];
 
 			triangleBounds[i].AddPoint(a);
 			triangleBounds[i].AddPoint(b);
