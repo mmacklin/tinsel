@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <algorithm>
 #include <limits>
+#include <random>
 
 #include <stdint.h>
 #include <float.h>
@@ -965,21 +966,27 @@ public:
 		return min + Rand()%(max-min);
 	}
 
+	std::default_random_engine generator;
+
 	// returns random number between 0-1
 	CUDA_CALLABLE inline float Randf()
 	{
+		std::uniform_real_distribution<float> distr(0.0f,1.0f);
+
+		return distr(generator);
+		/*
 		unsigned int value = Rand();
 		unsigned int limit = 0xffffffff;
 
-		return ( float )value*(1.0/( float )limit );
+		return ( float )value*(1.0f/( float )limit );
+		*/
 	}
 
 	// returns random number between min and max
 	CUDA_CALLABLE inline float Randf(float min, float max)
 	{
-		//	return Lerp(min, max, ParticleRandf());
 		float t = Randf();
-		return (1.0-t)*min + t*(max);
+		return (1.0f-t)*min + t*max;
 	}
 
 	// returns random number between 0-max

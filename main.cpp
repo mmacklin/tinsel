@@ -77,6 +77,7 @@ void Render()
 
     printf("%d (%.2fs)\n", g_iterations, (endTime-startTime));
     fflush(stdout);
+                
 
     Color* presentMem = g_pixels;
 
@@ -148,9 +149,10 @@ void Init()
 {
     //g_scene = TestMesh();
 	g_scene = TestMaterials();
+  //  g_scene = TestMIS();
 
     // create renderer
-    g_renderer = CreateGpuRenderer(g_scene);
+    g_renderer = CreateCpuRenderer(g_scene);
         
     InitFrameBuffer();
 }

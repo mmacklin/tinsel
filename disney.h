@@ -68,51 +68,49 @@ CUDA_CALLABLE inline void BRDFSample(const Material& mat, const Vec3& P, const M
 
 #else
 
-	float select = rand.Randf()*2.0f;
+    const Vec3 n = frame.GetCol(2);
+    const float a = Max(0.001f, mat.roughness);//Max(0.001f, sqr(mat.roughness));
 
-	if (select < 1.0f)
-	{
-		// sample diffuse
-		/*
-		outDir = frame*CosineSampleHemisphere(rand);
-		outPdf = outDir.z * kInvPi;
+    Vec3 light;
+    Vec3 half;
 
-		if (outPdf == 0.0f)
-			outPdf = FLT_MAX;
-			*/
-		outDir = frame*UniformSampleHemisphere(rand);
-		outPdf = kInv2Pi;
-	}
-	else
-	{
-		const float r1 = rand.Randf();
-		const float r2 = rand.Randf();
+    const float select = rand.Randf();
 
-		const float a = Max(0.001f, sqr(mat.roughness));
+    if (select < mat.roughness)
+    {
+        // sample diffuse
+        light = frame*CosineSampleHemisphere(rand);
 
-		const float phiHalf = r1*k2Pi;
-		
-		const float cosThetaHalf = sqrtf((1.0f-r2)/(1.0f + (sqr(a)-1.0f)*r2));		
-		const float sinThetaHalf = sqrtf(1.0f-sqr(cosThetaHalf));
-		const float sinPhiHalf = sinf(phiHalf);
-		const float cosPhiHalf = cosf(phiHalf);
+        // half vector used for spec pdf
+        half = Normalize(light + V);
+    }
+    else
+    {
+        const float r1 = rand.Randf();
+        const float r2 = rand.Randf();
 
-		const Vec3 half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
-		
-		const Vec3 light = 2.0f*Dot(V, half)*half - V;
+        const float phiHalf = r1*k2Pi;
+        
+        const float cosThetaHalf = sqrtf((1.0f-r2)/(1.0f + (sqr(a)-1.0f)*r2));      
+        const float sinThetaHalf = sqrtf(1.0f-sqr(cosThetaHalf));
+        const float sinPhiHalf = sinf(phiHalf);
+        const float cosPhiHalf = cosf(phiHalf);
 
-		const float pdfHalf = GTR2(cosThetaHalf, a)*cosThetaHalf;
+        half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
+        
+        light = 2.0f*Dot(V, half)*half - V;
+    }
 
-		outDir = light;
-		outPdf = pdfHalf*0.25f/Abs(Dot(light, half));
+    const float cosThetaHalf = Abs(Dot(half, n));
+    const float pdfHalf = GTR2(cosThetaHalf, a)*cosThetaHalf;
 
-		if (Dot(light, half) == 0.0f)
-			outPdf = FLT_MAX;
+    // calculate pdf for each method given outgoing light vector
+    float pdfSpec = pdfHalf*0.25f/Abs(Dot(light, half));
+    float pdfDiff = Abs(Dot(light, n))*kInvPi;
 
-	}
-
-	// because we randomly select to sample either diffuse or gloss
-	outPdf *= 0.5f;
+    // weight pdfs according to roughness
+    outPdf = Lerp(pdfSpec, pdfDiff, mat.roughness);
+    outDir = light;
 
 #endif
 }
@@ -153,7 +151,7 @@ CUDA_CALLABLE inline Color BRDFEval(const Material& mat, const Vec3& P, const Ve
     //float ax = Max(.001f, sqr(mat.roughness)/aspect);
     //float ay = Max(.001f, sqr(mat.roughness)*aspect);
     //float Ds = GTR2_aniso(NDotH, Dot(H, X), Dot(H, Y), ax, ay);
-    float a = Max(0.001f, sqr(mat.roughness));
+    float a = Max(0.001f, mat.roughness);
     float Ds = GTR2(NDotH, a);
     float FH = SchlickFresnel(LDotH);
     Vec3 Fs = Lerp(Cspec0, Vec3(1), FH);

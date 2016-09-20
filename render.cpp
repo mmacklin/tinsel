@@ -55,7 +55,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& primitive, const 
 
 		Color L(0.0f);
 
-		const int numSamples = 10;
+		const int numSamples = 1;
 
 		for (int s=0; s < numSamples; ++s)
 		{
@@ -207,14 +207,17 @@ Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Ve
             totalRadiance += SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
 
             // update position and path direction
-            const Vec3 outDir = Mat33(u, v, n)*UniformSampleHemisphere(rand);
+            //const Vec3 outDir = Mat33(u, v, n)*UniformSampleHemisphere(rand);
+            Vec3 outDir;
+            float outPdf;
+            BRDFSample(hit->material, p, Mat33(u, v, n), -rayDir, outDir, outPdf, rand);
 			
 
             // reflectance
             Color f = BRDFEval(hit->material, p, n, -rayDir, outDir);
 
             // update throughput with primitive reflectance
-            pathThroughput *= f * Clamp(Dot(n, outDir), 0.0f, 1.0f) / kInv2Pi;			
+            pathThroughput *= f * Clamp(Dot(n, outDir), 0.0f, 1.0f) / outPdf;
 
             // update path direction
             rayDir = outDir;
