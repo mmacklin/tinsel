@@ -21,8 +21,8 @@ Scene* TestMesh()
     Scene* scene = new Scene();
 
 
-    //Mesh* buddha = ImportMeshFromObj("data/happy.obj");
-	Mesh* buddha = ImportMeshFromObj("data/manifold.obj");
+    Mesh* buddha = ImportMeshFromObj("data/Ajax_Jotero_com.obj");
+	//Mesh* buddha = ImportMeshFromObj("data/manifold.obj");
 	//Mesh* buddha = ImportMeshFromPly("data/lion.ply");
     
     buddha->Normalize(4.0f);

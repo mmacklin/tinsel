@@ -81,8 +81,8 @@ Scene* TestMaterials()
         sphere.lastTransform = TranslationMatrix(Vec3(-x + i*dx, y, 0.0f));
         sphere.material.color= SrgbToLinear(Color(.05f, .57f, .36f));
         sphere.material.metallic = 0.0f;
-		//sphere.material.specular = float(i)/(rowSize-1);
-		sphere.material.roughness = Max(0.05f, Sqr(1.0f-float(i)/(rowSize-1)));
+		sphere.material.specular = 0.75f;//float(i)/(rowSize-1);
+		sphere.material.roughness = Max(0.01f, Sqr(1.0f-float(i)/(rowSize-1)));
 
         scene->AddPrimitive(sphere);
     }
@@ -234,7 +234,7 @@ Scene* TestMIS()
     sphere.transform = TranslationMatrix(Vec3(0.0f, r, 0.0f));
     sphere.lastTransform = TranslationMatrix(Vec3(0.0f, r, 0.0f));
     sphere.material = gold;
-    sphere.material.roughness = 0.05f;
+    sphere.material.roughness = 0.01f;
     scene->AddPrimitive(sphere);
 
     Primitive sphere1;

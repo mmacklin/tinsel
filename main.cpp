@@ -147,12 +147,12 @@ void InitFrameBuffer()
 
 void Init()
 {
-    //g_scene = TestMesh();
-	g_scene = TestMaterials();
-  //  g_scene = TestMIS();
+    g_scene = TestMesh();
+	//g_scene = TestMaterials();
+    //g_scene = TestMIS();
 
     // create renderer
-    g_renderer = CreateCpuRenderer(g_scene);
+    g_renderer = CreateGpuRenderer(g_scene);
         
     InitFrameBuffer();
 }

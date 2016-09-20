@@ -966,20 +966,20 @@ public:
 		return min + Rand()%(max-min);
 	}
 
-	std::default_random_engine generator;
+	//std::default_random_engine generator;
 
 	// returns random number between 0-1
 	CUDA_CALLABLE inline float Randf()
 	{
-		std::uniform_real_distribution<float> distr(0.0f,1.0f);
+		//std::uniform_real_distribution<float> distr(0.0f,1.0f);
 
-		return distr(generator);
-		/*
+		//return distr(generator);
+		
 		unsigned int value = Rand();
 		unsigned int limit = 0xffffffff;
 
 		return ( float )value*(1.0f/( float )limit );
-		*/
+		
 	}
 
 	// returns random number between min and max

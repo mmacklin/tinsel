@@ -67,6 +67,9 @@ inline Color SampleLights(const Scene& scene, const Primitive& primitive, const 
 
 			Vec3 wi = Normalize(lightPos-surfacePos);
 
+			if (Dot(wi, surfaceNormal) < 0.0f)
+				continue;
+
 			// check visibility
 			float t;
 			Vec3 ln;
@@ -98,75 +101,6 @@ inline Color SampleLights(const Scene& scene, const Primitive& primitive, const 
 }
 
 
-
-
-/*
-Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir)
-{	
-	// path throughput
-	Color pathThroughput(1.0f, 1.0f, 1.0f, 1.0f);
-	// accumulated radiance along the path
-	Color totalRadiance(0.0f);
-
-	Vec3 rayOrigin = startOrigin;
-	Vec3 rayDir = startDir;
-
-	float t = 0.0f;
-	Vec3 n;
-	const Primitive* hit;
-
-	const int kMaxPathDepth = 4;
-
-	for (int i=0; i < kMaxPathDepth; ++i)
-	{
-		// find closest hit
-		if (Trace(scene, rayOrigin, rayDir, t, n, &hit))
-		{			
-			// update position and path direction
-			Vec3 p = rayOrigin + rayDir*t;
-
-			// first trace is our only chance to add contribution from directly visible light sources
-            if (i == 0)
-			{
-				totalRadiance += hit->material.emission;
-			}
-
-			const BRDF* brdf = hit->material->GetBRDF(p, n);
-
-			// sample light sources
-			totalRadiance += pathThroughput * scene.SampleLights(p, n, -rayDir, brdf);
-			
-			// generate new path direction by sampling BRDF
-			float pdf = 1.f;
-			Vec3 wi;
-			brdf->Sample(-rayDir, wi, pdf);
-		
-			// evaluate brdf
-			Color f = brdf->F(-rayDir, wi);
-
-			// update path throughput 
-			pathThroughput *= f * Abs(Dot(n, wi)) / pdf;
-
-			// update path start and direction
-			rayOrigin = p;
-			rayDir = wi;
-
-			//delete brdf;
-		}
-            
-		else
-		{
-			// hit nothing, evaluate background li and end loop
-			totalRadiance += pathThroughput * scene.SampleSky(rayDir);						
-			
-			break;
-		}
-	}
-
-	return totalRadiance;
-}
-*/
-
 // reference, no light sampling, uniform hemisphere sampling
 Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir, Random& rand)
 {	
@@ -183,7 +117,7 @@ Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Ve
     Vec3 n(rayDir);
     const Primitive* hit;
 
-    const int kMaxPathDepth = 8;
+    const int kMaxPathDepth = 4;
 
     for (int i=0; i < kMaxPathDepth; ++i)
     {
@@ -204,7 +138,7 @@ Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Ve
 			}
 
     	    // integral of Le over hemisphere
-            totalRadiance += SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
+            totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
 
             // update position and path direction
             //const Vec3 outDir = Mat33(u, v, n)*UniformSampleHemisphere(rand);
@@ -250,7 +184,7 @@ Color ForwardTraceUniform(const Scene& scene, const Vec3& startOrigin, const Vec
     Vec3 n(rayDir);
     const Primitive* hit;
 
-    const int kMaxPathDepth = 8;
+    const int kMaxPathDepth = 4;
 
     for (int i=0; i < kMaxPathDepth; ++i)
     {

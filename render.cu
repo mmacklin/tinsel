@@ -106,6 +106,10 @@ __device__ Color SampleLights(const GPUScene& scene, const Primitive& primitive,
 
 			Vec3 wi = Normalize(lightPos-surfacePos);
 
+			// ignore samples backfacing to the surface
+			if (Dot(wi, surfaceNormal) < 0.0f)
+				continue;
+			
 			// check visibility
 			float t;
 			Vec3 ln;
@@ -164,21 +168,17 @@ __device__ Color ForwardTraceExplicit(const GPUScene& scene, const Vec3& startOr
 
             const Vec3 p = rayOrigin + rayDir*t;
 
-    		// if we hit a light then terminate and return emission
-			// first trace is our only chance to add contribution from directly visible light sources
-        
 			if (i == 0)
 			{
-				totalRadiance += hit->material.emission;
+		   		// if we hit a light then terminate and return emission
+				// first trace is our only chance to add contribution from directly visible light sources        
+				totalRadiance += hit->material.emission;				
 			}
 			
-    	    // integral of Le over hemisphere
-            totalRadiance += SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
+			// integral direct light over hemisphere
+			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
 
-            // update position and path direction			
-            //const Vec3 outDir = Mat33(u, v, n)*UniformSampleHemisphere(rand);
-			//const float pdf = kInv2Pi;
-
+			// sample BRDF for reflection dir
 			Mat33 localFrame(u, v, n);
 
 			Vec3 outDir;
