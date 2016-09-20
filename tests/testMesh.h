@@ -1,12 +1,29 @@
 #pragma once
 
 
+MeshGeometry GeometryFromMesh(const Mesh* mesh)
+{
+	MeshGeometry geo;
+	geo.positions = &mesh->positions[0];
+	geo.normals = &mesh->normals[0];
+	geo.indices = &mesh->indices[0];
+	geo.nodes = &mesh->bvh.nodes[0];
+	
+	geo.numNodes = mesh->bvh.numNodes;
+	geo.numIndices = mesh->indices.size();
+	geo.numVertices = mesh->positions.size();
+
+	return geo;
+}
+
 Scene* TestMesh()
 {
     Scene* scene = new Scene();
 
 
-    Mesh* buddha = ImportMeshFromObj("data/octopus.obj");
+    //Mesh* buddha = ImportMeshFromObj("data/happy.obj");
+	Mesh* buddha = ImportMeshFromObj("data/manifold.obj");
+	//Mesh* buddha = ImportMeshFromPly("data/lion.ply");
     
     buddha->Normalize(4.0f);
     buddha->RebuildBVH();
@@ -53,13 +70,13 @@ Scene* TestMesh()
 
     Material gold;
     gold.color = Color(1.0f, 0.71f, 0.29f);
-    gold.roughness = 0.5f;
+    gold.roughness = 0.25f;
     gold.metallic = 1.0f;
 
 
 	Primitive mesh;
 	mesh.type = eMesh;
-	mesh.mesh.mesh = buddha;
+	mesh.mesh = GeometryFromMesh(buddha);
     mesh.material = gold;
 		
 

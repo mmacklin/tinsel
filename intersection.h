@@ -405,7 +405,8 @@ CUDA_CALLABLE CUDA_CALLABLE inline bool PointInTriangle(Vec3 a, Vec3 b, Vec3 c, 
 CUDA_CALLABLE inline float minf(const float a, const float b) { return a < b ? a : b; }
 CUDA_CALLABLE inline float maxf(const float a, const float b) { return a > b ? a : b; }
 
-CUDA_CALLABLE inline bool IntersectRayAABBOmpf(const Vec3& pos, const Vec3& rcp_dir, const Vec3& min, const Vec3& max, float& t) {
+// from Ompf
+CUDA_CALLABLE inline bool IntersectRayAABBFast(const Vec3& pos, const Vec3& rcp_dir, const Vec3& min, const Vec3& max, float& t) {
        
     float
         l1	= (min.x - pos.x) * rcp_dir.x,

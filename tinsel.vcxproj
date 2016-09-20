@@ -42,6 +42,7 @@
     <Link>
       <AdditionalLibraryDirectories>freeglut\lib\x64;$(CUDA_PATH_V7_5)\lib\x64</AdditionalLibraryDirectories>
       <AdditionalDependencies>cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <ClCompile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -60,6 +61,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="bvh.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="platform.cpp" />
@@ -86,6 +88,7 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\rendercuda.obj</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O3 --resource-usage --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DNDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c render.cu -o rendercuda.obj</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">rendercuda.obj</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">disney.h</AdditionalInputs>
     </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

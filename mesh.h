@@ -7,6 +7,11 @@
 
 struct Mesh
 {
+	~Mesh()
+	{
+		delete[] bvh.nodes; 
+	}
+
     void AddMesh(Mesh& m);
 
 	void DuplicateVertex(int i);

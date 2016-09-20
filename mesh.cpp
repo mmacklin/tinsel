@@ -70,7 +70,8 @@ namespace
     enum PlyFormat
     {
         eAscii,
-        eBinaryBigEndian    
+        eBinaryBigEndian,
+		eBinaryLittleEndian
     };
 
     template <typename T>
@@ -93,6 +94,13 @@ namespace
                 data = *(T*)c;
                 break;
             }      
+			case eBinaryLittleEndian:
+			{
+			    char c[sizeof(T)];
+                s.read(c, sizeof(T));
+                data = *(T*)c;
+                break;
+			}
 			default:
 				assert(0);
         }
@@ -180,8 +188,7 @@ Mesh* ImportMeshFromPly(const char* path)
             }
 			else
 			{
-				printf("Ply: unknown format\n");
-				return NULL;
+				format = eBinaryLittleEndian;
 			}
         }
         else if (strcmp(buffer, "property") == 0)
@@ -225,7 +232,7 @@ Mesh* ImportMeshFromPly(const char* path)
     // read indices
     for (int f=0; f < numFaces; ++f)
     {
-        int numIndices = (format == eAscii)?PlyRead<int>(file, format):PlyRead<uint8_t>(file, format);
+        int numIndices = PlyRead<int>(file, format);
 		int indices[4];
 
 		for (int i=0; i < numIndices; ++i)
@@ -321,7 +328,8 @@ void Mesh::RebuildBVH()
 			triangleBounds[i].AddPoint(c);
 		}
 	
-		bvh.Build(&triangleBounds[0], numTris);
+		BVHBuilder builder;
+		bvh = builder.Build(&triangleBounds[0], numTris);
 	}
 }
 

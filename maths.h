@@ -1119,8 +1119,8 @@ CUDA_CALLABLE inline Vec3 UniformSampleHemisphere(Random& rand)
 	float w = sqrt(1.0f-z*z);
 
 	float phi = k2Pi*rand.Randf(0.0f, 1.0f);
-	float x = cos(phi)*w;
-	float y = sin(phi)*w;
+	float x = cosf(phi)*w;
+	float y = sinf(phi)*w;
 
 	return Vec3(x, y, z);
 }

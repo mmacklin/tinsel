@@ -57,7 +57,68 @@ CUDA_CALLABLE inline float smithG_GGX(float NDotv, float alphaG)
 }
 
 
-CUDA_CALLABLE inline Color BRDF(const Material& mat, const Vec3& P, const Vec3& N, const Vec3& V, const Vec3& L)
+// generate an importance sampled brdf direction
+CUDA_CALLABLE inline void BRDFSample(const Material& mat, const Vec3& P, const Mat33& frame, const Vec3& V, Vec3& outDir, float& outPdf, Random& rand)
+{
+
+#if 0
+	
+	outDir = frame*UniformSampleHemisphere(rand);
+	outPdf = kInv2Pi;
+
+#else
+
+	float select = rand.Randf()*2.0f;
+
+	if (select < 1.0f)
+	{
+		// sample diffuse
+		/*
+		outDir = frame*CosineSampleHemisphere(rand);
+		outPdf = outDir.z * kInvPi;
+
+		if (outPdf == 0.0f)
+			outPdf = FLT_MAX;
+			*/
+		outDir = frame*UniformSampleHemisphere(rand);
+		outPdf = kInv2Pi;
+	}
+	else
+	{
+		const float r1 = rand.Randf();
+		const float r2 = rand.Randf();
+
+		const float a = Max(0.001f, sqr(mat.roughness));
+
+		const float phiHalf = r1*k2Pi;
+		
+		const float cosThetaHalf = sqrtf((1.0f-r2)/(1.0f + (sqr(a)-1.0f)*r2));		
+		const float sinThetaHalf = sqrtf(1.0f-sqr(cosThetaHalf));
+		const float sinPhiHalf = sinf(phiHalf);
+		const float cosPhiHalf = cosf(phiHalf);
+
+		const Vec3 half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
+		
+		const Vec3 light = 2.0f*Dot(V, half)*half - V;
+
+		const float pdfHalf = GTR2(cosThetaHalf, a)*cosThetaHalf;
+
+		outDir = light;
+		outPdf = pdfHalf*0.25f/Abs(Dot(light, half));
+
+		if (Dot(light, half) == 0.0f)
+			outPdf = FLT_MAX;
+
+	}
+
+	// because we randomly select to sample either diffuse or gloss
+	outPdf *= 0.5f;
+
+#endif
+}
+
+
+CUDA_CALLABLE inline Color BRDFEval(const Material& mat, const Vec3& P, const Vec3& N, const Vec3& V, const Vec3& L)
 {
     float NDotL = Dot(N,L);
     float NDotV = Dot(N,V);

@@ -76,7 +76,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& primitive, const 
 				// did we hit a light prim (doesn't have to be the one we're sampling, useful for portals which don't themselves emit)
 				if (hit->light)
 				{
-					const Color f = BRDF(primitive.material, surfacePos, surfaceNormal, wi, wo);
+					const Color f = BRDFEval(primitive.material, surfacePos, surfaceNormal, wi, wo);
 
 					// light pdf
 					const float nl = Clamp(Dot(ln, -wi), 0.0f, 1.0f);
@@ -211,7 +211,7 @@ Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Ve
 			
 
             // reflectance
-            Color f = BRDF(hit->material, p, n, -rayDir, outDir);
+            Color f = BRDFEval(hit->material, p, n, -rayDir, outDir);
 
             // update throughput with primitive reflectance
             pathThroughput *= f * Clamp(Dot(n, outDir), 0.0f, 1.0f) / kInv2Pi;			
@@ -268,7 +268,7 @@ Color ForwardTraceUniform(const Scene& scene, const Vec3& startOrigin, const Vec
 
             // reflectance
             //Color f = BlinnBRDF(n, -rayDir, outDir, hit->material.reflectance, hit->material.shininess);
-            Color f = BRDF(hit->material, p, n, -rayDir, outDir);
+            Color f = BRDFEval(hit->material, p, n, -rayDir, outDir);
 
             // update throughput with primitive reflectance
             pathThroughput *= f * Clamp(Dot(n, outDir), 0.0f, 1.0f) / kInv2Pi;

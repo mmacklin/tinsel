@@ -100,16 +100,16 @@ struct Ray
 
 struct MeshQuery
 {
-	MeshQuery(const Mesh* m, const Ray& r) : mesh(m), ray(r), closestT(FLT_MAX) {}
+	CUDA_CALLABLE inline MeshQuery(const MeshGeometry& m, const Ray& r) : mesh(m), ray(r), closestT(FLT_MAX) {}
 	
-	inline void operator()(int i)
+	CUDA_CALLABLE inline void operator()(int i)
 	{	
 		float t, u, v, w;
 		Vec3 n;
 
-		const Vec3& a = mesh->positions[mesh->indices[i*3+0]];
-		const Vec3& b = mesh->positions[mesh->indices[i*3+1]];
-		const Vec3& c = mesh->positions[mesh->indices[i*3+2]];
+		const Vec3& a = mesh.positions[mesh.indices[i*3+0]];
+		const Vec3& b = mesh.positions[mesh.indices[i*3+1]];
+		const Vec3& c = mesh.positions[mesh.indices[i*3+2]];
 
 		if (IntersectRayTri(ray.origin, ray.dir, a, b, c, t, u, v, w, &n))
 		{
@@ -121,7 +121,7 @@ struct MeshQuery
 		}
 	}
 	
-	const Mesh* mesh;
+	const MeshGeometry mesh;
 	const Ray ray;
 	
 	float closestT;
@@ -150,13 +150,12 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 		case eMesh:
 		{
 #if 1
-			MeshQuery query(p.mesh.mesh, ray);
+			MeshQuery query(p.mesh, ray);
 
 			// intersect against bvh
-			p.mesh.mesh->bvh.QueryRay(query, ray.origin, ray.dir);
+			QueryRay(p.mesh.nodes, query, ray.origin, ray.dir);
 
-			// todo: interpolate normals
-			
+			// todo: interpolate normals			
 
 			outT = query.closestT;
 			*outNormal = query.closestNormal;

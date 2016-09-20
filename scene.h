@@ -59,12 +59,20 @@ struct PlaneGeometry
 
 struct MeshGeometry
 {
-	Mesh* mesh;
+	const Vec3* positions;
+	const Vec3* normals;
+	const int* indices;
+	const BVHNode* nodes;
+
+	int numVertices;
+	int numIndices;
+	int numNodes;
+
+	int id;
 };
 
 struct Primitive
 {
-
 	Primitive() : light(false) {}
 
 	Mat44 transform;

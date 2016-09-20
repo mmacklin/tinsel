@@ -2,6 +2,8 @@
 #include "render.h"
 #include "disney.h"
 
+#include <map>
+
 struct GPUScene
 {
 	Primitive* primitives;
@@ -13,22 +15,36 @@ struct GPUScene
 	Color sky;
 };
 
-struct GPUBVH
-{
-	Vec3 lower;
-	Vec3 upper;
 
-	int leftIndex;
-	int rightIndex : 31;
-	bool leaf : 1;
-};
-
-struct GPUMesh
+MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 {
-	Vec3* positions;
-	Vec3* normals;
-	int* indices;
-};
+	const int numVertices = hostMesh.numVertices;
+	const int numIndices = hostMesh.numIndices;
+	const int numNodes = hostMesh.numNodes;
+
+	MeshGeometry gpuMesh;
+	cudaMalloc(&gpuMesh.positions, sizeof(Vec3)*numVertices);
+	cudaMemcpy((Vec3*)gpuMesh.positions, &hostMesh.positions[0], sizeof(Vec3)*numVertices, cudaMemcpyHostToDevice);
+
+	cudaMalloc(&gpuMesh.indices, sizeof(int)*numIndices);
+	cudaMemcpy((int*)gpuMesh.indices, &hostMesh.indices[0], sizeof(int)*numIndices, cudaMemcpyHostToDevice);
+
+	cudaMalloc(&gpuMesh.nodes, sizeof(BVHNode)*numNodes);
+	cudaMemcpy((BVHNode*)gpuMesh.nodes, &hostMesh.nodes[0], sizeof(BVHNode)*numNodes, cudaMemcpyHostToDevice);
+	
+	gpuMesh.numIndices = numIndices;
+	gpuMesh.numVertices = numVertices;
+	gpuMesh.numNodes = numNodes;
+
+	return gpuMesh;
+
+}
+
+void DestroyGPUMesh(const MeshGeometry& m)
+{
+
+}
+
 
 // trace a ray against the scene returning the closest intersection
 __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
@@ -99,7 +115,7 @@ __device__ Color SampleLights(const GPUScene& scene, const Primitive& primitive,
 				// did we hit a light prim?
 				if (hit->light)
 				{
-					const Color f = BRDF(primitive.material, surfacePos, surfaceNormal, wi, wo);
+					const Color f = BRDFEval(primitive.material, surfacePos, surfaceNormal, wi, wo);
 
 					// light pdf
 					const float nl = Clamp(Dot(ln, -wi), 0.0f, 1.0f);
@@ -159,14 +175,21 @@ __device__ Color ForwardTraceExplicit(const GPUScene& scene, const Vec3& startOr
     	    // integral of Le over hemisphere
             totalRadiance += SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
 
-            // update position and path direction
-            const Vec3 outDir = Mat33(u, v, n)*UniformSampleHemisphere(rand);
+            // update position and path direction			
+            //const Vec3 outDir = Mat33(u, v, n)*UniformSampleHemisphere(rand);
+			//const float pdf = kInv2Pi;
+
+			Mat33 localFrame(u, v, n);
+
+			Vec3 outDir;
+			float outPdf;
+			BRDFSample(hit->material, p, localFrame, -rayDir, outDir, outPdf, rand);
 
             // reflectance
-            Color f = BRDF(hit->material, p, n, -rayDir, outDir);
+            Color f = BRDFEval(hit->material, p, n, -rayDir, outDir);
 
             // update throughput with primitive reflectance
-            pathThroughput *= f * Clamp(Dot(n, outDir), 0.0f, 1.0f) / kInv2Pi;
+            pathThroughput *= f * Clamp(Dot(n, outDir), 0.0f, 1.0f) / outPdf;
 
             // update path direction
             rayDir = outDir;
@@ -264,31 +287,48 @@ __global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, 
 struct GpuRenderer : public Renderer
 {
 	Color* output = NULL;
+	
 	GPUScene sceneGPU;
 	
 	Random seed;
 
+	// map id to geometry struct
+	std::map<int, MeshGeometry> gpuMeshes;
+
 	GpuRenderer(const Scene* s)
 	{
-		// upload scene to the GPU
-		sceneGPU.sky = s->sky;
-
-		sceneGPU.numPrimitives = s->primitives.size();
-		
-		if (sceneGPU.numPrimitives > 0)
-		{
-			cudaMalloc(&sceneGPU.primitives, sizeof(Primitive)*s->primitives.size());
-			cudaMemcpy(sceneGPU.primitives, &s->primitives[0], sizeof(Primitive)*s->primitives.size(), cudaMemcpyHostToDevice);
-		}
-
-		// build explicit light list
+		// build GPU primitive and light lists
+		std::vector<Primitive> primitives;		
 		std::vector<Primitive> lights;
+
 		for (int i=0; i < s->primitives.size(); ++i)
 		{
-			if (s->primitives[i].light)
-				lights.push_back(s->primitives[i]);
+			Primitive primitive = s->primitives[i];
+
+			if (primitive.light)
+			{
+				lights.push_back(primitive);
+			}
+
+			// if mesh primitive then copy to the GPU
+			if (primitive.type == eMesh)
+			{
+				// see if we have already uploaded the mesh to the GPU
+				if (gpuMeshes.find(primitive.mesh.id) == gpuMeshes.end())
+				{
+					MeshGeometry geo = CreateGPUMesh(primitive.mesh);
+					gpuMeshes[geo.id] = geo;
+
+					// replace CPU mesh with GPU copy
+					primitive.mesh = geo;
+				}
+			}	
+			
+			primitives.push_back(primitive);
 		}
 
+		// upload to the GPU
+		sceneGPU.numPrimitives = primitives.size();
 		sceneGPU.numLights = lights.size();
 
 		if (sceneGPU.numLights > 0)
@@ -296,6 +336,15 @@ struct GpuRenderer : public Renderer
 			cudaMalloc(&sceneGPU.lights, sizeof(Primitive)*lights.size());
 			cudaMemcpy(sceneGPU.lights, &lights[0], sizeof(Primitive)*lights.size(), cudaMemcpyHostToDevice);
 		}
+
+		if (sceneGPU.numPrimitives > 0)
+		{
+			cudaMalloc(&sceneGPU.primitives, sizeof(Primitive)*primitives.size());
+			cudaMemcpy(sceneGPU.primitives, &primitives[0], sizeof(Primitive)*primitives.size(), cudaMemcpyHostToDevice);
+		}
+
+		// misc params
+		sceneGPU.sky = s->sky;
 	}
 
 	virtual ~GpuRenderer()
