@@ -26,6 +26,9 @@ MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 	cudaMalloc(&gpuMesh.positions, sizeof(Vec3)*numVertices);
 	cudaMemcpy((Vec3*)gpuMesh.positions, &hostMesh.positions[0], sizeof(Vec3)*numVertices, cudaMemcpyHostToDevice);
 
+	cudaMalloc(&gpuMesh.normals, sizeof(Vec3)*numVertices);
+	cudaMemcpy((Vec3*)gpuMesh.normals, &hostMesh.normals[0], sizeof(Vec3)*numVertices, cudaMemcpyHostToDevice);
+
 	cudaMalloc(&gpuMesh.indices, sizeof(int)*numIndices);
 	cudaMemcpy((int*)gpuMesh.indices, &hostMesh.indices[0], sizeof(int)*numIndices, cudaMemcpyHostToDevice);
 
@@ -142,25 +145,33 @@ __device__ Color SampleLights(const GPUScene& scene, const Primitive& primitive,
 
 
 // reference, no light sampling, uniform hemisphere sampling
-__device__ Color ForwardTraceExplicit(const GPUScene& scene, const Vec3& startOrigin, const Vec3& startDir, Random& rand, int maxDepth)
+__device__ Color PathTrace(const GPUScene& scene, const Camera& camera, int x, int y, Random& rand, int )
 {	
     // path throughput
     Color pathThroughput(1.0f, 1.0f, 1.0f, 1.0f);
     // accumulated radiance
     Color totalRadiance(0.0f);
 
-    Vec3 rayOrigin = startOrigin;
-    Vec3 rayDir = startDir;
+    Vec3 rayOrigin;
+    Vec3 rayDir;
 	float rayTime = rand.Randf();
+
+	GenerateRay(camera, x, y, rayOrigin, rayDir, rand);
 
     float t = 0.0f;
     Vec3 n(rayDir);
     const Primitive* hit;
 
-    for (int i=0; i < maxDepth; ++i)
+	const int maxDepth = 4;
+	const int maxSamples = 12;
+
+	int pathCount = 1;
+	int pathDepth = 0;
+
+    for (int i=0; i < maxSamples; ++i)
     {
         // find closest hit
-        if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
+        if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit) && pathDepth < maxDepth)
         {	
             // calculate a basis for this hit point
             Vec3 u, v;
@@ -168,17 +179,16 @@ __device__ Color ForwardTraceExplicit(const GPUScene& scene, const Vec3& startOr
 
             const Vec3 p = rayOrigin + rayDir*t;
 
-			if (i == 0)
+			if (pathDepth == 0)
 			{
-		   		// if we hit a light then terminate and return emission
 				// first trace is our only chance to add contribution from directly visible light sources        
 				totalRadiance += hit->material.emission;				
 			}
 			
-			// integral direct light over hemisphere
+			// integrate direct light over hemisphere
 			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
 
-			// sample BRDF for reflection dir
+			// integrate indirect light by sampling BRDF
 			Mat33 localFrame(u, v, n);
 
 			Vec3 outDir;
@@ -194,16 +204,29 @@ __device__ Color ForwardTraceExplicit(const GPUScene& scene, const Vec3& startOr
             // update path direction
             rayDir = outDir;
             rayOrigin = p;
+
+			pathDepth++;
         }
         else
         {
             // hit nothing, terminate loop
         	totalRadiance += scene.sky*pathThroughput;
-			break;
+			
+			// reset path, this is the persistent threads model to keep generating new work
+			GenerateRay(camera, x, y, rayOrigin, rayDir, rand);
+
+			rayTime = rand.Randf();
+
+			t = 0.0f;
+			n = rayDir;
+
+			pathThroughput = Color(1.0f, 1.0f, 1.0f);			
+			pathCount++;
+			pathDepth = 0;
         }
     }
 
-    return totalRadiance;
+    return totalRadiance/float(pathCount);
 }
 
 __global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, int maxDepth, RenderMode mode, int seed, Color* output)
@@ -241,10 +264,10 @@ __global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, 
 		}
 		else if (mode == ePathTrace)
 		{
-			GenerateRay(camera, i, j, origin, dir, rand);
+			
 
 			//output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
-			output[(height-1-j)*width+i] += ForwardTraceExplicit(scene, origin, dir, rand, maxDepth);
+			output[(height-1-j)*width+i] += PathTrace(scene, camera, i, j, rand, maxDepth);
 		}
 
 		/*
@@ -367,7 +390,7 @@ struct GpuRenderer : public Renderer
 		const int kNumThreadsPerBlock = 256;
 		const int kNumBlocks = (numThreads + kNumThreadsPerBlock - 1) / (kNumThreadsPerBlock);
 
-		const int maxDepth = 4;
+		const int maxDepth = 40;
 
 		for (int i=0; i < samplesPerPixel; ++i)
 		{

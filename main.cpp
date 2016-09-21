@@ -29,6 +29,7 @@ Color* g_filtered;
 int g_iterations;
 
 Vec3 g_camPos;
+Vec3 g_camAngle;
 Vec3 g_camTarget;
 
 Scene* g_scene;
@@ -55,12 +56,18 @@ RenderMode g_mode = eNormals;//PathTrace;
 
 double GetSeconds();
 
+Mat44 g_cameraTransform;
+Camera g_camera;
+
 void Render()
 {
+	// generate camera transform from translation, yaw, pitch
+	g_cameraTransform = TranslationMatrix(g_camPos)*RotationMatrix(g_camAngle.x, Vec3(0.0f, 1.0f, 0.0f))*RotationMatrix(g_camAngle.y, Vec3(1.0f, 0.0f, 0.0f));
+
     // update camera
-    Camera camera(
-        AffineInverse(LookAtMatrix(g_camPos, g_camTarget)),
-        DegToRad(25.0f),
+    g_camera = Camera(
+		g_cameraTransform,
+        DegToRad(35.0f),
         1.0f,
         10000.0f,
         g_width,
@@ -71,11 +78,11 @@ void Render()
 	const int numSamples = 1;
 
     // take one more sample per-pixel each frame for progressive rendering
-    g_renderer->Render(&camera, g_pixels, g_width, g_height, numSamples, g_mode);
+    g_renderer->Render(&g_camera, g_pixels, g_width, g_height, numSamples, g_mode);
 
     double endTime = GetSeconds();
 
-    printf("%d (%.2fs)\n", g_iterations, (endTime-startTime));
+    printf("%d (%.4fms)\n", g_iterations, (endTime-startTime)*1000.0f);
     fflush(stdout);
                 
 
@@ -183,23 +190,21 @@ void GLUTArrowKeysUp(int key, int x, int y)
 
 void GLUTKeyboardDown(unsigned char key, int x, int y)
 {
-    Mat44 v = AffineInverse(LookAtMatrix(g_camPos, g_camTarget));
-
     bool resetFrame = false;
 
  	switch (key)
 	{
     case 'w':
-        g_camPos -= Vec3(v.GetCol(2))*g_flySpeed; resetFrame = true;
+        g_camPos -= Vec3(g_cameraTransform.GetCol(2))*g_flySpeed; resetFrame = true;
 		break;
     case 's':
-        g_camPos += Vec3(v.GetCol(2))*g_flySpeed; resetFrame = true; 
+        g_camPos += Vec3(g_cameraTransform.GetCol(2))*g_flySpeed; resetFrame = true; 
         break;
     case 'a':
-        g_camPos -= Vec3(v.GetCol(0))*g_flySpeed; resetFrame = true;
+        g_camPos -= Vec3(g_cameraTransform.GetCol(0))*g_flySpeed; resetFrame = true;
         break;
     case 'd':
-        g_camPos += Vec3(v.GetCol(0))*g_flySpeed; resetFrame = true;
+        g_camPos += Vec3(g_cameraTransform.GetCol(0))*g_flySpeed; resetFrame = true;
         break;
 	case '1':
 		g_mode = eNormals;
@@ -289,15 +294,13 @@ void GLUTMouseFunc(int b, int state, int x, int y)
 
 void GLUTMotionFunc(int x, int y)
 {
-    /*
     int dx = x-lastx;
     int dy = y-lasty;
 
-    const float sensitivity = 0.1f;
+    const float sensitivity = 0.01f;
 
-    g_camDir.yaw -= dx*sensitivity;
-    g_camDir.roll += dy*sensitivity;
-    */
+    g_camAngle.x -= dx*sensitivity;
+    g_camAngle.y -= dy*sensitivity;
 
 	lastx = x;
 	lasty = y;

@@ -5,6 +5,7 @@
 
 struct Camera
 {
+	CUDA_CALLABLE inline Camera() {}
 
 	CUDA_CALLABLE inline Camera(Mat44 cameraToWorld,
 			float fov,
@@ -40,7 +41,7 @@ CUDA_CALLABLE inline Color ToneMap(const Color& c)
 	return c * 1.0f/(1.0f + luminance);
 }
 
-CUDA_CALLABLE inline void GenerateRay(Camera& camera, int rasterX, int rasterY, Vec3& origin, Vec3& dir, Random& rand)
+CUDA_CALLABLE inline void GenerateRay(const Camera& camera, int rasterX, int rasterY, Vec3& origin, Vec3& dir, Random& rand)
 {
 	float xoff = rand.Randf(-0.5f, 0.5f);
 	float yoff = rand.Randf(-0.5f, 0.5f);
@@ -51,7 +52,7 @@ CUDA_CALLABLE inline void GenerateRay(Camera& camera, int rasterX, int rasterY, 
 	dir = Normalize(p-origin);
 }
 
-CUDA_CALLABLE inline void GenerateRayNoJitter(Camera& camera, int rasterX, int rasterY, Vec3& origin, Vec3& dir)
+CUDA_CALLABLE inline void GenerateRayNoJitter(const Camera& camera, int rasterX, int rasterY, Vec3& origin, Vec3& dir)
 {
 	Vec3 p = TransformPoint(camera.rasterToWorld, Vec3(float(rasterX) + 0.5f, float(rasterY) + 0.5f, 0.0f));
 
@@ -116,6 +117,11 @@ struct MeshQuery
 			if (t > 0.0f && t < closestT)
 			{
 				closestT = t;
+				closestU = u;
+				closestV = v;
+				closestW = w;
+
+				closestTri = i;
 				closestNormal = n;
 			}
 		}
@@ -125,7 +131,12 @@ struct MeshQuery
 	const Ray ray;
 	
 	float closestT;
+	float closestU;
+	float closestV;
+	float closestW;
+
 	Vec3 closestNormal;
+	int closestTri;
 };
 
 CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
@@ -155,13 +166,23 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 			// intersect against bvh
 			QueryRay(p.mesh.nodes, query, ray.origin, ray.dir);
 
-			// todo: interpolate normals			
-
 			outT = query.closestT;
-			*outNormal = query.closestNormal;
-
-			return outT < FLT_MAX;
 			
+			if (outT < FLT_MAX)
+			{
+				// interpolate vertex normals
+				Vec3 n1 = p.mesh.normals[p.mesh.indices[query.closestTri*3+0]];
+				Vec3 n2 = p.mesh.normals[p.mesh.indices[query.closestTri*3+1]];
+				Vec3 n3 = p.mesh.normals[p.mesh.indices[query.closestTri*3+2]];
+
+				*outNormal = Normalize(query.closestU*n1 + query.closestV*n2 + query.closestW*n3);
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+						
 #else
 			float closestT = FLT_MAX;
 			Vec3 closestNormal;

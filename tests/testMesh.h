@@ -21,12 +21,18 @@ Scene* TestMesh()
     Scene* scene = new Scene();
 
 
-    Mesh* buddha = ImportMeshFromObj("data/Ajax_Jotero_com.obj");
+    //Mesh* buddha = ImportMeshFromObj("data/Ajax_Jotero_com.obj");
+	
+	Mesh* buddha = ImportMeshFromObj("data/octopus.obj");
 	//Mesh* buddha = ImportMeshFromObj("data/manifold.obj");
 	//Mesh* buddha = ImportMeshFromPly("data/lion.ply");
     
+	//Mesh* buddha = ImportMeshFromObj("data/elefant_from_jotero_com.obj"); buddha->Transform(RotationMatrix(DegToRad(-150.0f), Vec3(1.0f, 0.0f, 0.0f)));
+	//Mesh* buddha = ImportMeshFromObj("data/Aphrodite_from_jotero_com.obj"); buddha->Transform(RotationMatrix(DegToRad(-90.0f), Vec3(1.0f, 0.0f, 0.0f)));
+	
     buddha->Normalize(4.0f);
-    buddha->RebuildBVH();
+	buddha->CalculateNormals();
+	buddha->RebuildBVH();
 
     //Mesh* mesh = ImportMeshFromPly("../../data/thearena.ply");
     //Mesh* mesh = ImportMeshFromPly("models/bunny/reconstruction/bun_zipper_res4.ply");
@@ -70,9 +76,9 @@ Scene* TestMesh()
 
     Material gold;
     gold.color = Color(1.0f, 0.71f, 0.29f);
-    gold.roughness = 0.25f;
+    gold.roughness = 0.1f;
+	gold.specular = 0.75f;
     gold.metallic = 1.0f;
-
 
 	Primitive mesh;
 	mesh.type = eMesh;
