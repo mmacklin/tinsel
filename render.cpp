@@ -102,7 +102,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& primitive, const 
 
 
 // reference, no light sampling, uniform hemisphere sampling
-Color ForwardTraceExplicit(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir, Random& rand)
+Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir, Random& rand)
 {	
     // path throughput
     Color pathThroughput(1.0f, 1.0f, 1.0f, 1.0f);
@@ -225,90 +225,6 @@ Color ForwardTraceUniform(const Scene& scene, const Vec3& startOrigin, const Vec
 }
 
 
-/*
-// reference, no light sampling but does cosine weighted sampling
-Color ForwardTraceImportance(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir)
-{	
-	// path throughput
-	Color pathThroughput(1.0f, 1.0f, 1.0f, 1.0f);
-	// accumulated radiance
-	Color totalRadiance(0.0f);
-
-	Vec3 rayOrigin = startOrigin;
-	Vec3 rayDir = startDir;
-
-	float t = 0.0f;
-	Vec3 n(rayDir);
-	const Primitive* hit;
-
-	const int kMaxPathDepth = 8;
-
-	for (int i=0; i < kMaxPathDepth; ++i)
-	{
-		// find closest hit
-		if (Trace(scene, rayOrigin, rayDir, t, n, &hit))
-		{			
-				// update position and path direction
-			Vec3 p = rayOrigin + rayDir*t;
-
-			totalRadiance += pathThroughput * hit->material.emission;
-
-			const BRDF* brdf = hit->material->GetBRDF(p, n);
-
-				// generate new path direction by sampling BRDF
-			float pdf = 1.f;
-			Vec3 wi;
-			brdf->Sample(-rayDir, wi, pdf);
-		
-			// evaluate brdf
-			Color f = brdf->F(-rayDir, wi);
-
-			// update path throughput 
-			pathThroughput *= f * Abs(Dot(n, wi)) / pdf;
-
-			// update path start and direction
-			rayOrigin = p;
-			rayDir = wi;
-
-			delete brdf;
-		}
-		else
-		{
-			// hit nothing, terminate loop
-			break;
-		}
-	}
-
-	return totalRadiance;
-}
-
-*/
-/*
-
-Color Whitted(const Scene& s, const Vec3& rayOrigin, const Vec3& rayDir)
-{
-	// TODO:
-
-	return Color();
-}
-
-
-*/
-
-Color Debug(const Scene& scene, const Vec3& rayOrigin, const Vec3& rayDir)
-{
-	// find closest hit
-	float t;
-	Vec3 n;
-	const Primitive* p;
-	if (Trace(scene, Ray(rayOrigin, rayDir, 1.0f), t, n, &p))
-	{
-		return Color(0.5f*n.x+0.5f, 0.5f*n.y+0.5f, 0.5f*n.z+0.5f, 1.0);
-	}
-
-	return Color(0.0f);
-}
-
 
 struct CpuRenderer : public Renderer
 {
@@ -335,8 +251,7 @@ struct CpuRenderer : public Renderer
 						{
 							GenerateRay(*camera, i, j, origin, dir, rand);
 
-							//output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
-							output[(height-1-j)*width+i] += ForwardTraceExplicit(*scene, origin, dir, rand);
+							output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir, rand);
 							break;
 						}
 						case eNormals:

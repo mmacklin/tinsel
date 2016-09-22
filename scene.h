@@ -71,9 +71,25 @@ struct MeshGeometry
 	int id;
 };
 
+
+inline MeshGeometry GeometryFromMesh(const Mesh* mesh)
+{
+	MeshGeometry geo;
+	geo.positions = &mesh->positions[0];
+	geo.normals = &mesh->normals[0];
+	geo.indices = &mesh->indices[0];
+	geo.nodes = &mesh->bvh.nodes[0];
+	
+	geo.numNodes = mesh->bvh.numNodes;
+	geo.numIndices = mesh->indices.size();
+	geo.numVertices = mesh->positions.size();
+
+	return geo;
+}
+
 struct Primitive
 {
-	Primitive() : light(false) {}
+	Primitive() : light(0) {}
 
 	Mat44 transform;
 	Mat44 lastTransform;
@@ -88,8 +104,8 @@ struct Primitive
 		MeshGeometry mesh;
 	};
 
-	// if true then will participate in explicit light sampling
-	bool light;
+	// if > 0 then primitive will be explicitly sampled
+	int light;
 };
 
 

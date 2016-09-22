@@ -3,6 +3,7 @@
 #include "bvh.h"
 #include "maths.h"
 #include "render.h"
+#include "loader.h"
 
 #if _WIN32
 
@@ -158,9 +159,13 @@ void Init()
 	//g_scene = TestMaterials();
     //g_scene = TestMIS();
 
+#if _WIN32
     // create renderer
     g_renderer = CreateGpuRenderer(g_scene);
-        
+#else
+    g_renderer = CreateCpuRenderer(g_scene);
+#endif
+    
     InitFrameBuffer();
 }
 

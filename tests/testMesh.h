@@ -1,23 +1,16 @@
 #pragma once
 
-
-MeshGeometry GeometryFromMesh(const Mesh* mesh)
-{
-	MeshGeometry geo;
-	geo.positions = &mesh->positions[0];
-	geo.normals = &mesh->normals[0];
-	geo.indices = &mesh->indices[0];
-	geo.nodes = &mesh->bvh.nodes[0];
-	
-	geo.numNodes = mesh->bvh.numNodes;
-	geo.numIndices = mesh->indices.size();
-	geo.numVertices = mesh->positions.size();
-
-	return geo;
-}
-
 Scene* TestMesh()
 {
+    Scene* s = LoadTin("data/example.tin");
+
+    // set up camera
+    g_camPos = Vec3(0.0f, 2.0f, 10.0f);
+    g_camTarget = Vec3(0.0f, 2.0f, 0.0f);
+
+    return s;
+
+
     Scene* scene = new Scene();
 
 
