@@ -1,7 +1,6 @@
 #pragma once
 
 #include "maths.h"
-#include "intersection.h"
 
 #include <vector>
 #include <algorithm>
@@ -204,38 +203,3 @@ private:
 	}
 };
 
-
-//-----------------------
-// Templated query methods
-
-template <typename Func>
-CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, const Vec3& dir)
-{
-	const Vec3 rcpDir(1.0f/dir.x, 1.0f/dir.y, 1.0f/dir.z);
-
-	const BVHNode* stack[64];
-	stack[0] = root;
-
-	int count = 1;
-
-	while (count)
-	{
-		const BVHNode* n = stack[--count];
-
-		float t;
-		//if (IntersectRayAABB(start, dir, n->bounds.lower, n->bounds.upper, t, NULL))
-			
-		if (IntersectRayAABBFast(start, rcpDir, n->bounds.lower, n->bounds.upper, t))
-		{
-			if (n->leaf)
-			{	
-				f(n->leftIndex);
-			}
-			else
-			{
-				stack[count++] = &root[n->leftIndex];
-				stack[count++] = &root[n->rightIndex];
-			}
-		}
-	}		
-}

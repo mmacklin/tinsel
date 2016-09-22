@@ -1,7 +1,10 @@
 Tinsel
 ======
 
-A light weight CPU/GPU path tracer focusing on speed and simplicity. Tinsel was originally designed for rendering out physics based animations where turn around time is more important than generality. It is designed to be easy to set up animation sequences.
+A lightweight CPU/GPU path tracer focusing on speed and simplicity. Tinsel was
+originally designed for rendering out physics based animations where turn around
+time is more important than generality. It is designed to be easy to set up
+animation sequences.
 
 Features
 --------
@@ -20,7 +23,8 @@ Features
 Example Scene
 -------------
 
-The scene description in Tinsel is very simple, and loosely based off Arnold's .ass format, here is an example:
+The scene description in Tinsel is very simple, and loosely based off Arnold's .ass format,
+here is an example:
 
 ```
 # This is a comment

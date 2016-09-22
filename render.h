@@ -2,6 +2,7 @@
 
 #include "maths.h"
 #include "scene.h"
+#include "intersection.h"
 
 struct Camera
 {
@@ -99,46 +100,6 @@ struct Ray
 	float time;
 };
 
-struct MeshQuery
-{
-	CUDA_CALLABLE inline MeshQuery(const MeshGeometry& m, const Ray& r) : mesh(m), ray(r), closestT(FLT_MAX) {}
-	
-	CUDA_CALLABLE inline void operator()(int i)
-	{	
-		float t, u, v, w;
-		Vec3 n;
-
-		const Vec3& a = mesh.positions[mesh.indices[i*3+0]];
-		const Vec3& b = mesh.positions[mesh.indices[i*3+1]];
-		const Vec3& c = mesh.positions[mesh.indices[i*3+2]];
-
-		if (IntersectRayTri(ray.origin, ray.dir, a, b, c, t, u, v, w, &n))
-		{
-			if (t > 0.0f && t < closestT)
-			{
-				closestT = t;
-				closestU = u;
-				closestV = v;
-				closestW = w;
-
-				closestTri = i;
-				closestNormal = n;
-			}
-		}
-	}
-	
-	const MeshGeometry mesh;
-	const Ray ray;
-	
-	float closestT;
-	float closestU;
-	float closestV;
-	float closestW;
-
-	Vec3 closestNormal;
-	int closestTri;
-};
-
 CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
 {
 	const Mat44 transform = InterpolateTransform(p.lastTransform, p.transform, ray.time);
@@ -148,74 +109,43 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 		case eSphere:
 		{
 			bool hit = IntersectRaySphere(Vec3(transform.GetCol(3)), p.sphere.radius, ray.origin, ray.dir, outT, outNormal);
+
 			return hit;
 		}
 		case ePlane:
 		{
 			bool hit = IntersectRayPlane(ray.origin, ray.dir, (const Vec4&)p.plane, outT);
+			
 			if (hit && outNormal)
+			{
 				*outNormal = (const Vec3&)p.plane;
+			}
 
 			return hit;
 		}
 		case eMesh:
 		{
-#if 1
-			MeshQuery query(p.mesh, ray);
+			float t, u, v, w;
+			int tri;
 
-			// intersect against bvh
-			QueryRay(p.mesh.nodes, query, ray.origin, ray.dir);
+			// transform ray to mesh space
+			Mat44 invTransform = AffineInverse(transform);
 
-			outT = query.closestT;
+			bool hit = IntersectRayMesh(p.mesh, TransformPoint(invTransform, ray.origin), TransformVector(invTransform, ray.dir), t, u, v, w, tri);
+			//bool hit = IntersectRayMesh(p.mesh, ray.origin, ray.dir, t, u, v, w, tri);
 			
-			if (outT < FLT_MAX)
+			if (hit)
 			{
 				// interpolate vertex normals
-				Vec3 n1 = p.mesh.normals[p.mesh.indices[query.closestTri*3+0]];
-				Vec3 n2 = p.mesh.normals[p.mesh.indices[query.closestTri*3+1]];
-				Vec3 n3 = p.mesh.normals[p.mesh.indices[query.closestTri*3+2]];
+				Vec3 n1 = p.mesh.normals[p.mesh.indices[tri*3+0]];
+				Vec3 n2 = p.mesh.normals[p.mesh.indices[tri*3+1]];
+				Vec3 n3 = p.mesh.normals[p.mesh.indices[tri*3+2]];
 
-				*outNormal = Normalize(query.closestU*n1 + query.closestV*n2 + query.closestW*n3);
-				return true;
-			}
-			else
-			{
-				return false;
-			}
-						
-#else
-			float closestT = FLT_MAX;
-			Vec3 closestNormal;
-			bool hit = false;
-
-			const int numTris = p.mesh.mesh->indices.size()/3;
-
-			for (int i=0; i < numTris; ++i)
-			{
-				float t, u, v, w;
-				Vec3 n;
-
-				const Vec3& a = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+0]];
-				const Vec3& b = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+1]];
-				const Vec3& c = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+2]];
-
-				if (IntersectRayTri(ray.origin, ray.dir, a, b, c, t, u, v, w, &n))
-				{
-					if (t > 0.0f && t < closestT)
-					{
-						closestT = t;
-						closestNormal = n;
-						hit = true;
-					}
-				}
-			}
-
-			outT = closestT;
-			*outNormal = closestNormal;
+				outT = t;
+				*outNormal = Normalize(TransformVector(transform, u*n1 + v*n2 + w*n3));
+			}			
 
 			return hit;
-#endif
-			
 		}
 	}
 

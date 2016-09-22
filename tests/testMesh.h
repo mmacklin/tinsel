@@ -2,6 +2,7 @@
 
 Scene* TestMesh()
 {
+	/*
     Scene* s = LoadTin("data/example.tin");
 
     // set up camera
@@ -9,7 +10,7 @@ Scene* TestMesh()
     g_camTarget = Vec3(0.0f, 2.0f, 0.0f);
 
     return s;
-
+	*/
 
     Scene* scene = new Scene();
 
@@ -77,6 +78,8 @@ Scene* TestMesh()
 	mesh.type = eMesh;
 	mesh.mesh = GeometryFromMesh(buddha);
     mesh.material = gold;
+	mesh.transform = TranslationMatrix(Vec3(0.0f, 0.0f, 0.0f))*RotationMatrix(DegToRad(90.0f), Vec3(0.0f, 0.0f, 1.0f))*ScaleMatrix(Vec3(3.0f));
+	mesh.lastTransform = mesh.transform;
 		
 
     Primitive plane;

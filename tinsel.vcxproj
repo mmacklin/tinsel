@@ -62,6 +62,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bvh.cpp" />
+    <ClCompile Include="loader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="platform.cpp" />
@@ -72,6 +73,7 @@
     <ClInclude Include="camera.h" />
     <ClInclude Include="disney.h" />
     <ClInclude Include="intersection.h" />
+    <ClInclude Include="loader.h" />
     <ClInclude Include="maths.h" />
     <ClInclude Include="mesh.h" />
     <ClInclude Include="render.h" />
@@ -90,6 +92,12 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">rendercuda.obj</Outputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">disney.h;render.h</AdditionalInputs>
     </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="LICENSE.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

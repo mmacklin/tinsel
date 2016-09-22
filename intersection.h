@@ -1,7 +1,8 @@
 #pragma once
 
 #include "maths.h"
-
+#include "mesh.h"
+#include "scene.h"
 
 template <typename T>
 CUDA_CALLABLE CUDA_CALLABLE inline void Sort2(T& a, T& b)
@@ -547,4 +548,141 @@ CUDA_CALLABLE inline bool IntersectPlaneAABB(const Vec4& plane, const Vec3& cent
 	float delta = Dot(center, Vec3(plane)) + plane.w;
 
 	return Abs(delta) <= radius;
+}
+
+
+//-----------------------
+// Templated query methods
+
+template <typename Func>
+CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, const Vec3& dir)
+{
+	const Vec3 rcpDir(1.0f/dir.x, 1.0f/dir.y, 1.0f/dir.z);
+
+	const BVHNode* stack[64];
+	stack[0] = root;
+
+	int count = 1;
+
+	while (count)
+	{
+		const BVHNode* n = stack[--count];
+
+		float t;
+		//if (IntersectRayAABB(start, dir, n->bounds.lower, n->bounds.upper, t, NULL))
+			
+		if (IntersectRayAABBFast(start, rcpDir, n->bounds.lower, n->bounds.upper, t))
+		{
+			if (n->leaf)
+			{	
+				f(n->leftIndex);
+			}
+			else
+			{
+				stack[count++] = &root[n->leftIndex];
+				stack[count++] = &root[n->rightIndex];
+			}
+		}
+	}		
+}
+
+
+struct MeshQuery
+{
+	CUDA_CALLABLE inline MeshQuery(const MeshGeometry& m, const Vec3& origin, const Vec3& dir) : mesh(m), rayOrigin(origin), rayDir(dir), closestT(FLT_MAX) {}
+	
+	CUDA_CALLABLE inline void operator()(int i)
+	{	
+		float t, u, v, w;
+		Vec3 n;
+
+		const Vec3& a = mesh.positions[mesh.indices[i*3+0]];
+		const Vec3& b = mesh.positions[mesh.indices[i*3+1]];
+		const Vec3& c = mesh.positions[mesh.indices[i*3+2]];
+
+		if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
+		{
+			if (t > 0.0f && t < closestT)
+			{
+				closestT = t;
+				closestU = u;
+				closestV = v;
+				closestW = w;
+
+				closestTri = i;
+				closestNormal = n;
+			}
+		}
+	}
+	
+	const MeshGeometry mesh;
+	const Vec3 rayOrigin;
+	const Vec3 rayDir;
+	
+	float closestT;
+	float closestU;
+	float closestV;
+	float closestW;
+
+	Vec3 closestNormal;
+	int closestTri;
+};
+
+
+CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3& origin, const Vec3& dir, float& t, float& u, float& v, float& w, int& tri)
+{
+#if 1
+	MeshQuery query(mesh, origin, dir);
+
+	// intersect against bvh
+	QueryRay(mesh.nodes, query, origin, dir);
+
+	if (query.closestT < FLT_MAX)
+	{
+		t = query.closestT;
+		u = query.closestU;
+		v = query.closestV;
+		w = query.closestW;	
+		tri = query.closestTri;
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+						
+#else
+	float closestT = FLT_MAX;
+	Vec3 closestNormal;
+	bool hit = false;
+
+	const int numTris = p.mesh.mesh->indices.size()/3;
+
+	for (int i=0; i < numTris; ++i)
+	{
+		float t, u, v, w;
+		Vec3 n;
+
+		const Vec3& a = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+0]];
+		const Vec3& b = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+1]];
+		const Vec3& c = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+2]];
+
+		if (IntersectRayTri(ray.origin, ray.dir, a, b, c, t, u, v, w, &n))
+		{
+			if (t > 0.0f && t < closestT)
+			{
+				closestT = t;
+				closestNormal = n;
+				hit = true;
+			}
+		}
+	}
+
+	outT = closestT;
+	*outNormal = closestNormal;
+
+	return hit;
+#endif
+
 }
