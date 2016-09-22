@@ -42,12 +42,9 @@ CUDA_CALLABLE inline Color ToneMap(const Color& c)
 	return c * 1.0f/(1.0f + luminance);
 }
 
-CUDA_CALLABLE inline void GenerateRay(const Camera& camera, int rasterX, int rasterY, Vec3& origin, Vec3& dir, Random& rand)
+CUDA_CALLABLE inline void GenerateRay(const Camera& camera, float rasterX, float rasterY, Vec3& origin, Vec3& dir)
 {
-	float xoff = rand.Randf(-0.5f, 0.5f);
-	float yoff = rand.Randf(-0.5f, 0.5f);
-
-	Vec3 p = TransformPoint(camera.rasterToWorld, Vec3(float(rasterX) + 0.5f + xoff, float(rasterY) + 0.5f + yoff, 0.0f));
+	Vec3 p = TransformPoint(camera.rasterToWorld, Vec3(rasterX, rasterY, 0.0f));
 
     origin = Vec3(camera.cameraToWorld.GetCol(3));
 	dir = Normalize(p-origin);
@@ -102,13 +99,13 @@ struct Ray
 
 CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
 {
-	const Mat44 transform = InterpolateTransform(p.lastTransform, p.transform, ray.time);
+	Transform transform = InterpolateTransform(p.lastTransform, p.transform, ray.time);
 
 	switch (p.type)
 	{
 		case eSphere:
 		{
-			bool hit = IntersectRaySphere(Vec3(transform.GetCol(3)), p.sphere.radius, ray.origin, ray.dir, outT, outNormal);
+			bool hit = IntersectRaySphere(transform.p, p.sphere.radius, ray.origin, ray.dir, outT, outNormal);
 
 			return hit;
 		}
@@ -128,10 +125,8 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 			float t, u, v, w;
 			int tri;
 
-			// transform ray to mesh space
-			Mat44 invTransform = AffineInverse(transform);
-
-			bool hit = IntersectRayMesh(p.mesh, TransformPoint(invTransform, ray.origin), TransformVector(invTransform, ray.dir), t, u, v, w, tri);
+			// transform ray to mesh space			
+			bool hit = IntersectRayMesh(p.mesh, InverseTransformPoint(transform, ray.origin), InverseTransformVector(transform, ray.dir), t, u, v, w, tri);
 			//bool hit = IntersectRayMesh(p.mesh, ray.origin, ray.dir, t, u, v, w, tri);
 			
 			if (hit)
@@ -152,6 +147,32 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 	return false;
 }
 
+struct FilterBox
+{
+	float Eval(float x, float y) { return 1.0f; }
+};
+
+struct FilterGaussian
+{
+	FilterGaussian(float w, float a) : width(w), alpha(a)
+	{
+		expEdge = expf(-alpha*width*width);
+	}
+
+	float Eval(float x, float y)
+	{
+		return Gaussian(x)*Gaussian(y);
+	}
+
+	float Gaussian(float x)
+	{
+		return Max(0.0f, float(expf(-alpha*x*x)) - expEdge);
+	}
+
+	float width;
+	float alpha;
+	float expEdge;
+};
 
 enum RenderMode
 {

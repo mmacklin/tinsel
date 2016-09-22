@@ -78,9 +78,9 @@ Scene* TestMesh()
 	mesh.type = eMesh;
 	mesh.mesh = GeometryFromMesh(buddha);
     mesh.material = gold;
-	mesh.transform = TranslationMatrix(Vec3(0.0f, 0.0f, 0.0f))*RotationMatrix(DegToRad(90.0f), Vec3(0.0f, 0.0f, 1.0f))*ScaleMatrix(Vec3(3.0f));
-	mesh.lastTransform = mesh.transform;
-		
+	mesh.transform = Transform(Vec3(0.0f, 1.0f, 0.0f), Quat(Vec3(0.0f, 1.0f, 0.0f), 0.0f), 1.0f);//*RotationMatrix(DegToRad(90.0f), Vec3(0.0f, 0.0f, 1.0f))*ScaleMatrix(Vec3(3.0f));
+	mesh.lastTransform = Transform(Vec3(0.0f, 1.0f, 0.0f), Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(0.0f)), 2.0f);
+	
 
     Primitive plane;
     plane.type = ePlane;
@@ -93,10 +93,10 @@ Scene* TestMesh()
     Primitive light;
     light.type = eSphere;
     light.sphere.radius = 1.0f;
-    light.transform = TranslationMatrix(Vec3(0.0f, 6.0f, 0.0f));
+    light.transform = Transform(Vec3(0.0f, 6.0f, 0.0f));
 	light.lastTransform = light.transform;
     light.material.color = Vec4(0.0f);
-    light.material.emission = Vec4(15.0f);
+    light.material.emission = Vec4(10.0f);
     light.light = true;
 
     

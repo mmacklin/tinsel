@@ -533,50 +533,52 @@ CUDA_CALLABLE inline Vec3 operator*(const Quat& q, const Vec3& v)
 
 
 // ---------------------
-// represents a rigid body transformation
+// represents a rigid body transformation with uniform scale
 
 struct Transform
 {
 	// transform
-	CUDA_CALLABLE inline Transform() : p(0.0) {}
-	CUDA_CALLABLE inline Transform(const Vec3& v, const Quat& r=Quat()) : p(v), r(r) {}
+	CUDA_CALLABLE inline Transform() : p(0.0), s(1.0f) {}
+	CUDA_CALLABLE inline Transform(const Vec3& v, const Quat& r=Quat(), float s=1.0f) : p(v), r(r), s(s) {}
 
 	CUDA_CALLABLE inline Transform operator*(const Transform& rhs) const
 	{
-		return Transform(Rotate(r, rhs.p) + p, r*rhs.r);
+		return Transform(Rotate(r, rhs.p) + p, r*rhs.r, s*rhs.s);
 	}
 
 	Vec3 p;
 	Quat r;
+	float s;	
 };
 
 CUDA_CALLABLE inline Transform Inverse(const Transform& transform)
 {
 	Transform t;
 	t.r = Conjugate(transform.r);
-	t.p = -Rotate(t.r, transform.p);	
+	t.p = -Rotate(t.r, transform.p);
+	t.s = 1.0f/t.s;
 
 	return t;
 }
 
 CUDA_CALLABLE inline Vec3 TransformVector(const Transform& t, const Vec3& v)
 {
-	return t.r*v;
+	return t.r*(t.s*v);
 }
 
 CUDA_CALLABLE inline Vec3 TransformPoint(const Transform& t, const Vec3& v)
 {
-	return t.r*v + t.p;
+	return t.r*(t.s*v) + t.p;
 }
 
 CUDA_CALLABLE inline Vec3 InverseTransformVector(const Transform& t, const Vec3& v)
 {
-	return Conjugate(t.r)*v;
+	return (1.0f/t.s)*Conjugate(t.r)*v;
 }
 
 CUDA_CALLABLE inline Vec3 InverseTransformPoint(const Transform& t, const Vec3& v)
 {
-	return Conjugate(t.r)*(v-t.p);
+	return (1.0f/t.s)*Conjugate(t.r)*(v-t.p);
 }
 
 // ----------------------
@@ -751,10 +753,10 @@ struct Mat44
 	{
 		Mat33 r(t.r);
 
-		SetCol(0, Vec4(r.GetCol(0), 0.0));
-		SetCol(1, Vec4(r.GetCol(1), 0.0));
-		SetCol(2, Vec4(r.GetCol(2), 0.0));
-		SetCol(4, Vec4(t.p, 1.0));
+		SetCol(0, Vec4(r.GetCol(0)*t.s, 0.0));
+		SetCol(1, Vec4(r.GetCol(1)*t.s, 0.0));
+		SetCol(2, Vec4(r.GetCol(2)*t.s, 0.0));
+		SetCol(4, Vec4(t.p*t.s, 1.0));
 	}
 
 	CUDA_CALLABLE inline static Mat44 Identity() 
@@ -915,7 +917,7 @@ CUDA_CALLABLE inline Bounds TransformBounds(const Transform& xform, const Bounds
 	// take the sum of the +/- abs value along each cartesian axis
 	Mat33 m = Mat33(xform.r);
 
-	Vec3 halfEdgeWidth = bounds.GetEdges()*0.5;
+	Vec3 halfEdgeWidth = xform.s*bounds.GetEdges()*0.5;
 
 	Vec3 x = Abs(m.GetCol(0))*halfEdgeWidth.x;
 	Vec3 y = Abs(m.GetCol(1))*halfEdgeWidth.y;
@@ -1394,5 +1396,9 @@ CUDA_CALLABLE inline Mat44 InterpolateTransform(const Mat44& a, const Mat44& b, 
 	return c;
 }
 
+CUDA_CALLABLE inline Transform InterpolateTransform(const Transform& a, const Transform& b, float t)
+{
+	return Transform(Lerp(a.p, b.p, t), Normalize(Lerp(a.r, b.r, t)), Lerp(a.s, b.s, t));
+}
 
 

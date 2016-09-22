@@ -176,6 +176,9 @@ Scene* LoadTin(const char* filename)
 				{
 					Mat44 m;
 
+					/*
+					todo: decompose transform
+
 					for (int row=0; row < 4; ++row)
 					{
 						if (fgets(line, kMaxLineLength, file))
@@ -190,6 +193,7 @@ Scene* LoadTin(const char* filename)
 
 					primitive.transform = m;
 					primitive.lastTransform = m;
+					*/
 				}
 			}
 

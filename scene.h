@@ -91,8 +91,8 @@ struct Primitive
 {
 	Primitive() : light(0) {}
 
-	Mat44 transform;
-	Mat44 lastTransform;
+	Transform transform;
+	Transform lastTransform;
 	
 	Material material;
 	GeometryType type;

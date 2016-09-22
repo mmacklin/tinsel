@@ -61,8 +61,8 @@ Scene* TestMaterials()
         Primitive sphere;
         sphere.type = eSphere;
         sphere.sphere.radius = r;
-        sphere.transform = TranslationMatrix(Vec3(-x + i*dx, y, 0.0f));
-        sphere.lastTransform = TranslationMatrix(Vec3(-x + i*dx, y, 0.0f));
+        sphere.transform = Transform(Vec3(-x + i*dx, y, 0.0f));
+        sphere.lastTransform = Transform(Vec3(-x + i*dx, y, 0.0f));
         sphere.material.color = Color(.82f, .67f, .16f);
         sphere.material.metallic = float(i)/(rowSize-1);
         sphere.material.roughness = 0.25f;
@@ -77,8 +77,8 @@ Scene* TestMaterials()
         Primitive sphere;
         sphere.type = eSphere;
         sphere.sphere.radius = r;
-        sphere.transform = TranslationMatrix(Vec3(-x + i*dx, y, 0.0f));
-        sphere.lastTransform = TranslationMatrix(Vec3(-x + i*dx, y, 0.0f));
+        sphere.transform = Transform(Vec3(-x + i*dx, y, 0.0f));
+        sphere.lastTransform = Transform(Vec3(-x + i*dx, y, 0.0f));
         sphere.material.color= SrgbToLinear(Color(.05f, .57f, .36f));
         sphere.material.metallic = 0.0f;
 		sphere.material.specular = 0.75f;//float(i)/(rowSize-1);
@@ -94,8 +94,8 @@ Scene* TestMaterials()
         Primitive sphere;
         sphere.type = eSphere;
         sphere.sphere.radius = r;
-        sphere.transform = TranslationMatrix(Vec3(-x + i*dx, y, 0.0f));
-        sphere.lastTransform = TranslationMatrix(Vec3(-x + i*dx, y, 0.0f));
+        sphere.transform = Transform(Vec3(-x + i*dx, y, 0.0f));
+        sphere.lastTransform = Transform(Vec3(-x + i*dx, y, 0.0f));
         //sphere.material.reflectance = Color(.82f, .67f, .16f);
         sphere.material.subsurface = float(i)/(rowSize-1);
 		sphere.material.color = SrgbToLinear(Color(0.7f));
@@ -143,8 +143,8 @@ Scene* TestMaterials()
         Primitive sphere;
         sphere.type = eSphere;
         sphere.sphere.radius = r;
-        sphere.transform = TranslationMatrix(Vec3(-x + i*dx, y, 0.0f));
-        sphere.lastTransform = TranslationMatrix(Vec3(-x+ i*dx, y, 0.0f));
+        sphere.transform = Transform(Vec3(-x + i*dx, y, 0.0f));
+        sphere.lastTransform = Transform(Vec3(-x+ i*dx, y, 0.0f));
         sphere.material = mats[i];
         
         scene->AddPrimitive(sphere);
@@ -170,7 +170,7 @@ Scene* TestMaterials()
     Primitive light;
     light.type = eSphere;
     light.sphere.radius = 1.0f;
-    light.transform = TranslationMatrix(Vec3(0.0f, 6.0f, 6.0f));
+    light.transform = Transform(Vec3(0.0f, 6.0f, 6.0f));
 	light.lastTransform = light.transform;
     light.material.color = Vec4(0.0f);
     light.material.emission = Vec4(15.0f);
@@ -231,8 +231,8 @@ Scene* TestMIS()
     Primitive sphere;
     sphere.type = eSphere;
     sphere.sphere.radius = r;
-    sphere.transform = TranslationMatrix(Vec3(0.0f, r, 0.0f));
-    sphere.lastTransform = TranslationMatrix(Vec3(0.0f, r, 0.0f));
+    sphere.transform = Transform(Vec3(0.0f, r, 0.0f));
+    sphere.lastTransform = Transform(Vec3(0.0f, r, 0.0f));
     sphere.material = gold;
     sphere.material.roughness = 0.01f;
     scene->AddPrimitive(sphere);
@@ -240,8 +240,8 @@ Scene* TestMIS()
     Primitive sphere1;
     sphere1.type = eSphere;
     sphere1.sphere.radius = r;
-    sphere1.transform = TranslationMatrix(Vec3(0.0f, 3*r + 0.1, 0.0f));
-    sphere1.lastTransform = TranslationMatrix(Vec3(0.0f, 3*r + 0.1, 0.0f));
+    sphere1.transform = Transform(Vec3(0.0f, 3*r + 0.1, 0.0f));
+    sphere1.lastTransform = Transform(Vec3(0.0f, 3*r + 0.1, 0.0f));
     sphere1.material = plaster;
 
     scene->AddPrimitive(sphere1);
@@ -266,7 +266,7 @@ Scene* TestMIS()
     Primitive light;
     light.type = eSphere;
     light.sphere.radius = 1.0f;
-    light.transform = TranslationMatrix(Vec3(0.0f, 10.0f, 10.0f));
+    light.transform = Transform(Vec3(0.0f, 10.0f, 10.0f));
     light.lastTransform = light.transform;
     light.material.color = Vec4(0.0f);
     light.material.emission = Vec4(15.0f);

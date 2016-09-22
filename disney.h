@@ -34,7 +34,7 @@ CUDA_CALLABLE inline float GTR1(float NDotH, float a)
     if (a >= 1) return 1/kPi;
     float a2 = a*a;
     float t = 1 + (a2-1)*NDotH*NDotH;
-    return (a2-1) / (kPi*log(a2)*t);
+    return (a2-1) / (kPi*logf(a2)*t);
 }
 
 CUDA_CALLABLE inline float GTR2(float NDotH, float a)
@@ -53,7 +53,7 @@ CUDA_CALLABLE inline float smithG_GGX(float NDotv, float alphaG)
 {
     float a = alphaG*alphaG;
     float b = NDotv*NDotv;
-    return 1/(NDotv + sqrt(a + b - a*b));
+    return 1/(NDotv + sqrtf(a + b - a*b));
 }
 
 

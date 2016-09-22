@@ -117,8 +117,8 @@ Todo List
 [ ] Tone mapping
 [ ] Bloom filter
 [ ] Output formats
-[ ] ffmpeg encoding
-
+[ ] FFmpeg encoding
+[ ] Reconstruction filter
 
 Supported Platforms
 -------------------

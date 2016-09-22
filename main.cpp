@@ -103,10 +103,10 @@ void Render()
 
     if (g_mode == ePathTrace)
     {
-        float s = g_exposure / g_iterations;
-
         for (int i=0; i < g_width*g_height; ++i)
-        {
+        {            
+            float s = g_exposure / g_pixels[i].w;
+
             g_filtered[i] = LinearToSrgb(g_pixels[i] * s);
         }
 
@@ -165,7 +165,7 @@ void Init()
 #else
     g_renderer = CreateCpuRenderer(g_scene);
 #endif
-    
+
     InitFrameBuffer();
 }
 
