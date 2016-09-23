@@ -91,8 +91,9 @@ struct Primitive
 {
 	Primitive() : light(0) {}
 
-	Transform transform;
-	Transform lastTransform;
+	// begin end transforms for the primitive
+	Transform startTransform;	
+	Transform endTransform;
 	
 	Material material;
 	GeometryType type;

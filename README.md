@@ -15,6 +15,7 @@ Features
 - Interactive OpenGL progressive mode
 - Explicit area light sampling
 - Motion blur
+- Gaussian reconstruction filter
 - Instanced triangle mesh primitives with affine transformations
 - AABB tree with SAH and splitting
 - Simple scene description format
@@ -61,11 +62,9 @@ primitive
 	radius 0.5
 	material light
 
-	transform
-	1.0 0.0 0.0 0.0
-	0.0 1.0 0.0 10.0
-	0.0 0.0 1.0 0.0
-	0.0 0.0 0.0 1.0
+	position 0.0 10.0 0.0
+	rotation 0.0 0.0 0.0 1.0
+	scale 1.0
 }
 
 primitive
@@ -74,11 +73,9 @@ primitive
 	mesh octopus.obj
 	material gold
 
-	transform
-	1.0 0.0 0.0 0.0
-	0.0 1.0 0.0 1.0
-	0.0 0.0 1.0 0.0
-	0.0 0.0 0.0 1.0
+	position 0.0 0.0 0.0
+	rotation 0.0 0.0 0.0 1.0
+	scale 2.0
 }
 
 ```

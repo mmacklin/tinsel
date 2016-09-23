@@ -61,13 +61,15 @@ CUDA_CALLABLE inline void GenerateRayNoJitter(const Camera& camera, int rasterX,
 //-------------
 
 
-CUDA_CALLABLE inline void Sample(const Primitive& p, Vec3& pos, float& area, Random& rand)
+CUDA_CALLABLE inline void Sample(const Primitive& p, float time, Vec3& pos, float& area, Random& rand)
 {
+	Transform transform = InterpolateTransform(p.startTransform, p.endTransform, time);
+
 	switch (p.type)
 	{
 		case eSphere:
 		{
-			pos = TransformPoint(p.transform, UniformSampleSphere(rand)*p.sphere.radius);
+			pos = TransformPoint(transform, UniformSampleSphere(rand)*p.sphere.radius);
 			
 			// todo: handle scaling in transform matrix
 			area = 4.0f*kPi*p.sphere.radius*p.sphere.radius;  
@@ -99,7 +101,7 @@ struct Ray
 
 CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
 {
-	Transform transform = InterpolateTransform(p.lastTransform, p.transform, ray.time);
+	Transform transform = InterpolateTransform(p.startTransform, p.endTransform, ray.time);
 
 	switch (p.type)
 	{
@@ -147,31 +149,38 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 	return false;
 }
 
-struct FilterBox
+enum FilterType
 {
-	float Eval(float x, float y) { return 1.0f; }
+	eFilterBox,
+	eFilterGaussian
 };
 
-struct FilterGaussian
+struct Filter
 {
-	FilterGaussian(float w, float a) : width(w), alpha(a)
+	CUDA_CALLABLE Filter(FilterType type, float width, float falloff) : type(type), width(width), alpha(falloff)
 	{
-		expEdge = expf(-alpha*width*width);
+		if (type == eFilterGaussian)
+			offset = expf(-alpha*width*width);
 	}
 
-	float Eval(float x, float y)
+	CUDA_CALLABLE float Eval(float x, float y) const
 	{
-		return Gaussian(x)*Gaussian(y);
+		if (type == eFilterGaussian)
+			return Gaussian(x)*Gaussian(y);
+		else
+			return 1.0f;
 	}
 
-	float Gaussian(float x)
+	CUDA_CALLABLE float Gaussian(float x) const
 	{
-		return Max(0.0f, float(expf(-alpha*x*x)) - expEdge);
+		return Max(0.0f, float(expf(-alpha*x*x)) - offset);
 	}
+
+	FilterType type;
 
 	float width;
 	float alpha;
-	float expEdge;
+	float offset;
 };
 
 enum RenderMode
@@ -186,7 +195,7 @@ struct Renderer
 	virtual ~Renderer() {}
 
 	virtual void Init(int width, int height) {}
-	virtual void Render(Camera* c, Color* output, int width, int height, int samplesPerPixel, RenderMode mode) = 0;
+	virtual void Render(Camera* c, Color* output, int width, int height, int samplesPerPixel, Filter filter, RenderMode mode) = 0;
 
 };
 

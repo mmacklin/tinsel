@@ -2,7 +2,6 @@
 
 Scene* TestMesh()
 {
-	/*
     Scene* s = LoadTin("data/example.tin");
 
     // set up camera
@@ -10,7 +9,6 @@ Scene* TestMesh()
     g_camTarget = Vec3(0.0f, 2.0f, 0.0f);
 
     return s;
-	*/
 
     Scene* scene = new Scene();
 
@@ -78,8 +76,8 @@ Scene* TestMesh()
 	mesh.type = eMesh;
 	mesh.mesh = GeometryFromMesh(buddha);
     mesh.material = gold;
-	mesh.transform = Transform(Vec3(0.0f, 1.0f, 0.0f), Quat(Vec3(0.0f, 1.0f, 0.0f), 0.0f), 1.0f);//*RotationMatrix(DegToRad(90.0f), Vec3(0.0f, 0.0f, 1.0f))*ScaleMatrix(Vec3(3.0f));
-	mesh.lastTransform = Transform(Vec3(0.0f, 1.0f, 0.0f), Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(0.0f)), 2.0f);
+	mesh.startTransform = Transform(Vec3(0.0f, 1.0f, 0.0f), Quat(Vec3(0.0f, 1.0f, 0.0f), 0.0f), 1.0f);//*RotationMatrix(DegToRad(90.0f), Vec3(0.0f, 0.0f, 1.0f))*ScaleMatrix(Vec3(3.0f));
+	mesh.endTransform = Transform(Vec3(4.0f, 1.0f, 0.0f), Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(0.0f)), 1.0f);
 	
 
     Primitive plane;
@@ -93,8 +91,8 @@ Scene* TestMesh()
     Primitive light;
     light.type = eSphere;
     light.sphere.radius = 1.0f;
-    light.transform = Transform(Vec3(0.0f, 6.0f, 0.0f));
-	light.lastTransform = light.transform;
+    light.startTransform = Transform(Vec3(0.0f, 6.0f, 0.0f));
+	light.endTransform = light.startTransform;
     light.material.color = Vec4(0.0f);
     light.material.emission = Vec4(10.0f);
     light.light = true;

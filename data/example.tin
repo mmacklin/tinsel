@@ -48,6 +48,7 @@ material light
 }
 
 
+
 mesh cube
 {
 	verts 24
@@ -96,7 +97,7 @@ primitive
 {
 	type plane
 	plane 0 1 0 0
-#	material plaster
+	material ground
 }
 
 primitive
@@ -107,12 +108,9 @@ primitive
 	
 	lightSamples 1
 
-	transform
-	1.0 0.0 0.0 0.0
-	0.0 1.0 0.0 10.0
-	0.0 0.0 1.0 0.0
-	0.0 0.0 0.0 1.0
-
+	position 5 10 5
+	rotation 0 0 0 1
+	scale 1
 }
 
 primitive
@@ -121,12 +119,8 @@ primitive
 	radius 0.5
 	material gold
 	
-	transform
-	1.0 0.0 0.0 4.0
-	0.0 1.0 0.0 1.0
-	0.0 0.0 1.0 0.0
-	0.0 0.0 0.0 1.0
-
+	position -2 0.5 0
+	rotation 0 0 0 1
 }
 
 primitive
@@ -135,11 +129,8 @@ primitive
 	mesh octopus.obj
 	material gold
 
-	transform
-	1.0 0.0 0.0 0.0
-	0.0 1.0 0.0 1.0
-	0.0 0.0 1.0 0.0
-	0.0 0.0 0.0 1.0
+	position 2 0.0 0
+	rotation 0 0 0 1
 }
 
 primitive
@@ -148,11 +139,8 @@ primitive
 	mesh cube
 	material plaster
 
-	transform 
-	1.0 0.0 0.0 -2.0
-	0.0 1.0 0.0 1.0
-	0.0 0.0 1.0 0.0
-	0.0 0.0 0.0 1.0
+	position 0 0.5 0
+	scale 0.5, 1.0
 }
 
 

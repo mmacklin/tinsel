@@ -60,6 +60,8 @@ double GetSeconds();
 Mat44 g_cameraTransform;
 Camera g_camera;
 
+Filter g_filter(eFilterGaussian, 1.5f, 2.0f);
+
 void Render()
 {
 	// generate camera transform from translation, yaw, pitch
@@ -79,7 +81,7 @@ void Render()
 	const int numSamples = 1;
 
     // take one more sample per-pixel each frame for progressive rendering
-    g_renderer->Render(&g_camera, g_pixels, g_width, g_height, numSamples, g_mode);
+    g_renderer->Render(&g_camera, g_pixels, g_width, g_height, numSamples, g_filter, g_mode);
 
     double endTime = GetSeconds();
 

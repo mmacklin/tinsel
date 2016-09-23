@@ -104,6 +104,39 @@ Scene* LoadTin(const char* filename)
 					}
 				}
 
+				int count = 0;
+
+				count = sscanf(line, " position %f %f %f , %f %f %f", 
+					&primitive.startTransform.p.x, 
+					&primitive.startTransform.p.y, 
+					&primitive.startTransform.p.z,
+					&primitive.endTransform.p.x, 
+					&primitive.endTransform.p.y, 
+					&primitive.endTransform.p.z);
+
+				if (count > 0 && count < 6)
+					primitive.endTransform.p = primitive.startTransform.p;
+
+				count = sscanf(line, " rotation %f %f %f %f , %f %f %f %f",
+					&primitive.startTransform.r.x,
+					&primitive.startTransform.r.y,
+					&primitive.startTransform.r.z, 
+					&primitive.startTransform.r.w,
+					&primitive.endTransform.r.x,
+					&primitive.endTransform.r.y,
+					&primitive.endTransform.r.z, 
+					&primitive.endTransform.r.w);
+
+				if (count > 0 && count < 8)
+					primitive.endTransform.r = primitive.startTransform.r;
+
+				count = sscanf(line, " scale %f , %f", 
+					&primitive.startTransform.s,
+					&primitive.endTransform.s);
+
+				if (count > 0 && count < 2)
+					primitive.endTransform.s = primitive.startTransform.s;
+
 				sscanf(line, " radius %f", &primitive.sphere.radius);
 				sscanf(line, " plane %f %f %f %f", &primitive.plane.plane[0], &primitive.plane.plane[1], &primitive.plane.plane[2], &primitive.plane.plane[3]);
 				sscanf(line, " lightSamples %d", &primitive.light);
@@ -175,6 +208,7 @@ Scene* LoadTin(const char* filename)
 				if (strstr(line, "transform"))
 				{
 					Mat44 m;
+
 
 					/*
 					todo: decompose transform

@@ -63,7 +63,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& primitive, const 
 			Vec3 lightPos;
 			float lightArea;
 
-			Sample(lightPrimitive, lightPos, lightArea, rand);
+			Sample(lightPrimitive, time, lightPos, lightArea, rand);
 
 			Vec3 wi = Normalize(lightPos-surfacePos);
 
@@ -228,34 +228,46 @@ Color ForwardTraceUniform(const Scene& scene, const Vec3& startOrigin, const Vec
 
 struct CpuRenderer : public Renderer
 {
-	CpuRenderer(const Scene* s) : scene(s), clamp(FLT_MAX), filter(1.5f, 2.0f) {}
+	CpuRenderer(const Scene* s) : scene(s), clamp(FLT_MAX){}
 
 	const Scene* scene;
 	Random rand;
 
 	float clamp;
 
-	FilterGaussian filter;
-
-	void AddSample(Color* output, int width, int height, float rasterX, float rasterY, const Color& sample)
+	void AddSample(Color* output, int width, int height, float rasterX, float rasterY, const Filter& filter, const Color& sample)
 	{
-		int startX = Max(0, int(rasterX - filter.width));
-		int startY = Max(0, int(rasterY - filter.width));
-		int endX = Min(int(rasterX + filter.width), width-1);
-		int endY = Min(int(rasterY + filter.width), height-1);
-
-		for (int x=startX; x <= endX; ++x)
+		switch (filter.type)		
 		{
-			for (int y=startY; y <= endY; ++y)
-			{
-				float w = filter.Eval(x-rasterX, y-rasterY);
+			case eFilterBox:
+			{		
+				int x = int(rasterX);
+				int y = int(rasterY);
 
-				output[(height-1-y)*width+x] += Color(Min(sample.x, clamp), Min(sample.y, clamp), Min(sample.z, clamp), 1.0f)*w;
+				output[(height-1-y)*width+x] = sample;
+				return;
 			}
-		}
+			case eFilterGaussian:
+			{
+				int startX = Max(0, int(rasterX - filter.width));
+				int startY = Max(0, int(rasterY - filter.width));
+				int endX = Min(int(rasterX + filter.width), width-1);
+				int endY = Min(int(rasterY + filter.width), height-1);
+
+				for (int x=startX; x <= endX; ++x)
+				{
+					for (int y=startY; y <= endY; ++y)
+					{
+						float w = filter.Eval(x-rasterX, y-rasterY);
+
+						output[(height-1-y)*width+x] += Color(Min(sample.x, clamp), Min(sample.y, clamp), Min(sample.z, clamp), 1.0f)*w;
+					}
+				}
+			}
+		};
 	}
 
-	void Render(Camera* camera, Color* output, int width, int height, int samplesPerPixel, RenderMode mode)
+	void Render(Camera* camera, Color* output, int width, int height, int samplesPerPixel, Filter filter, RenderMode mode)
 	{
 		for (int k=0; k < samplesPerPixel; ++k)
 		{
@@ -271,14 +283,14 @@ struct CpuRenderer : public Renderer
 					{
 						case ePathTrace:
 						{							
-							const float x = i + rand.Randf(-0.5f, 0.5f);
-							const float y = j + rand.Randf(-0.5f, 0.5f);
+							const float x = i + rand.Randf(-0.5f, 0.5f) + 0.5f;
+							const float y = j + rand.Randf(-0.5f, 0.5f) + 0.5f;
 
 							GenerateRay(*camera, x, y, origin, dir);
 
 							Color sample = PathTrace(*scene, origin, dir, rand);
 
-							AddSample(output, width, height, x, y, sample);
+							AddSample(output, width, height, x, y, filter, sample);
 
 							break;
 						}

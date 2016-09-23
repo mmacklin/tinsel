@@ -105,7 +105,7 @@ __device__ Color SampleLights(const GPUScene& scene, const Primitive& primitive,
 			Vec3 lightPos;
 			float lightArea;
 
-			Sample(lightPrimitive, lightPos, lightArea, rand);
+			Sample(lightPrimitive, time, lightPos, lightArea, rand);
 
 			Vec3 wi = Normalize(lightPos-surfacePos);
 
@@ -145,30 +145,28 @@ __device__ Color SampleLights(const GPUScene& scene, const Primitive& primitive,
 
 
 // reference, no light sampling, uniform hemisphere sampling
-__device__ Color PathTrace(const GPUScene& scene, const Camera& camera, int x, int y, Random& rand, int )
+__device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3& dir, float time, Random& rand)
 {	
     // path throughput
     Color pathThroughput(1.0f, 1.0f, 1.0f, 1.0f);
     // accumulated radiance
     Color totalRadiance(0.0f);
 
-    Vec3 rayOrigin;
-    Vec3 rayDir;
-	float rayTime = rand.Randf();
-
-	GenerateRay(camera, x, y, rayOrigin, rayDir, rand);
+	Vec3 rayOrigin = origin;
+	Vec3 rayDir = dir;
+	float rayTime = time;
 
     float t = 0.0f;
     Vec3 n(rayDir);
     const Primitive* hit;
 
 	const int maxDepth = 4;
-	const int maxSamples = 12;
+//	const int maxSamples = 12;
 
 	int pathCount = 1;
 	int pathDepth = 0;
 
-    for (int i=0; i < maxSamples; ++i)
+    for (int i=0; i < maxDepth; ++i)
     {
         // find closest hit
         if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit) && pathDepth < maxDepth)
@@ -211,7 +209,8 @@ __device__ Color PathTrace(const GPUScene& scene, const Camera& camera, int x, i
         {
             // hit nothing, terminate loop
         	totalRadiance += scene.sky*pathThroughput;
-			
+			break;
+			/*
 			// reset path, this is the persistent threads model to keep generating new work
 			GenerateRay(camera, x, y, rayOrigin, rayDir, rand);
 
@@ -223,13 +222,57 @@ __device__ Color PathTrace(const GPUScene& scene, const Camera& camera, int x, i
 			pathThroughput = Color(1.0f, 1.0f, 1.0f);			
 			pathCount++;
 			pathDepth = 0;
+			*/
         }
     }
 
     return totalRadiance/float(pathCount);
 }
 
-__global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, int maxDepth, RenderMode mode, int seed, Color* output)
+__device__ void AddSample(Color* output, int width, int height, float rasterX, float rasterY, float clamp, Filter filter, const Color& sample)
+{
+	switch (filter.type)
+	{
+		case eFilterBox:
+		{
+			int x = int(rasterX);
+			int y = int(rasterY);
+
+			output[(height-1-y)*width+x] += Color(sample.x, sample.y, sample.z, 1.0f);
+			break;
+		}
+		case eFilterGaussian:
+		{
+			int startX = Max(0, int(rasterX - filter.width));
+			int startY = Max(0, int(rasterY - filter.width));
+			int endX = Min(int(rasterX + filter.width), width-1);
+			int endY = Min(int(rasterY + filter.width), height-1);
+
+			for (int x=startX; x <= endX; ++x)
+			{
+				for (int y=startY; y <= endY; ++y)
+				{
+					float w = filter.Eval(x-rasterX, y-rasterY);
+
+					//output[(height-1-y)*width+x] += Color(Min(sample.x, clamp), Min(sample.y, clamp), Min(sample.z, clamp), 1.0f)*w;
+
+					const int index = (height-1-y)*width+x;
+
+					Color c =  Color(Min(sample.x, clamp), Min(sample.y, clamp), Min(sample.z, clamp), 1.0f)*w;
+
+					atomicAdd(&output[index].x, c.x);
+					atomicAdd(&output[index].y, c.y);
+					atomicAdd(&output[index].z, c.z);
+					atomicAdd(&output[index].w, c.w);
+				}
+			}
+		
+			break;
+		}
+	};
+}
+
+__global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, int maxDepth, int sampleIndex, RenderMode mode, int seed, Filter filter, Color* output)
 {
 	const int tid = blockDim.x*blockIdx.x + threadIdx.x;
 
@@ -264,46 +307,27 @@ __global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, 
 		}
 		else if (mode == ePathTrace)
 		{
-			
+			float fx = i + rand.Randf(-0.5f, 0.5f) + 0.5f;
+			float fy = j + rand.Randf(-0.5f, 0.5f) + 0.5f;
+
+			Vec3 origin, dir;
+			GenerateRay(camera, fx, fy, origin, dir);
+
+#if 0
+			// stratified motion blur sampling
+			int strata = 16;
+			float strataWidth = 1.0f/strata;
+			float time = (float(sampleIndex%strata) + rand.Randf())*strataWidth;
+#else
+			float time = rand.Randf();
+#endif
 
 			//output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
-			output[(height-1-j)*width+i] += PathTrace(scene, camera, i, j, rand, maxDepth);
+			Color sample = PathTrace(scene, origin, dir, time, rand);
+			float maxValue = FLT_MAX;
+
+			AddSample(output, width, height, fx, fy, maxValue, filter, sample);
 		}
-
-		/*
-		// generate a ray         
-		switch (mode)
-		{
-			case ePathTrace:
-			{
-				GenerateRay(camera, i, j, origin, dir, rand);
-
-				//output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
-				output[(height-1-j)*width+i] += ForwardTraceExplicit(scene, origin, dir, rand);
-				break;
-			}
-			case eNormals:
-			{
-				GenerateRayNoJitter(camera, i, j, origin, dir);
-
-				const Primitive* p;
-				float t;
-				Vec3 n;
-
-				if (Trace(scene, Ray(origin, dir, 1.0f), t, n, &p))
-				{
-					n = n*0.5f+0.5f;
-					output[(height-1-j)*width+i] = Color(n.x, n.y, n.z, 1.0f);
-				}
-				else
-				{
-					output[(height-1-j)*width+i] = Color(0.5f);
-				}
-				break;
-			}
-		}
-		*/
-		
 	}
 }
 
@@ -384,17 +408,21 @@ struct GpuRenderer : public Renderer
 		cudaMemset(output, 0, sizeof(Color)*width*height);
 	}
 
-	void Render(Camera* camera, Color* outputHost, int width, int height, int samplesPerPixel, RenderMode mode)
+	void Render(Camera* camera, Color* outputHost, int width, int height, int samplesPerPixel, Filter filter, RenderMode mode)
 	{
 		const int numThreads = width*height;
 		const int kNumThreadsPerBlock = 256;
 		const int kNumBlocks = (numThreads + kNumThreadsPerBlock - 1) / (kNumThreadsPerBlock);
 
 		const int maxDepth = 40;
+		
+		static int sampleIndex = 0;
 
 		for (int i=0; i < samplesPerPixel; ++i)
 		{
-			RenderGpu<<<kNumBlocks, kNumThreadsPerBlock>>>(sceneGPU, *camera, width, height, maxDepth, mode, seed.Rand(), output);
+			RenderGpu<<<kNumBlocks, kNumThreadsPerBlock>>>(sceneGPU, *camera, width, height, maxDepth, sampleIndex, mode, seed.Rand(), filter, output);
+
+			++sampleIndex;
 		}
 
 		// copy back to output
