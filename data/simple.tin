@@ -1,0 +1,41 @@
+# emissive sphere above plane
+
+material light
+{
+	emission 1.0 1.0 1.0
+	color 0 0 0
+	specular 0
+	roughness 1
+	metallic 0
+
+}
+
+material white
+{
+	color 1.0 1.0 1.0
+	specular 0
+	roughness 1
+	metallic 0
+}
+
+primitive
+{
+	type plane
+	plane 0 1 0 0
+
+	material white
+}
+
+primitive
+{
+	type sphere
+	radius 1.0
+
+	position 0 10.0 0
+
+	lightSamples 1 
+
+	material light
+
+}
+

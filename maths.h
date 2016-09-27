@@ -213,14 +213,19 @@ struct Vec4;
 
 struct Vec3
 {
-	CUDA_CALLABLE inline Vec3() : x(0.0), y(0.0), z(0.0) {}
-	CUDA_CALLABLE inline Vec3(Real x) : x(x), y(x), z(x) {}
-	CUDA_CALLABLE inline Vec3(Real x, Real y, Real z) : x(x), y(y), z(z) {}
-	CUDA_CALLABLE inline Vec3(const Vec2& v, Real z) : x(v.x), y(v.y), z(z) {}
+	CUDA_CALLABLE inline Vec3() : x(0.0), y(0.0), z(0.0) { Validate(); }
+	CUDA_CALLABLE inline Vec3(Real x) : x(x), y(x), z(x) { Validate(); }
+	CUDA_CALLABLE inline Vec3(Real x, Real y, Real z) : x(x), y(y), z(z) { Validate(); }
+	CUDA_CALLABLE inline Vec3(const Vec2& v, Real z) : x(v.x), y(v.y), z(z) { Validate(); }
 	CUDA_CALLABLE inline explicit Vec3(const Vec4& v);
 
 	CUDA_CALLABLE inline Real operator[](int index) const { assert(index < 3); return (&x)[index]; }
 	CUDA_CALLABLE inline Real& operator[](int index) { assert(index < 3); return (&x)[index]; }
+
+	CUDA_CALLABLE inline void Validate()
+	{
+		assert(isfinite(x) && isfinite(y) && isfinite(z));
+	}
 
 	Real x;
 	Real y;
@@ -277,13 +282,21 @@ CUDA_CALLABLE inline Vec3 Min(const Vec3& a, const Vec3& b)
 
 struct Vec4
 {
-	CUDA_CALLABLE inline Vec4() : x(0.0), y(0.0), z(0.0), w(0.0) {}
-	CUDA_CALLABLE inline Vec4(Real x) : x(x), y(x), z(x), w(0.0) {}
-	CUDA_CALLABLE inline Vec4(Real x, Real y, Real z, Real w=0.0f) : x(x), y(y), z(z), w(w) {}
-	CUDA_CALLABLE inline Vec4(const Vec3& v, Real w) : x(v.x), y(v.y), z(v.z), w(w) {}
+	CUDA_CALLABLE inline Vec4() : x(0.0), y(0.0), z(0.0), w(0.0) { Validate(); }
+	CUDA_CALLABLE inline Vec4(Real x) : x(x), y(x), z(x), w(0.0) { Validate(); }
+	CUDA_CALLABLE inline Vec4(Real x, Real y, Real z, Real w=0.0f) : x(x), y(y), z(z), w(w) { Validate(); }
+	CUDA_CALLABLE inline Vec4(const Vec3& v, Real w) : x(v.x), y(v.y), z(v.z), w(w) { Validate(); }
 
 	CUDA_CALLABLE inline Real operator[](int index) const { assert(index < 4); return (&x)[index]; }
 	CUDA_CALLABLE inline Real& operator[](int index) { assert(index < 4); return (&x)[index]; }
+
+	CUDA_CALLABLE inline void Validate()
+	{
+		assert(isfinite(x));
+		assert(isfinite(y));
+		assert(isfinite(z));
+		assert(isfinite(w));
+	}
 
 	Real x;
 	Real y;
@@ -556,7 +569,7 @@ CUDA_CALLABLE inline Transform Inverse(const Transform& transform)
 	Transform t;
 	t.r = Conjugate(transform.r);
 	t.p = -Rotate(t.r, transform.p);
-	t.s = 1.0f/t.s;
+	t.s = 1.0f/transform.s;
 
 	return t;
 }
@@ -573,12 +586,12 @@ CUDA_CALLABLE inline Vec3 TransformPoint(const Transform& t, const Vec3& v)
 
 CUDA_CALLABLE inline Vec3 InverseTransformVector(const Transform& t, const Vec3& v)
 {
-	return (1.0f/t.s)*Conjugate(t.r)*v;
+	return (1.0f/t.s)*(Conjugate(t.r)*v);
 }
 
 CUDA_CALLABLE inline Vec3 InverseTransformPoint(const Transform& t, const Vec3& v)
 {
-	return (1.0f/t.s)*Conjugate(t.r)*(v-t.p);
+	return (1.0f/t.s)*(Conjugate(t.r)*(v-t.p));
 }
 
 // ----------------------
@@ -756,7 +769,7 @@ struct Mat44
 		SetCol(0, Vec4(r.GetCol(0)*t.s, 0.0));
 		SetCol(1, Vec4(r.GetCol(1)*t.s, 0.0));
 		SetCol(2, Vec4(r.GetCol(2)*t.s, 0.0));
-		SetCol(4, Vec4(t.p*t.s, 1.0));
+		SetCol(3, Vec4(t.p*t.s, 1.0));
 	}
 
 	CUDA_CALLABLE inline static Mat44 Identity() 
@@ -1120,6 +1133,8 @@ CUDA_CALLABLE inline Vec3 UniformSampleSphere(Random& rand)
 
 	return Vec3(x, y, z);
 }
+
+
 
 CUDA_CALLABLE inline Vec3 UniformSampleHemisphere(Random& rand)
 {

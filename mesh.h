@@ -23,7 +23,7 @@ struct Mesh
     void GetBounds(Vec3& minExtents, Vec3& maxExtents) const;
 
 	void RebuildBVH();
-
+    
     std::vector<Vec3> positions;
     std::vector<Vec3> normals;
     std::vector<Vec2> texcoords[2];
@@ -33,6 +33,7 @@ struct Mesh
 
 	BVH bvh;
 };
+
 
 // create mesh from file
 Mesh* ImportMeshFromObj(const char* path);

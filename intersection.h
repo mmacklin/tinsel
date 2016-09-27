@@ -52,48 +52,6 @@ CUDA_CALLABLE CUDA_CALLABLE inline bool SolveQuadratic(T a, T b, T c, T& minT, T
 }
 
 
-// intersection routines
-CUDA_CALLABLE inline bool IntersectRaySphere(const Vec3& sphereOrigin, float sphereRadius, const Vec3& rayOrigin, const Vec3& rayDir, float& t, Vec3* hitNormal=NULL)
-{
-	Vec3 d(sphereOrigin-rayOrigin);
-	float deltaSq = LengthSq(d);
-	float radiusSq = sphereRadius*sphereRadius;
-
-	// if the origin is inside the sphere return no intersection
-	if (deltaSq > radiusSq)
-	{
-		float dprojr = Dot(d, rayDir);
-		
-		// if ray pointing away from sphere no intersection
-		if (dprojr < 0.0f)
-			return false;
-
-		// bit of Pythagoras to get closest point on ray
-		float dSq = deltaSq-dprojr*dprojr;
-		
-		if (dSq > radiusSq)
-			return false;
-		else
-		{
-			// length of the half cord
-			float thc = sqrt(radiusSq-dSq);
-			
-			// closest intersection
-			t = dprojr - thc;
-
-			// calculate normal if requested
-			if (hitNormal)
-				*hitNormal = Normalize((rayOrigin+rayDir*t)-sphereOrigin);
-
-			return true;
-		}
-	}
-	else
-	{
-		return false;
-	}
-}
-
 
 
 // alternative ray sphere intersect, returns closest and furthest t values
@@ -151,7 +109,7 @@ CUDA_CALLABLE inline bool IntersectLineSegmentPlane(const Vec3& start, const Vec
 }
 
 // Moller and Trumbore's method
-CUDA_CALLABLE inline bool IntersectRayTriTwoSided(const Vec3& p, const Vec3& dir, const Vec3& a, const Vec3& b, const Vec3& c, float& t, float& u, float& v, float& w, float& sign)//Vec3* normal)
+CUDA_CALLABLE inline bool IntersectRayTriTwoSided(const Vec3& p, const Vec3& dir, const Vec3& a, const Vec3& b, const Vec3& c, float& t, float& u, float& v, float& w, float& sign, Vec3* normal)
 {
     Vec3 ab = b - a;
     Vec3 ac = c - a;
@@ -174,8 +132,8 @@ CUDA_CALLABLE inline bool IntersectRayTriTwoSided(const Vec3& p, const Vec3& dir
         return false;
 
     u = 1.0f - v - w;
-    //if (normal)
-        //*normal = n;
+    if (normal)
+        *normal = n;
 	sign = d;
 
     return true;
@@ -601,6 +559,8 @@ struct MeshQuery
 		const Vec3& c = mesh.positions[mesh.indices[i*3+2]];
 
 		if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
+		//float sign;
+		//if (IntersectRayTriTwoSided(rayOrigin, rayDir, a, b, c, t, u, v, w, sign, &n))
 		{
 			if (t > 0.0f && t < closestT)
 			{
@@ -632,6 +592,7 @@ struct MeshQuery
 CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3& origin, const Vec3& dir, float& t, float& u, float& v, float& w, int& tri)
 {
 #if 1
+
 	MeshQuery query(mesh, origin, dir);
 
 	// intersect against bvh
@@ -686,3 +647,107 @@ CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3&
 #endif
 
 }
+
+
+//-------------
+// randomly samples a point on a primitive and returns the point's normal
+
+CUDA_CALLABLE inline void Sample(const Primitive& p, float time, Vec3& pos, Vec3& normal, float& area, Random& rand)
+{
+	Transform transform = InterpolateTransform(p.startTransform, p.endTransform, time);
+
+	switch (p.type)
+	{
+		case eSphere:
+		{
+			// todo: handle scaling in transform matrix
+			pos = TransformPoint(transform, UniformSampleSphere(rand)*p.sphere.radius);			
+			normal = Normalize(pos-transform.p);
+			area = 4.0f*kPi*p.sphere.radius*p.sphere.radius;  
+
+			return;
+		}
+		case ePlane:
+		{
+			assert(0);
+			return;
+		}
+		case eMesh:
+		{
+			assert(0);
+			return;
+		}
+	}
+}
+
+struct Ray
+{
+	CUDA_CALLABLE inline Ray(const Vec3& o, const Vec3& d, float t) : origin(o), dir(d), time(t) {}
+
+	Vec3 origin;
+	Vec3 dir;
+
+	float time;
+};
+
+CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
+{
+	Transform transform = InterpolateTransform(p.startTransform, p.endTransform, ray.time);
+
+	switch (p.type)
+	{
+		case eSphere:
+		{
+			float minT, maxT;
+			Vec3 n;
+
+			bool hit = IntersectRaySphere(transform.p, p.sphere.radius*transform.s, ray.origin, ray.dir, minT, maxT, &n);
+
+			if (hit)
+			{
+				outT = minT;
+				*outNormal = n;
+			}
+			return hit;
+		}
+		case ePlane:
+		{
+			bool hit = IntersectRayPlane(ray.origin, ray.dir, (const Vec4&)p.plane, outT);
+			
+			if (hit && outNormal)
+			{
+				*outNormal = (const Vec3&)p.plane;
+			}
+
+			return hit;
+		}
+		case eMesh:
+		{
+			Vec3 localOrigin = InverseTransformPoint(transform, ray.origin);
+			Vec3 localDir = InverseTransformVector(transform, ray.dir);
+
+			float t, u, v, w;
+			int tri;
+
+			// transform ray to mesh space
+			bool hit = IntersectRayMesh(p.mesh, localOrigin, localDir, t, u, v, w, tri);
+			//bool hit = IntersectRayMesh(p.mesh, ray.origin, ray.dir, t, u, v, w, tri);
+			
+			if (hit)
+			{
+				// interpolate vertex normals
+				Vec3 n1 = p.mesh.normals[p.mesh.indices[tri*3+0]];
+				Vec3 n2 = p.mesh.normals[p.mesh.indices[tri*3+1]];
+				Vec3 n3 = p.mesh.normals[p.mesh.indices[tri*3+2]];
+
+				outT = t;
+				*outNormal = Normalize(TransformVector(transform, u*n1 + v*n2 + w*n3));
+			}			
+
+			return hit;
+		}
+	}
+
+	return false;
+}
+

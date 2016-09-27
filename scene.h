@@ -7,6 +7,20 @@
 
 #include <vector>
 
+struct Camera
+{
+	Vec3 position;
+	Quat rotation;
+
+	float fov;
+
+	// todo: lens options
+
+	// todo: shutter options
+
+};
+
+
 
 struct Material
 {
@@ -72,24 +86,9 @@ struct MeshGeometry
 };
 
 
-inline MeshGeometry GeometryFromMesh(const Mesh* mesh)
-{
-	MeshGeometry geo;
-	geo.positions = &mesh->positions[0];
-	geo.normals = &mesh->normals[0];
-	geo.indices = &mesh->indices[0];
-	geo.nodes = &mesh->bvh.nodes[0];
-	
-	geo.numNodes = mesh->bvh.numNodes;
-	geo.numIndices = mesh->indices.size();
-	geo.numVertices = mesh->positions.size();
-
-	return geo;
-}
-
 struct Primitive
 {
-	Primitive() : light(0) {}
+	Primitive() : lightSamples(0) {}
 
 	// begin end transforms for the primitive
 	Transform startTransform;	
@@ -106,35 +105,35 @@ struct Primitive
 	};
 
 	// if > 0 then primitive will be explicitly sampled
-	int light;
+	int lightSamples;
 };
 
-
-struct Light
+struct Sky
 {
-	Light() : numSamples(0) {}
-	
-	// number of samples to take per path segment
-	int numSamples;
+	Color horizon;
+	Color zenith;
 
-	// shape to use for emission
-	Primitive primitive;
+	CUDA_CALLABLE Color Eval(const Vec3& dir) const
+	{
+		return Lerp(horizon, zenith, sqrtf(Abs(dir.y)));
+	}
+
+	// map
 };
-
-
 
 struct Scene
 {
 	// contiguous buffer for the data
 	typedef std::vector<Primitive> PrimitiveArray;
-	typedef std::vector<Light> LightArray;
-
 	PrimitiveArray primitives;
 	
-	Color sky;
+	Sky sky;
+	Camera camera;
 	
 	void AddPrimitive(const Primitive& p)
 	{
 		primitives.push_back(p);
 	}	
 };
+
+

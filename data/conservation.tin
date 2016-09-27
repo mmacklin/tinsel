@@ -1,0 +1,28 @@
+# Test energy conservation, sphere should have the same color as background
+
+material grey
+{
+	color 1.0 1.0 1.0
+	roughness 0.5
+	specular 0.1
+}
+
+sky
+{
+	horizon 0.5 0.5 0.5
+	zenith 0.5 0.5 0.5
+}
+
+camera
+{
+	position 0.0 0.5 5.0
+}
+
+primitive
+{
+	type sphere
+	radius 0.5
+	material grey
+}
+
+

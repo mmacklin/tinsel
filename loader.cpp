@@ -3,6 +3,8 @@
 #include "scene.h"
 #include "mesh.h"
 #include "maths.h"
+#include "render.h"
+#include "util.h"
 
 #include <stdio.h>
 
@@ -11,23 +13,19 @@
 
 static const int kMaxLineLength = 2048;
 
-
-Scene* LoadTin(const char* filename)
+bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* options)
 {
 	FILE* file = fopen(filename, "r");
 
 	if (!file)
 	{
 		printf("Couldn't open %s for reading.", filename);
-		return NULL;
+		return false;
 	}
 
 	std::map<std::string, Mesh*> meshes;
 	std::map<std::string, Material> materials;
 
-	Scene* scene = new Scene();
-
-	// tokens must be less than 2048 characters
 	char line[kMaxLineLength];
 
 	while (fgets(line, kMaxLineLength, file))
@@ -38,6 +36,88 @@ Scene* LoadTin(const char* filename)
 
 		// name used for materials and meshes
 		char name[kMaxLineLength] = { 0 };
+
+		//--------------------------------------------
+		// Include files
+
+		if (sscanf(line, " include %s", name) == 1)
+		{
+			assert(0);
+
+		}
+
+		//--------------------------------------------
+		// Options
+		if (strstr(line, "options"))
+		{
+			while (fgets(line, kMaxLineLength, file))
+			{
+				// end group
+				if (strchr(line, '}'))
+					break;
+
+				sscanf(line, " width %d", &options->width);
+				sscanf(line, " height %d", &options->height);
+				sscanf(line, " numSamples %d", &options->numSamples);
+
+				char type[kMaxLineLength];
+				sscanf(line, " filter %s %f %f", type, &options->filter.width, &options->filter.falloff);
+				if (strcmp(type, "box") == 0)
+					options->filter.type = eFilterBox;
+				if (strcmp(type, "gaussian") == 0)
+					options->filter.type = eFilterGaussian;
+			}
+		}
+
+		//--------------------------------------------
+		// Camera
+
+		if (strstr(line, "camera"))
+		{
+			Vec3 position;
+			Quat rotation;
+			float fov;
+
+			while (fgets(line, kMaxLineLength, file))
+			{
+				// end group
+				if (strchr(line, '}'))
+					break;
+
+				sscanf(line, " position %f %f %f", &position.x, &position.y, &position.z);
+				//sscanf(line, " target %f %f %f", &target.x, &target.y, &target.z);
+
+				sscanf(line, " rotation %f %f %f %f", &rotation.x, &rotation.y, &rotation.z, &rotation.w);
+				sscanf(line, " fov %f", &fov);
+
+				// todo: load transform directly
+			}
+
+			camera->position = position;
+			camera->rotation = rotation;
+			camera->fov = DegToRad(fov);
+		}
+
+		//-------------------------------------------
+		// Sky
+
+		if (strstr(line, "sky"))
+		{
+			Sky sky;
+
+			while (fgets(line, kMaxLineLength, file))
+			{
+				// end group
+				if (strchr(line, '}'))
+					break;
+	
+				sscanf(line, " horizon %f %f %f", &sky.horizon.x, &sky.horizon.y, &sky.horizon.z);
+				sscanf(line, " zenith %f %f %f", &sky.zenith.x, &sky.zenith.y, &sky.zenith.z);
+			}
+
+			scene->sky = sky;
+		}
+
 
 		//--------------------------------------------
 		// Material
@@ -139,7 +219,7 @@ Scene* LoadTin(const char* filename)
 
 				sscanf(line, " radius %f", &primitive.sphere.radius);
 				sscanf(line, " plane %f %f %f %f", &primitive.plane.plane[0], &primitive.plane.plane[1], &primitive.plane.plane[2], &primitive.plane.plane[3]);
-				sscanf(line, " lightSamples %d", &primitive.light);
+				sscanf(line, " lightSamples %d", &primitive.lightSamples);
 
 				char path[2048];
 
@@ -149,6 +229,10 @@ Scene* LoadTin(const char* filename)
 					if (materials.find(path) != materials.end())
 					{
 						primitive.material = materials[path];
+					}
+					else
+					{
+						printf("Could not find material %s\n", path);
 					}
 				}
 
@@ -203,31 +287,6 @@ Scene* LoadTin(const char* filename)
 							fflush(stdout);
 						}
 					}
-				}
-
-				if (strstr(line, "transform"))
-				{
-					Mat44 m;
-
-
-					/*
-					todo: decompose transform
-
-					for (int row=0; row < 4; ++row)
-					{
-						if (fgets(line, kMaxLineLength, file))
-						{
-							sscanf(line, " %f %f %f %f", 
-								&m.cols[0][row],
-								&m.cols[1][row],
-								&m.cols[2][row],
-								&m.cols[3][row]);
-						}
-					}
-
-					primitive.transform = m;
-					primitive.lastTransform = m;
-					*/
 				}
 			}
 
@@ -292,5 +351,5 @@ Scene* LoadTin(const char* filename)
 		}
 	}
 
-	return scene;
+	return true;
 }

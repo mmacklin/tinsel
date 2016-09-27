@@ -42,12 +42,30 @@ material plaster
 	specular 0.1
 }
 
+material ground
+{
+	color 0.5 0.5 0.5
+	roughness 0.5
+	specular 0.1
+}
+
+material green
+{
+	color 0.25 0.85 0.25
+	roughness 0.2
+	specular 0.1
+}
+
 material light
 {
 	emission 5.0 5.0 5.0
 }
 
-
+sky
+{
+	#horizon 0.4 0.4 0.6
+	#zenith 0.05 0.05 0.4
+}
 
 mesh cube
 {
@@ -75,7 +93,7 @@ mesh cube
 	-0.5 -0.5 -0.5
 	-0.5 -0.5 0.5
 	-0.5 0.5 -0.5
-	-0.5 0.5 0.5
+	-0.5 0.5 0.5	
 
 	tris 12
 	0 1 2 
@@ -106,7 +124,7 @@ primitive
 	radius 2.0
 	material light
 	
-	lightSamples 1
+	lightSamples 5
 
 	position 5 10 5
 	rotation 0 0 0 1
@@ -121,27 +139,28 @@ primitive
 	
 	position -2 0.5 0
 	rotation 0 0 0 1
+	scale 1.0
 }
 
 primitive
 {
 	type mesh
 	mesh octopus.obj
-	material gold
+	material copper
 
-	position 2 0.0 0
+	position 1 0.0 0
 	rotation 0 0 0 1
+	scale 2.0
 }
+
 
 primitive
 {
 	type mesh
 	mesh cube
-	material plaster
+	material green
 
 	position 0 0.5 0
-	scale 0.5, 1.0
+	rotation 0 0 0 1
+	scale 1.0
 }
-
-
-

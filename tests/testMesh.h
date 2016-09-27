@@ -1,17 +1,7 @@
 #pragma once
 
-Scene* TestMesh()
+void TestMesh(Scene* scene, Camera* camera, Options* options)
 {
-    Scene* s = LoadTin("data/example.tin");
-
-    // set up camera
-    g_camPos = Vec3(0.0f, 2.0f, 10.0f);
-    g_camTarget = Vec3(0.0f, 2.0f, 0.0f);
-
-    return s;
-
-    Scene* scene = new Scene();
-
 
     //Mesh* buddha = ImportMeshFromObj("data/Ajax_Jotero_com.obj");
 	
@@ -95,19 +85,18 @@ Scene* TestMesh()
 	light.endTransform = light.startTransform;
     light.material.color = Vec4(0.0f);
     light.material.emission = Vec4(10.0f);
-    light.light = true;
+    light.lightSamples = 1;
 
     
 	scene->AddPrimitive(mesh);
     scene->AddPrimitive(plane);
 	scene->AddPrimitive(light);
 
-	scene->sky = Color(0.1f, 0.3f, 0.6f)*2.0f;
+	scene->sky.horizon = Color(0.1f, 0.3f, 0.6f)*2.0f;
+    scene->sky.zenith = Color(0.1f, 0.3f, 0.6f)*2.0f;
 
     // set up camera
-    g_camPos = Vec3(0.0f, 2.0f, 10.0f);
-    g_camTarget = Vec3(0.0f, 2.0f, 0.0f);
+    camera->position = Vec3(0.0f, 2.0f, 10.0f);
 
-    return scene;
 }
 

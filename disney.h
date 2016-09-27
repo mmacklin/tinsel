@@ -40,7 +40,7 @@ CUDA_CALLABLE inline float GTR1(float NDotH, float a)
 CUDA_CALLABLE inline float GTR2(float NDotH, float a)
 {
     float a2 = a*a;
-    float t = 1 + (a2-1)*NDotH*NDotH;
+    float t = 1.0f + (a2-1.0f)*NDotH*NDotH;
     return a2 / (kPi * t*t);
 }
 
@@ -69,7 +69,7 @@ CUDA_CALLABLE inline void BRDFSample(const Material& mat, const Vec3& P, const M
 #else
 
     const Vec3 n = frame.GetCol(2);
-    const float a = Max(0.001f, mat.roughness);//Max(0.001f, sqr(mat.roughness));
+    const float a = Max(0.001f, mat.roughness);
 
     Vec3 light;
     Vec3 half;
@@ -105,8 +105,11 @@ CUDA_CALLABLE inline void BRDFSample(const Material& mat, const Vec3& P, const M
     const float pdfHalf = GTR2(cosThetaHalf, a)*cosThetaHalf;
 
     // calculate pdf for each method given outgoing light vector
-    float pdfSpec = pdfHalf*0.25f/Abs(Dot(light, half));
+    float pdfSpec = pdfHalf*0.25f/Max(1.e-4f, Abs(Dot (light, half)));
+    assert(isfinite(pdfSpec));
+
     float pdfDiff = Abs(Dot(light, n))*kInvPi;
+    assert(isfinite(pdfDiff));
 
     // weight pdfs according to roughness
     outPdf = Lerp(pdfSpec, pdfDiff, mat.roughness);
@@ -120,7 +123,7 @@ CUDA_CALLABLE inline Color BRDFEval(const Material& mat, const Vec3& P, const Ve
 {
     float NDotL = Dot(N,L);
     float NDotV = Dot(N,V);
-    if (NDotL < 0 || NDotV < 0) return Color(0);
+    if (NDotL <= 0 || NDotV <= 0) return Color(0);
 
     Vec3 H = Normalize(L+V);
     float NDotH = Dot(N,H);

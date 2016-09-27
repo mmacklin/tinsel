@@ -1,5 +1,7 @@
 #pragma once
 
 struct Scene;
+struct Camera;
+struct Options;
 
-Scene* LoadTin(const char* filename);
+bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* options);

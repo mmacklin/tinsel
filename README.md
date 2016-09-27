@@ -14,7 +14,7 @@ Features
 - CPU or GPU tracing and shading with a persistent CUDA threads model
 - Interactive OpenGL progressive mode
 - Explicit area light sampling
-- Motion blur
+- Affine and deformable motion blur
 - Gaussian reconstruction filter
 - Instanced triangle mesh primitives with affine transformations
 - AABB tree with SAH and splitting
@@ -104,18 +104,21 @@ tinsel -interactive scene.tin
 Todo List
 ---------
 
-[ ] Mesh affine transformation support
+[x] Mesh affine transformation support
+[ ] Multi material meshes
 [ ] SAH and BVH splitting
 [ ] Clean up mesh allocations
 [ ] Command line interface
-[ ] Scene sky parameters
+[x] Scene sky parameters
+[ ] Scene camera parameters
 [ ] Scene include files
 [ ] Scene camera definition
 [ ] Tone mapping
 [ ] Bloom filter
 [ ] Output formats
 [ ] FFmpeg encoding
-[ ] Reconstruction filter
+[x] Reconstruction filter
+[ ] Examples
 
 Supported Platforms
 -------------------
