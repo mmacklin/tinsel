@@ -94,7 +94,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& primitive, const 
 				
 					const float nl = Dot(lightNormal, -wi);
 
-					L += f * hit->material.emission * (Abs(Dot(wi, surfaceNormal))*nl /Max(1.e-3f, t*t*lightPdf));
+					L += f * hit->material.emission * (Clamp(Dot(wi, surfaceNormal), 0.0f, 1.0f)*nl/Max(1.e-3f, t*t*lightPdf));
 				}
 			}
 		}
@@ -139,12 +139,16 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
     		// if we hit a light then terminate and return emission
 			// first trace is our only chance to add contribution from directly visible light sources
             if (i == 0)
-			{
+            {
 				totalRadiance += hit->material.emission;
+            }
+            else
+			{
+				totalRadiance += 0.25*pathThroughput*hit->material.emission;
 			}
 
 	    	// integral of Le over hemisphere
-        	totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
+        	totalRadiance += 0.75*pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
 #else
 
             totalRadiance += pathThroughput*hit->material.emission;
@@ -188,14 +192,12 @@ void Validate(const Color& c)
 
 struct CpuRenderer : public Renderer
 {
-	CpuRenderer(const Scene* s) : scene(s), clamp(FLT_MAX){}
+	CpuRenderer(const Scene* s) : scene(s) {}
 
 	const Scene* scene;
 	Random rand;
 
-	float clamp;
-
-	void AddSample(Color* output, int width, int height, float rasterX, float rasterY, const Filter& filter, const Color& sample)
+	void AddSample(Color* output, int width, int height, float rasterX, float rasterY, float clamp, const Filter& filter, const Color& sample)
 	{
 		switch (filter.type)		
 		{
@@ -275,7 +277,7 @@ struct CpuRenderer : public Renderer
 
 							Validate(sample);
 
-							AddSample(output, options.width, options.height, x, y, options.filter, sample);
+							AddSample(output, options.width, options.height, x, y, options.clamp, options.filter, sample);
 
 							break;
 						}

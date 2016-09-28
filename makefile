@@ -6,13 +6,13 @@ LDFLAGS = -g -m64 -L"/opt/local/lib" -framework GLUT -framework OpenGL -framewor
 
 TARGET  = tinsel
 
-SOURCES = $(wildcard *.cpp)
-HEADERS = $(wildcard *.h)
+SOURCES = $(wildcard src/*.cpp)
+HEADERS = $(wildcard src/*.h)
 
 OBJECTS = $(SOURCES:.cpp=.o) 
 
 all: $(TARGET)
-	./$(TARGET) 
+	./$(TARGET) data/emitter.tin
 
 $(TARGET): $(OBJECTS) makefile
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(TARGET) 

@@ -105,6 +105,8 @@ Todo List
 ---------
 
 [x] Mesh affine transformation support
+[ ] Mesh, Disc, Sphere, Plane primitives
+[ ] Mesh sampling
 [ ] Multi material meshes
 [ ] SAH and BVH splitting
 [ ] Clean up mesh allocations
