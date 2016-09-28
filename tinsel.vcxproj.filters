@@ -13,80 +13,92 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
-    <Filter Include="Source Files\Tests">
-      <UniqueIdentifier>{988f13f4-1ee9-4e68-b07c-80edbfe91fcc}</UniqueIdentifier>
+    <Filter Include="Examples">
+      <UniqueIdentifier>{6865d109-aac0-4757-bc04-c05088578d04}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\bvh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mesh.cpp">
+    <ClCompile Include="src\loader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="platform.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="render.cpp">
+    <ClCompile Include="src\mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="bvh.cpp">
+    <ClCompile Include="src\platform.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="loader.cpp">
+    <ClCompile Include="src\render.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bvh.h">
+    <ClInclude Include="src\bvh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="camera.h">
+    <ClInclude Include="src\camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="disney.h">
+    <ClInclude Include="src\disney.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="intersection.h">
+    <ClInclude Include="src\intersection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="maths.h">
+    <ClInclude Include="src\loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="mesh.h">
+    <ClInclude Include="src\maths.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="render.h">
+    <ClInclude Include="src\mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="scene.h">
+    <ClInclude Include="src\render.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="skylight.h">
+    <ClInclude Include="src\scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="tests\testMesh.h">
-      <Filter>Source Files\Tests</Filter>
-    </ClInclude>
-    <ClInclude Include="tests\testMotionBlur.h">
-      <Filter>Source Files\Tests</Filter>
-    </ClInclude>
-    <ClInclude Include="tests\testMaterials.h">
-      <Filter>Source Files\Tests</Filter>
-    </ClInclude>
-    <ClInclude Include="loader.h">
+    <ClInclude Include="src\skylight.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="render.cu">
-      <Filter>Source Files</Filter>
-    </CustomBuild>
+    <ClInclude Include="src\tests\testMaterials.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tests\testMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tests\testMotionBlur.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
+    <None Include="data\conservation.tin">
+      <Filter>Examples</Filter>
+    </None>
+    <None Include="data\cornell.tin">
+      <Filter>Examples</Filter>
+    </None>
+    <None Include="data\example.tin">
+      <Filter>Examples</Filter>
+    </None>
+    <None Include="data\simple.tin">
+      <Filter>Examples</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="src\render.cu">
+      <Filter>Source Files</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

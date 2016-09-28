@@ -38,9 +38,19 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>bin\</OutDir>
+    <IntDir>intermediate\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)$(Configuration)</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>bin\</OutDir>
+    <IntDir>intermediate\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)$(Configuration)</TargetName>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
-      <AdditionalLibraryDirectories>freeglut\lib\x64;$(CUDA_PATH_V7_5)\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>src\freeglut\lib\x64;$(CUDA_PATH_V7_5)\lib\x64</AdditionalLibraryDirectories>
       <AdditionalDependencies>cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -51,7 +61,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
-      <AdditionalLibraryDirectories>freeglut\lib\x64;$(CUDA_PATH_V7_5)\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>src\freeglut\lib\x64;$(CUDA_PATH_V7_5)\lib\x64</AdditionalLibraryDirectories>
       <AdditionalDependencies>cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -61,39 +71,43 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="bvh.cpp" />
-    <ClCompile Include="loader.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="mesh.cpp" />
-    <ClCompile Include="platform.cpp" />
-    <ClCompile Include="render.cpp" />
+    <ClCompile Include="src\bvh.cpp" />
+    <ClCompile Include="src\loader.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\mesh.cpp" />
+    <ClCompile Include="src\platform.cpp" />
+    <ClCompile Include="src\render.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bvh.h" />
-    <ClInclude Include="camera.h" />
-    <ClInclude Include="disney.h" />
-    <ClInclude Include="intersection.h" />
-    <ClInclude Include="loader.h" />
-    <ClInclude Include="maths.h" />
-    <ClInclude Include="mesh.h" />
-    <ClInclude Include="render.h" />
-    <ClInclude Include="scene.h" />
-    <ClInclude Include="skylight.h" />
-    <ClInclude Include="tests\testMaterials.h" />
-    <ClInclude Include="tests\testMesh.h" />
-    <ClInclude Include="tests\testMotionBlur.h" />
+    <ClInclude Include="src\bvh.h" />
+    <ClInclude Include="src\camera.h" />
+    <ClInclude Include="src\disney.h" />
+    <ClInclude Include="src\intersection.h" />
+    <ClInclude Include="src\loader.h" />
+    <ClInclude Include="src\maths.h" />
+    <ClInclude Include="src\mesh.h" />
+    <ClInclude Include="src\render.h" />
+    <ClInclude Include="src\scene.h" />
+    <ClInclude Include="src\skylight.h" />
+    <ClInclude Include="src\tests\testMaterials.h" />
+    <ClInclude Include="src\tests\testMesh.h" />
+    <ClInclude Include="src\tests\testMotionBlur.h" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="render.cu">
+    <CustomBuild Include="src\render.cu">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O0 -g -G --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MTd,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c render.cu -o $(Configuration)\rendercuda.obj</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\rendercuda.obj</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O3 --resource-usage --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DNDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c render.cu -o rendercuda.obj</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">rendercuda.obj</Outputs>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">disney.h;render.h</AdditionalInputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O0 -g -G --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MTd,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">intermediate\$(Configuration)\rendercuda.obj</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O3 --resource-usage --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DNDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">intermediate\$(Configuration)\rendercuda.obj</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">src\disney.h;src\render.h</AdditionalInputs>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <None Include="data\conservation.tin" />
+    <None Include="data\cornell.tin" />
+    <None Include="data\example.tin" />
+    <None Include="data\simple.tin" />
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
