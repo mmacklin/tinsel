@@ -5,8 +5,9 @@ options
 	width 512
 	height 512
 	exposure 1.0
+	clamp 2.0
 	
-	filter gaussian 1.0 2.0
+	filter gaussian 1.0 1.0
 }
 
 camera
@@ -102,7 +103,7 @@ primitive
 	position 0 2.95 0
 
 	material light
-	lightSamples 5
+	lightSamples 10
 }
 
 

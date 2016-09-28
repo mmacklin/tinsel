@@ -286,6 +286,8 @@ int main(int argc, char* argv[])
     g_options.numSamples = 1;
     g_options.mode = eNormals;
     g_options.exposure = 1.0f;
+	g_options.clamp = FLT_MAX;
+	g_options.maxDepth = 4;
 
     g_camera.position = Vec3(0.0f, 1.0f, 5.0f);
     g_camera.rotation = Quat();

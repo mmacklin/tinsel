@@ -60,12 +60,15 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 				sscanf(line, " height %d", &options->height);
 				sscanf(line, " numSamples %d", &options->numSamples);
 
+				sscanf(line, " clamp %f", &options->clamp);
+				sscanf(line, " exposure %f", &options->exposure);
+
 				char type[kMaxLineLength];
 				sscanf(line, " filter %s %f %f", type, &options->filter.width, &options->filter.falloff);
 				if (strcmp(type, "box") == 0)
 					options->filter.type = eFilterBox;
 				if (strcmp(type, "gaussian") == 0)
-					options->filter.type = eFilterGaussian;
+					options->filter.type = eFilterGaussian;				
 			}
 		}
 

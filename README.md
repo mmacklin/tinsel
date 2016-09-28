@@ -110,7 +110,7 @@ Todo List
 [ ] Clean up mesh allocations
 [ ] Command line interface
 [x] Scene sky parameters
-[ ] Scene camera parameters
+[x] Scene camera parameters
 [ ] Scene include files
 [ ] Scene camera definition
 [ ] Tone mapping
@@ -118,6 +118,7 @@ Todo List
 [ ] Output formats
 [ ] FFmpeg encoding
 [x] Reconstruction filter
+[x] Correctness checks
 [ ] Examples
 
 Supported Platforms

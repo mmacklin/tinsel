@@ -55,7 +55,9 @@ struct Options
 
 	Filter filter;
 	float exposure;
-
+	float clamp;
+	
+	int maxDepth;
 	int numSamples;
 };
 

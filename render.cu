@@ -1,5 +1,6 @@
 #include "maths.h"
 #include "render.h"
+#include "util.h"
 #include "disney.h"
 
 #include <map>
@@ -12,7 +13,7 @@ struct GPUScene
 	Primitive* lights;
 	int numLights;
 
-	Color sky;
+	Sky sky;
 };
 
 
@@ -53,7 +54,7 @@ void DestroyGPUMesh(const MeshGeometry& m)
 __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
 	// disgard hits closer than this distance to avoid self intersection artifacts
-	const float kEpsilon = 0.001f;
+	const float kEpsilon = 0.00001f;
 
 	float minT = REAL_MAX;
 	const Primitive* closestPrimitive = NULL;
@@ -85,8 +86,7 @@ __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& 
 }
 
 
-
-__device__ Color SampleLights(const GPUScene& scene, const Primitive& primitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
+__device__ inline Color SampleLights(const GPUScene& scene, const Primitive& primitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Color sum(0.0f);
 
@@ -94,50 +94,64 @@ __device__ Color SampleLights(const GPUScene& scene, const Primitive& primitive,
 	{
 		// assume all lights are area lights for now
 		const Primitive& lightPrimitive = scene.lights[i];
-				
+
 		Color L(0.0f);
 
-		const int numSamples = 2;
+		int numSamples = lightPrimitive.lightSamples;
+
+		if (numSamples == 0)
+			continue;
 
 		for (int s=0; s < numSamples; ++s)
 		{
 			// sample light source
 			Vec3 lightPos;
+			Vec3 lightNormal;
 			float lightArea;
 
-			Sample(lightPrimitive, time, lightPos, lightArea, rand);
-
-			Vec3 wi = Normalize(lightPos-surfacePos);
-
-			// ignore samples backfacing to the surface
-			if (Dot(wi, surfaceNormal) < 0.0f)
-				continue;
+			Sample(lightPrimitive, time, lightPos, lightNormal, lightArea, rand);
 			
+			Vec3 wi = lightPos-surfacePos;
+			
+			float dSq = LengthSq(wi);
+			wi /= sqrtf(dSq);
+
+			// light is behind surface
+			if (Dot(wi, surfaceNormal) <= 0.0f)
+				continue; 				
+
+			// surface is behind light
+			if (Dot(wi, lightNormal) >= 0.0f)
+				continue;
+
 			// check visibility
 			float t;
-			Vec3 ln;
+			Vec3 n;
 			const Primitive* hit;
-			if (Trace(scene, Ray(surfacePos, wi, time), t, ln, &hit))
+			if (Trace(scene, Ray(surfacePos, wi, time), t, n, &hit))			
 			{
-				// did we hit a light prim?
-				if (hit->light)
+				float tSq = t*t;
+
+				// if our next hit was further than distance to light then accept
+				// sample, this works for portal sampling where you have a large light
+				// that you sample through a small window
+				const float kTolerance = 1.e-3f;
+
+				if (tSq - dSq >= -kTolerance)
 				{
 					const Color f = BRDFEval(primitive.material, surfacePos, surfaceNormal, wi, wo);
 
-					// light pdf
-					const float nl = Clamp(Dot(ln, -wi), 0.0f, 1.0f);
-					
-					if (nl > 0.0)
-					{
-						const float lightPdf = (t*t) / (nl*lightArea);
-					
-						L += f * hit->material.emission * Clamp(Dot(wi, surfaceNormal), 0.0f, 1.0f)  / lightPdf;
-					}
+					// light pdf					
+					const float lightPdf = 1.0f/lightArea;
+				
+					const float nl = Dot(lightNormal, -wi);
+
+					L += f * hit->material.emission * (Abs(Dot(wi, surfaceNormal))*nl /Max(1.e-3f, t*t*lightPdf));
 				}
-			}		
+			}
 		}
 	
-		sum += L / float(numSamples);
+		sum += L * (1.0f/numSamples);
 	}
 
 	return sum;
@@ -161,15 +175,11 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
     const Primitive* hit;
 
 	const int maxDepth = 4;
-//	const int maxSamples = 12;
-
-	int pathCount = 1;
-	int pathDepth = 0;
 
     for (int i=0; i < maxDepth; ++i)
     {
         // find closest hit
-        if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit) && pathDepth < maxDepth)
+        if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
         {	
             // calculate a basis for this hit point
             Vec3 u, v;
@@ -177,7 +187,7 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 
             const Vec3 p = rayOrigin + rayDir*t;
 
-			if (pathDepth == 0)
+			if (i == 0)
 			{
 				// first trace is our only chance to add contribution from directly visible light sources        
 				totalRadiance += hit->material.emission;				
@@ -193,6 +203,9 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 			float outPdf;
 			BRDFSample(hit->material, p, localFrame, -rayDir, outDir, outPdf, rand);
 
+            if (outPdf == 0.0f)
+            	break;
+
             // reflectance
             Color f = BRDFEval(hit->material, p, n, -rayDir, outDir);
 
@@ -202,13 +215,11 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
             // update path direction
             rayDir = outDir;
             rayOrigin = p;
-
-			pathDepth++;
         }
         else
         {
             // hit nothing, terminate loop
-        	totalRadiance += scene.sky*pathThroughput;
+        	totalRadiance += scene.sky.Eval(rayDir)*pathThroughput;
 			break;
 			/*
 			// reset path, this is the persistent threads model to keep generating new work
@@ -226,7 +237,7 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
         }
     }
 
-    return totalRadiance/float(pathCount);
+    return totalRadiance;
 }
 
 __device__ void AddSample(Color* output, int width, int height, float rasterX, float rasterY, float clamp, Filter filter, const Color& sample)
@@ -272,14 +283,14 @@ __device__ void AddSample(Color* output, int width, int height, float rasterX, f
 	};
 }
 
-__global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, int maxDepth, int sampleIndex, RenderMode mode, int seed, Filter filter, Color* output)
+__global__ void RenderGpu(GPUScene scene, CameraSampler sampler, Options options, int seed, Color* output)
 {
 	const int tid = blockDim.x*blockIdx.x + threadIdx.x;
 
-	const int i = tid%width;
-	const int j = tid/width;
+	const int i = tid%options.width;
+	const int j = tid/options.width;
 
-	if (i < width && j < height)
+	if (i < options.width && j < options.height)
 	{
 		Vec3 origin;
 		Vec3 dir;
@@ -287,9 +298,9 @@ __global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, 
 		// initialize a per-thread PRNG
 		Random rand(tid + seed);
 
-		if (mode == eNormals)
+		if (options.mode == eNormals)
 		{
-			GenerateRayNoJitter(camera, i, j, origin, dir);
+			sampler.GenerateRay(i, j, origin, dir);
 
 			const Primitive* p;
 			float t;
@@ -298,20 +309,20 @@ __global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, 
 			if (Trace(scene, Ray(origin, dir, 1.0f), t, n, &p))
 			{
 				n = n*0.5f+0.5f;
-				output[(height-1-j)*width+i] = Color(n.x, n.y, n.z, 1.0f);
+				output[(options.height-1-j)*options.width+i] = Color(n.x, n.y, n.z, 1.0f);
 			}
 			else
 			{
-				output[(height-1-j)*width+i] = Color(0.5f);
+				output[(options.height-1-j)*options.width+i] = Color(0.5f);
 			}
 		}
-		else if (mode == ePathTrace)
+		else if (options.mode == ePathTrace)
 		{
 			float fx = i + rand.Randf(-0.5f, 0.5f) + 0.5f;
 			float fy = j + rand.Randf(-0.5f, 0.5f) + 0.5f;
 
 			Vec3 origin, dir;
-			GenerateRay(camera, fx, fy, origin, dir);
+			sampler.GenerateRay(fx, fy, origin, dir);
 
 #if 0
 			// stratified motion blur sampling
@@ -324,9 +335,8 @@ __global__ void RenderGpu(GPUScene scene, Camera camera, int width, int height, 
 
 			//output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
 			Color sample = PathTrace(scene, origin, dir, time, rand);
-			float maxValue = FLT_MAX;
 
-			AddSample(output, width, height, fx, fy, maxValue, filter, sample);
+			AddSample(output, options.width, options.height, fx, fy, options.clamp, options.filter, sample);
 		}
 	}
 }
@@ -352,7 +362,7 @@ struct GpuRenderer : public Renderer
 		{
 			Primitive primitive = s->primitives[i];
 
-			if (primitive.light)
+			if (primitive.lightSamples)
 			{
 				lights.push_back(primitive);
 			}
@@ -408,21 +418,24 @@ struct GpuRenderer : public Renderer
 		cudaMemset(output, 0, sizeof(Color)*width*height);
 	}
 
-	void Render(Camera* camera, Color* outputHost, int width, int height, int samplesPerPixel, Filter filter, RenderMode mode)
+	void Render(const Camera& camera, const Options& options, Color* outputHost)
 	{
-		const int numThreads = width*height;
+		const int numThreads = options.width*options.height;
 		const int kNumThreadsPerBlock = 256;
 		const int kNumBlocks = (numThreads + kNumThreadsPerBlock - 1) / (kNumThreadsPerBlock);
+	
+		// create a sampler for the camera
+		CameraSampler sampler(
+			Transform(camera.position, camera.rotation),
+			camera.fov, 
+			0.001f,
+			1.0f,
+			options.width,
+			options.height);
 
-		const int maxDepth = 40;
-		
-		static int sampleIndex = 0;
-
-		for (int i=0; i < samplesPerPixel; ++i)
+		for (int i=0; i < options.numSamples; ++i)
 		{
-			RenderGpu<<<kNumBlocks, kNumThreadsPerBlock>>>(sceneGPU, *camera, width, height, maxDepth, sampleIndex, mode, seed.Rand(), filter, output);
-
-			++sampleIndex;
+			RenderGpu<<<kNumBlocks, kNumThreadsPerBlock>>>(sceneGPU, sampler, options, seed.Rand(), output);
 		}
 
 		// copy back to output
