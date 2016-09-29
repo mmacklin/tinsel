@@ -1428,7 +1428,7 @@ CUDA_CALLABLE inline Color XYZToLinear(float x, float y, float z)
 	return Color(c[0], c[1], c[2], c[3]);
 }
 
-CUDA_CALLABLE inline int ColorToRGBA8(const Color& c)
+CUDA_CALLABLE inline unsigned int ColorToRGBA8(const Color& c)
 {
 	union SmallColor
 	{

@@ -5,6 +5,7 @@
 #include "render.h"
 #include "loader.h"
 #include "util.h"
+#include "png.h"
 
 #if _WIN32
 
@@ -109,6 +110,8 @@ void Render()
     glDisable(GL_CULL_FACE);
     
     //glPixelZoom(float(g_windowWidth)/g_options.width, float(g_windowHeight)/g_options.height);
+	glRasterPos2f(-1,1);
+	glPixelZoom( 1, -1 );
     glDrawPixels(g_options.width, g_options.height, GL_RGBA, GL_FLOAT, presentMem);
 }
 
@@ -204,6 +207,11 @@ void GLUTKeyboardDown(unsigned char key, int x, int y)
 	case ']':
 		g_options.exposure += 0.01f;
 		break;
+	case 'i':
+	{
+		WritePng(g_filtered, g_options.width, g_options.height, "images\\output.png");
+		break;
+	}
 	case 'q':
 	case 27:
 		exit(0);

@@ -151,7 +151,7 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 				// that you sample through a small window
 				const float kTolerance = 1.e-2f;
 
-				//if (fabsf(tSq - dSq) <= kTolerance)
+				if (fabsf(sqrtf(tSq) - sqrtf(dSq)) <= kTolerance)
 				{				
 					const float nl = Dot(lightNormal, -wi);
 
@@ -298,7 +298,7 @@ __device__ void AddSample(Color* output, int width, int height, float rasterX, f
 			int x = int(rasterX);
 			int y = int(rasterY);
 
-			output[(height-1-y)*width+x] += Color(sample.x, sample.y, sample.z, 1.0f);
+			output[y*width+x] += Color(sample.x, sample.y, sample.z, 1.0f);
 			break;
 		}
 		case eFilterGaussian:
@@ -316,7 +316,7 @@ __device__ void AddSample(Color* output, int width, int height, float rasterX, f
 
 					//output[(height-1-y)*width+x] += Color(Min(sample.x, clamp), Min(sample.y, clamp), Min(sample.z, clamp), 1.0f)*w;
 
-					const int index = (height-1-y)*width+x;
+					const int index = y*width+x;
 
 
 
@@ -361,11 +361,11 @@ __global__ void RenderGpu(GPUScene scene, CameraSampler sampler, Options options
 			if (Trace(scene, Ray(origin, dir, 1.0f), t, n, &p))
 			{
 				n = n*0.5f+0.5f;
-				output[(options.height-1-j)*options.width+i] = Color(n.x, n.y, n.z, 1.0f);
+				output[j*options.width+i] = Color(n.x, n.y, n.z, 1.0f);
 			}
 			else
 			{
-				output[(options.height-1-j)*options.width+i] = Color(0.5f);
+				output[j*options.width+i] = Color(0.5f);
 			}
 		}
 		else if (options.mode == ePathTrace)

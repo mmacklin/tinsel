@@ -129,6 +129,7 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 	// original dimensions from Veach's paper
 	options->width = 500;
 	options->height = 450;
+	options->exposure = 0.5f;
 
 	//options->maxSamples = 4;
 	options->clamp = 4.0f;

@@ -76,6 +76,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mesh.cpp" />
     <ClCompile Include="src\platform.cpp" />
+    <ClCompile Include="src\png.cpp" />
     <ClCompile Include="src\render.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -89,6 +90,7 @@
     <ClInclude Include="src\loader.h" />
     <ClInclude Include="src\maths.h" />
     <ClInclude Include="src\mesh.h" />
+    <ClInclude Include="src\png.h" />
     <ClInclude Include="src\render.h" />
     <ClInclude Include="src\scene.h" />
     <ClInclude Include="src\skylight.h" />

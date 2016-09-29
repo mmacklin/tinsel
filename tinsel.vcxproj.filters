@@ -36,6 +36,9 @@
     <ClCompile Include="src\render.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\png.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bvh.h">
@@ -78,6 +81,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\tests\testVeach.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\png.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
