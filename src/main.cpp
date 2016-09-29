@@ -209,7 +209,7 @@ void GLUTKeyboardDown(unsigned char key, int x, int y)
 		break;
 	case 'i':
 	{
-		WritePng(g_filtered, g_options.width, g_options.height, "images\\output.png");
+		WritePng(g_filtered, g_options.width, g_options.height, "images/output.png");
 		break;
 	}
 	case 'q':
@@ -293,7 +293,7 @@ int main(int argc, char* argv[])
     // set up defaults
     g_options.width = 512;
     g_options.height = 256;
-    g_options.filter = Filter(eFilterGaussian, 1.0f, 2.0f);
+    g_options.filter = Filter(eFilterGaussian, 1.1f, 1.0f);
     g_options.mode = eNormals;
     g_options.exposure = 1.0f;
 	g_options.clamp = FLT_MAX;

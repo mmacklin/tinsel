@@ -1485,3 +1485,19 @@ CUDA_CALLABLE inline T ClampLength(const T& v, float maxLength)
 		return v;
 	}
 }
+
+
+CUDA_CALLABLE inline void ValidateImpl(float x, const char* file, int line)
+{
+	if (!isfinite(x))
+		printf("Fail: %s, %d\n", file, line);
+}
+
+CUDA_CALLABLE inline void ValidateImpl(const Color& c, const char* file, int line)
+{
+	if (!isfinite(c.x) || !isfinite(c.y) || !isfinite(c.z))
+		printf("Fail: %s, %d\n", file, line);
+}
+
+#define Validate(x) ValidateImpl(x, __FILE__, __LINE__)
+

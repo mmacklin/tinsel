@@ -109,7 +109,6 @@ CUDA_CALLABLE inline Vec3 BRDFSample(const Material& mat, const Vec3& P, const M
     }
     else
     {
-	    const Vec3 n = frame.GetCol(2);
 	    const float a = Max(0.001f, mat.roughness);
 
         const float r1 = rand.Randf();

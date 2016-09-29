@@ -323,20 +323,22 @@ static uint32_t adler32(uint32_t state, const uint8_t *data, size_t len) {
 
 inline uint8_t Quantize(float x)
 {
-	return (uint8_t)(Clamp(x, 0.0f, 1.0f) * 255);
+	return uint8_t(Clamp(x, 0.0f, 255.0f));
 }
 
 void WritePng(const Color* pixels, int width, int height, const char* filename)
 {
 	uint8_t* buffer = new uint8_t[width*height*3];
 
+	Random rand;
+
 	for (int i=0; i < width*height; ++i)
 	{
 		Color c = pixels[i];
 
-		buffer[i*3+0] = Quantize(c.x);
-		buffer[i*3+1] = Quantize(c.y);
-		buffer[i*3+2] = Quantize(c.z);
+		buffer[i*3+0] = Quantize(c.x*255.0 + rand.Randf() + rand.Randf() - 0.5f);
+		buffer[i*3+1] = Quantize(c.y*255.0 + rand.Randf() + rand.Randf() - 0.5f);
+		buffer[i*3+2] = Quantize(c.z*255.0 + rand.Randf() + rand.Randf() - 0.5f);
 	}
 
 	FILE *fout = fopen(filename, "wb");

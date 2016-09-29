@@ -16,20 +16,6 @@ struct GPUScene
 	Sky sky;
 };
 
-CUDA_CALLABLE void ValidateImpl(float x, const char* file, int line)
-{
-	if (!isfinite(x))
-		printf("Fail: %s, %d\n", file, line);
-}
-
-CUDA_CALLABLE void ValidateImpl(const Color& c, const char* file, int line)
-{
-	if (!isfinite(c.x) || !isfinite(c.y) || !isfinite(c.z))
-		printf("Fail: %s, %d\n", file, line);
-}
-
-#define Validate(x) ValidateImpl(x, __FILE__, __LINE__)
-
 #define kBrdfSamples 1.0f
 
 MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
@@ -308,6 +294,9 @@ __device__ void AddSample(Color* output, int width, int height, float rasterX, f
 			int endX = Min(int(rasterX + filter.width), width-1);
 			int endY = Min(int(rasterY + filter.width), height-1);
 
+			Color c =  ClampLength(sample, clamp);
+			c.w = 1.0f;
+
 			for (int x=startX; x <= endX; ++x)
 			{
 				for (int y=startY; y <= endY; ++y)
@@ -318,15 +307,10 @@ __device__ void AddSample(Color* output, int width, int height, float rasterX, f
 
 					const int index = y*width+x;
 
-
-
-					Color c =  ClampLength(sample, clamp)*w;
-					c.w = w;
-
-					atomicAdd(&output[index].x, c.x);
-					atomicAdd(&output[index].y, c.y);
-					atomicAdd(&output[index].z, c.z);
-					atomicAdd(&output[index].w, c.w);
+					atomicAdd(&output[index].x, c.x*w);
+					atomicAdd(&output[index].y, c.y*w);
+					atomicAdd(&output[index].z, c.z*w);
+					atomicAdd(&output[index].w, w);
 				}
 			}
 		

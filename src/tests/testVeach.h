@@ -88,7 +88,7 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 	{
 		SrgbToLinear(Color(250.0f, 180.0f, 220.0f)/255.f),
 		SrgbToLinear(Color(250.0, 240.0, 170.0)/255.f),
-		SrgbToLinear(Color(210.0, 250.0, 170.0)/255.f),
+		SrgbToLinear(Color(180.0, 250.0, 170.0)/255.f),
 		SrgbToLinear(Color(120.0, 150.0, 220.0)/155.f)
 	};
 
