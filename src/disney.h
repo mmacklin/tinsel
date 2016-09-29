@@ -20,6 +20,8 @@
 
 #include "maths.h"
 
+#define DISABLE_IMPORTANCE 0 
+
 CUDA_CALLABLE inline float sqr(float x) { return x*x; }
 
 CUDA_CALLABLE inline float SchlickFresnel(float u)
@@ -56,23 +58,47 @@ CUDA_CALLABLE inline float smithG_GGX(float NDotv, float alphaG)
     return 1/(NDotv + sqrtf(a + b - a*b));
 }
 
-
-// generate an importance sampled brdf direction
-CUDA_CALLABLE inline void BRDFSample(const Material& mat, const Vec3& P, const Mat33& frame, const Vec3& V, Vec3& outDir, float& outPdf, Random& rand)
+CUDA_CALLABLE inline float BRDFPdf(const Material& mat, const Vec3& P, const Vec3& n, const Vec3& V, const Vec3& L)
 {
 
-#if 0
-	
-	outDir = frame*UniformSampleHemisphere(rand);
-	outPdf = kInv2Pi;
+#if DISABLE_IMPORTANCE
+
+	return kInv2Pi;
 
 #else
 
-    const Vec3 n = frame.GetCol(2);
     const float a = Max(0.001f, mat.roughness);
 
+	const Vec3 half = SafeNormalize(L+V);
+
+	const float cosThetaHalf = Abs(Dot(half, n));
+    const float pdfHalf = GTR2(cosThetaHalf, a)*cosThetaHalf;
+
+    // calculate pdf for each method given outgoing light vector
+    float pdfSpec = pdfHalf*0.25f/Max(1.e-4f, Abs(Dot (L, half)));
+    assert(isfinite(pdfSpec));
+
+    float pdfDiff = Abs(Dot(L, n))*kInvPi;
+    assert(isfinite(pdfDiff));
+
+    // weight pdfs according to roughness
+    return Lerp(pdfSpec, pdfDiff, mat.roughness);
+	
+#endif
+
+}
+
+// generate an importance sampled brdf direction
+CUDA_CALLABLE inline Vec3 BRDFSample(const Material& mat, const Vec3& P, const Mat33& frame, const Vec3& V, Random& rand)
+{
+
+#if DISABLE_IMPORTANCE
+	
+	return frame*UniformSampleHemisphere(rand);
+
+#else
+
     Vec3 light;
-    Vec3 half;
 
     const float select = rand.Randf();
 
@@ -80,12 +106,12 @@ CUDA_CALLABLE inline void BRDFSample(const Material& mat, const Vec3& P, const M
     {
         // sample diffuse
         light = frame*CosineSampleHemisphere(rand);
-
-        // half vector used for spec pdf
-        half = Normalize(light + V);
     }
     else
     {
+	    const Vec3 n = frame.GetCol(2);
+	    const float a = Max(0.001f, mat.roughness);
+
         const float r1 = rand.Randf();
         const float r2 = rand.Randf();
 
@@ -96,24 +122,12 @@ CUDA_CALLABLE inline void BRDFSample(const Material& mat, const Vec3& P, const M
         const float sinPhiHalf = sinf(phiHalf);
         const float cosPhiHalf = cosf(phiHalf);
 
-        half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
+        Vec3 half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
         
         light = 2.0f*Dot(V, half)*half - V;
     }
 
-    const float cosThetaHalf = Abs(Dot(half, n));
-    const float pdfHalf = GTR2(cosThetaHalf, a)*cosThetaHalf;
-
-    // calculate pdf for each method given outgoing light vector
-    float pdfSpec = pdfHalf*0.25f/Max(1.e-4f, Abs(Dot (light, half)));
-    assert(isfinite(pdfSpec));
-
-    float pdfDiff = Abs(Dot(light, n))*kInvPi;
-    assert(isfinite(pdfDiff));
-
-    // weight pdfs according to roughness
-    outPdf = Lerp(pdfSpec, pdfDiff, mat.roughness);
-    outDir = light;
+	return light;
 
 #endif
 }

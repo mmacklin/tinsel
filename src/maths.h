@@ -1472,3 +1472,16 @@ CUDA_CALLABLE inline Transform InterpolateTransform(const Transform& a, const Tr
 }
 
 
+template <typename T>
+CUDA_CALLABLE inline T ClampLength(const T& v, float maxLength)
+{
+	float l = Length(v);
+	if (l > maxLength)
+	{
+		return v*(maxLength/l);
+	}
+	else
+	{
+		return v;
+	}
+}

@@ -58,7 +58,9 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 
 				sscanf(line, " width %d", &options->width);
 				sscanf(line, " height %d", &options->height);
-				sscanf(line, " numSamples %d", &options->numSamples);
+				sscanf(line, " maxSamples %d", &options->maxSamples);
+				sscanf(line, " maxDepth %d", &options->maxDepth);
+
 
 				sscanf(line, " clamp %f", &options->clamp);
 				sscanf(line, " exposure %f", &options->exposure);

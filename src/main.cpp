@@ -47,7 +47,7 @@ Color* g_pixels;
 Color* g_filtered;
 
 // 
-int g_iterationCount;
+int g_sampleCount;
 
 
 double GetSeconds();
@@ -60,7 +60,7 @@ void Render()
     {
         camera.position = g_camPos;
         camera.rotation = Quat(Vec3(0.0f, 1.0f, 0.0f), g_camAngle.x)*Quat(Vec3(1.0f, 0.0f, 0.0f), g_camAngle.y);
-        camera.fov = 35.f;
+        camera.fov = DegToRad(35.f);
 
         g_camTransform = Transform(camera.position, camera.rotation);
     }
@@ -68,27 +68,26 @@ void Render()
     {
         camera = g_camera;
     }
-
-
-    double startTime = GetSeconds();
-
+    
 	const int numSamples = 1;
 
-    // take one more sample per-pixel each frame for progressive rendering
-    g_renderer->Render(g_camera, g_options, g_pixels);
+	if (g_sampleCount < g_options.maxSamples)
+	{
+		double startTime = GetSeconds();
 
-    double endTime = GetSeconds();
+		// take one more sample per-pixel each frame for progressive rendering
+		g_renderer->Render(camera, g_options, g_pixels);
 
-    //printf("g_pixels[0] = %f %f %f\n", g_pixels[0].x/g_pixels[0].w, g_pixels[0].y/g_pixels[0].w, g_pixels[0].z/g_pixels[0].w);
-    //printf("g_pixels[0] = %f %f %f\n", g_pixels[0].x, g_pixels[0].y, g_pixels[0].z);
+		double endTime = GetSeconds();
 
-    printf("%d (%.4fms)\n", g_iterationCount, (endTime-startTime)*1000.0f);
-    fflush(stdout);
-                
-
+		printf("%d (%.4fms)\n", g_sampleCount, (endTime-startTime)*1000.0f);
+		fflush(stdout);
+	}
+               
+	// copy to frame buffer
     Color* presentMem = g_pixels;
 
-    g_iterationCount += numSamples;
+    g_sampleCount += numSamples;
 
     if (g_options.mode == ePathTrace)
     {
@@ -121,7 +120,7 @@ void InitFrameBuffer()
     g_pixels = new Color[g_options.width*g_options.height];
     g_filtered = new Color[g_options.width*g_options.height];
 
-    g_iterationCount = 0;
+    g_sampleCount = 0;
 
 	printf("%d %d\n", g_options.width, g_options.height);
 
@@ -130,6 +129,7 @@ void InitFrameBuffer()
 
 #include "tests/testMaterials.h"
 #include "tests/testMesh.h"
+#include "tests/testVeach.h"
 #include "tests/testMotionBlur.h"
 
 void Init()
@@ -186,6 +186,9 @@ void GLUTKeyboardDown(unsigned char key, int x, int y)
     case 'd':
         g_camPos += Vec3(g_camTransform.GetCol(0))*g_flySpeed; resetFrame = true;
         break;
+	case 'f':
+		g_flyMode = !g_flyMode;
+		break;
 	case '1':
 		g_options.mode = eNormals;
 		break;
@@ -283,11 +286,11 @@ int main(int argc, char* argv[])
     g_options.width = 512;
     g_options.height = 256;
     g_options.filter = Filter(eFilterGaussian, 1.0f, 2.0f);
-    g_options.numSamples = 1;
     g_options.mode = eNormals;
     g_options.exposure = 1.0f;
 	g_options.clamp = FLT_MAX;
 	g_options.maxDepth = 4;
+	g_options.maxSamples = INT_MAX;
 
     g_camera.position = Vec3(0.0f, 1.0f, 5.0f);
     g_camera.rotation = Quat();
@@ -314,8 +317,11 @@ int main(int argc, char* argv[])
     else
     {
         // default test scene
-        TestMaterials(&g_scene, &g_camera, &g_options);
+        TestVeach(&g_scene, &g_camera, &g_options);
     }
+
+	// set fly cam
+	g_camPos = g_camera.position;	
 
     // allow command line to override options
     ProcessCommandLine(argc, argv);

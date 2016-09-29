@@ -142,23 +142,16 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             {
 				totalRadiance += hit->material.emission;
             }
-            else
-			{
-				totalRadiance += 0.25*pathThroughput*hit->material.emission;
-			}
 
-	    	// integral of Le over hemisphere
-        	totalRadiance += 0.75*pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
+        	totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
 #else
 
             totalRadiance += pathThroughput*hit->material.emission;
 #endif
 
             // update position and path direct  ion
-            //const Vec3 outDir = Mat33(u, v, n)*UniformSampleHemisphere(rand);
-            Vec3 outDir;
-            float outPdf;
-            BRDFSample(hit->material, p, Mat33(u, v, n), -rayDir, outDir, outPdf, rand);
+            Vec3 outDir = BRDFSample(hit->material, p, Mat33(u, v, n), -rayDir, rand);
+			float outPdf = BRDFPdf(hit->material, p, n, -rayDir, outDir);
 
             // reflectance
             Color f = BRDFEval(hit->material, p, n, -rayDir, outDir);

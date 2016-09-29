@@ -16,6 +16,21 @@ struct GPUScene
 	Sky sky;
 };
 
+CUDA_CALLABLE void ValidateImpl(float x, const char* file, int line)
+{
+	if (!isfinite(x))
+		printf("Fail: %s, %d\n", file, line);
+}
+
+CUDA_CALLABLE void ValidateImpl(const Color& c, const char* file, int line)
+{
+	if (!isfinite(c.x) || !isfinite(c.y) || !isfinite(c.z))
+		printf("Fail: %s, %d\n", file, line);
+}
+
+#define Validate(x) ValidateImpl(x, __FILE__, __LINE__)
+
+#define kBrdfSamples 1.0f
 
 MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 {
@@ -86,7 +101,7 @@ __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& 
 }
 
 
-__device__ inline Color SampleLights(const GPUScene& scene, const Primitive& primitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
+__device__ inline Color SampleLights(const GPUScene& scene, const Primitive& surfacePrimitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Color sum(0.0f);
 
@@ -107,9 +122,8 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& pri
 			// sample light source
 			Vec3 lightPos;
 			Vec3 lightNormal;
-			float lightArea;
 
-			Sample(lightPrimitive, time, lightPos, lightNormal, lightArea, rand);
+			LightSample(lightPrimitive, time, lightPos, lightNormal, rand);
 			
 			Vec3 wi = lightPos-surfacePos;
 			
@@ -135,18 +149,27 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& pri
 				// if our next hit was further than distance to light then accept
 				// sample, this works for portal sampling where you have a large light
 				// that you sample through a small window
-				const float kTolerance = 1.e-3f;
+				const float kTolerance = 1.e-2f;
 
-				if (tSq - dSq >= -kTolerance)
-				{
-					const Color f = BRDFEval(primitive.material, surfacePos, surfaceNormal, wi, wo);
-
-					// light pdf					
-					const float lightPdf = 1.0f/lightArea;
-				
+				//if (fabsf(tSq - dSq) <= kTolerance)
+				{				
 					const float nl = Dot(lightNormal, -wi);
 
-					L += f * hit->material.emission * (Abs(Dot(wi, surfaceNormal))*nl /Max(1.e-3f, t*t*lightPdf));
+					// light pdf with respect to area and convert to pdf with respect to solid angle
+					float lightArea = LightArea(lightPrimitive);
+					float lightPdf = ((1.0f/lightArea)*tSq)/nl;
+
+					// brdf pdf for light's direction
+					float brdfPdf = BRDFPdf(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+					Color f = BRDFEval(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+
+					// calculate relative weighting of the light and brdf sampling
+					int N = lightPrimitive.lightSamples+kBrdfSamples;
+					float cbrdf = kBrdfSamples/N;
+					float clight = float(lightPrimitive.lightSamples)/N;
+					float weight = clight*lightPdf/(cbrdf*brdfPdf + clight*lightPdf);
+						
+					L += weight*f*hit->material.emission*(Abs(Dot(wi, surfaceNormal))/Max(1.e-3f, lightPdf));
 				}
 			}
 		}
@@ -159,7 +182,7 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& pri
 
 
 // reference, no light sampling, uniform hemisphere sampling
-__device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3& dir, float time, Random& rand)
+__device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3& dir, float time, int maxDepth, Random& rand)
 {	
     // path throughput
     Color pathThroughput(1.0f, 1.0f, 1.0f, 1.0f);
@@ -174,46 +197,72 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
     Vec3 n(rayDir);
     const Primitive* hit;
 
-	const int maxDepth = 4;
+	float brdfPdf = 1.0f;
 
     for (int i=0; i < maxDepth; ++i)
     {
         // find closest hit
         if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
         {	
+#if 1
+			
+			if (i == 0)
+			{
+				// first trace is our only chance to add contribution from directly visible light sources        
+				totalRadiance += hit->material.emission;
+			}			
+			else if (kBrdfSamples > 0)
+			{
+				// area pdf that this dir was already included by the light sampling from previous step
+				float lightArea = LightArea(*hit);
+
+				if (lightArea > 0.0f)
+				{
+					// convert to pdf with respect to solid angle
+					float lightPdf = ((1.0f/lightArea)*t*t)/Clamp(Dot(-rayDir, n), 1.e-3f, 1.0f);
+
+					// calculate weight for brdf sampling
+					int N = hit->lightSamples+kBrdfSamples;
+					float cbrdf = kBrdfSamples/N;
+					float clight = float(hit->lightSamples)/N;
+					float weight = cbrdf*brdfPdf/(cbrdf*brdfPdf+ clight*lightPdf);
+							
+					// pathThroughput already includes the brdf pdf
+					totalRadiance += weight*pathThroughput*hit->material.emission;
+				}
+			}
+
             // calculate a basis for this hit point
             Vec3 u, v;
             BasisFromVector(n, &u, &v);
 
             const Vec3 p = rayOrigin + rayDir*t;
 
-			if (i == 0)
-			{
-				// first trace is our only chance to add contribution from directly visible light sources        
-				totalRadiance += hit->material.emission;				
-			}
-			
 			// integrate direct light over hemisphere
 			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
+#else
+			
+			totalRadiance += pathThroughput*hit->material.emission;
+
+#endif
 
 			// integrate indirect light by sampling BRDF
 			Mat33 localFrame(u, v, n);
 
-			Vec3 outDir;
-			float outPdf;
-			BRDFSample(hit->material, p, localFrame, -rayDir, outDir, outPdf, rand);
+            Vec3 brdfDir = BRDFSample(hit->material, p, Mat33(u, v, n), -rayDir, rand);
+			brdfPdf = BRDFPdf(hit->material, p, n, -rayDir, brdfDir);
 
-            if (outPdf == 0.0f)
+            if (brdfPdf == 0.0f)
             	break;
 
             // reflectance
-            Color f = BRDFEval(hit->material, p, n, -rayDir, outDir);
+            Color f = BRDFEval(hit->material, p, n, -rayDir, brdfDir);
 
             // update throughput with primitive reflectance
-            pathThroughput *= f * Clamp(Dot(n, outDir), 0.0f, 1.0f) / outPdf;
+            pathThroughput *= f * Clamp(Dot(n, brdfDir), 0.0f, 1.0f)/brdfPdf;
 
             // update path direction
-            rayDir = outDir;
+            rayDir = brdfDir;
             rayOrigin = p;
         }
         else
@@ -269,7 +318,10 @@ __device__ void AddSample(Color* output, int width, int height, float rasterX, f
 
 					const int index = (height-1-y)*width+x;
 
-					Color c =  Color(Min(sample.x, clamp), Min(sample.y, clamp), Min(sample.z, clamp), 1.0f)*w;
+
+
+					Color c =  ClampLength(sample, clamp)*w;
+					c.w = w;
 
 					atomicAdd(&output[index].x, c.x);
 					atomicAdd(&output[index].y, c.y);
@@ -334,7 +386,7 @@ __global__ void RenderGpu(GPUScene scene, CameraSampler sampler, Options options
 #endif
 
 			//output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
-			Color sample = PathTrace(scene, origin, dir, time, rand);
+			Color sample = PathTrace(scene, origin, dir, time, options.maxDepth, rand);
 
 			AddSample(output, options.width, options.height, fx, fy, options.clamp, options.filter, sample);
 		}
@@ -433,10 +485,7 @@ struct GpuRenderer : public Renderer
 			options.width,
 			options.height);
 
-		for (int i=0; i < options.numSamples; ++i)
-		{
-			RenderGpu<<<kNumBlocks, kNumThreadsPerBlock>>>(sceneGPU, sampler, options, seed.Rand(), output);
-		}
+		RenderGpu<<<kNumBlocks, kNumThreadsPerBlock>>>(sceneGPU, sampler, options, seed.Rand(), output);
 
 		// copy back to output
 		cudaMemcpy(outputHost, output, sizeof(Color)*numThreads, cudaMemcpyDeviceToHost);

@@ -76,7 +76,10 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mesh.cpp" />
     <ClCompile Include="src\platform.cpp" />
-    <ClCompile Include="src\render.cpp" />
+    <ClCompile Include="src\render.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bvh.h" />
@@ -92,6 +95,7 @@
     <ClInclude Include="src\tests\testMaterials.h" />
     <ClInclude Include="src\tests\testMesh.h" />
     <ClInclude Include="src\tests\testMotionBlur.h" />
+    <ClInclude Include="src\tests\testVeach.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\render.cu">
@@ -107,7 +111,9 @@
     <None Include="data\conservation.tin" />
     <None Include="data\cornell.tin" />
     <None Include="data\example.tin" />
+    <None Include="data\gloss.tin" />
     <None Include="data\simple.tin" />
+    <None Include="data\veach.tin" />
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>

@@ -5,13 +5,13 @@ options
 	width 512
 	height 512
 
-	clamp 4.0
+	clamp 4.0	
 }
 
 camera
 {
-	position 0.0 0.1 15.0
-	target 0.0 0.1 0.0
+	position 0.0 1.0 15.0
+	target 0.0 0.0 0.0
 }
 
 material light

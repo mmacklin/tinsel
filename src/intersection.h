@@ -558,9 +558,9 @@ struct MeshQuery
 		const Vec3& b = mesh.positions[mesh.indices[i*3+1]];
 		const Vec3& c = mesh.positions[mesh.indices[i*3+2]];
 
-		if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
-		//float sign;
-		//if (IntersectRayTriTwoSided(rayOrigin, rayDir, a, b, c, t, u, v, w, sign, &n))
+		//if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
+		float sign;
+		if (IntersectRayTriTwoSided(rayOrigin, rayDir, a, b, c, t, u, v, w, sign, &n))
 		{
 			if (t > 0.0f && t < closestT)
 			{
@@ -650,9 +650,31 @@ CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3&
 
 
 //-------------
-// randomly samples a point on a primitive and returns the point's normal
+// pdf that a point and dir were sampled by the light (assuming the ray hits the shape)
 
-CUDA_CALLABLE inline void Sample(const Primitive& p, float time, Vec3& pos, Vec3& normal, float& area, Random& rand)
+CUDA_CALLABLE inline float LightArea(const Primitive& p)
+{
+	switch (p.type)
+	{
+		case eSphere:
+		{
+			float area = 4.0f*kPi*p.sphere.radius*p.sphere.radius;  
+			return area;
+		}
+		case ePlane:
+		{
+			return 0.0f;
+		}
+		case eMesh:
+		{
+			return 0.0f;
+		}
+	};
+
+	return 0.0f;
+}
+
+CUDA_CALLABLE inline void LightSample(const Primitive& p, float time, Vec3& pos, Vec3& normal, Random& rand)
 {
 	Transform transform = InterpolateTransform(p.startTransform, p.endTransform, time);
 
@@ -663,7 +685,6 @@ CUDA_CALLABLE inline void Sample(const Primitive& p, float time, Vec3& pos, Vec3
 			// todo: handle scaling in transform matrix
 			pos = TransformPoint(transform, UniformSampleSphere(rand)*p.sphere.radius);			
 			normal = Normalize(pos-transform.p);
-			area = 4.0f*kPi*p.sphere.radius*p.sphere.radius;  
 
 			return;
 		}

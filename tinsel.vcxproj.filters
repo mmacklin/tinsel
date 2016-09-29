@@ -77,6 +77,9 @@
     <ClInclude Include="src\tests\testMotionBlur.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\tests\testVeach.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
@@ -90,6 +93,12 @@
       <Filter>Examples</Filter>
     </None>
     <None Include="data\simple.tin">
+      <Filter>Examples</Filter>
+    </None>
+    <None Include="data\gloss.tin">
+      <Filter>Examples</Filter>
+    </None>
+    <None Include="data\veach.tin">
       <Filter>Examples</Filter>
     </None>
   </ItemGroup>

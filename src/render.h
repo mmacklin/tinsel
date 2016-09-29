@@ -58,7 +58,7 @@ struct Options
 	float clamp;
 	
 	int maxDepth;
-	int numSamples;
+	int maxSamples;
 };
 
 
