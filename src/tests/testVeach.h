@@ -92,10 +92,13 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 		SrgbToLinear(Color(120.0, 150.0, 220.0)/155.f)
 	};
 
+
 	float radii[4] = { 0.01f, 0.03f, 0.07f, 0.2f };
 
 	for (int i=0; i < 4; ++i)
 	{
+		printf("Luminance %d: %f\n", i, Luminance(colors[i]));
+
 		float area = 4.0f*kPi*radii[i]*radii[i];
 		float power = 1.0f;
 
@@ -119,7 +122,7 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 	light.sphere.radius = 0.1f;
 	light.startTransform = Transform(Vec3(3.0f, 7.0f, 7.0f));
 	light.endTransform = light.startTransform;
-	light.material.emission = Color(10.0f, 10.0f, 10.0f)*100.0f;
+	light.material.emission = Color(10.0f, 10.0f, 10.0f)*200.0f;
 	light.lightSamples = 1;
 	
 	scene->AddPrimitive(light);
@@ -127,11 +130,11 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
     //scene->AddPrimitive(back);	
 
 	// original dimensions from Veach's paper
-	options->width = 500;
-	options->height = 450;
+	options->width = 1000;
+	options->height = 900;
 	options->exposure = 0.5f;
 
-	//options->maxSamples = 4;
+	// only used as a poor mans tone mapping
 	options->clamp = 4.0f;
 }
 

@@ -1471,6 +1471,11 @@ CUDA_CALLABLE inline Transform InterpolateTransform(const Transform& a, const Tr
 	return Transform(Lerp(a.p, b.p, t), Normalize(Lerp(a.r, b.r, t)), Lerp(a.s, b.s, t));
 }
 
+CUDA_CALLABLE inline float Luminance(const Color& c)
+{
+	return c.x*0.3f + c.y*0.6f + c.z*0.1f;
+}
+
 
 template <typename T>
 CUDA_CALLABLE inline T ClampLength(const T& v, float maxLength)

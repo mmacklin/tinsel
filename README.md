@@ -104,6 +104,7 @@ tinsel -interactive scene.tin
 Todo List
 ---------
 
+[x] Multiple importance sampling
 [x] Mesh affine transformation support
 [ ] Mesh, Disc, Sphere, Plane primitives
 [ ] Mesh sampling
@@ -114,10 +115,11 @@ Todo List
 [x] Scene sky parameters
 [x] Scene camera parameters
 [ ] Scene include files
-[ ] Scene camera definition
+[x] Scene camera definition
 [ ] Tone mapping
 [ ] Bloom filter
-[ ] Output formats
+[x] Output formats
+[ ] Triangular noise dither
 [ ] FFmpeg encoding
 [x] Reconstruction filter
 [x] Correctness checks

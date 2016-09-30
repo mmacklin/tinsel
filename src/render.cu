@@ -137,7 +137,7 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 				// that you sample through a small window
 				const float kTolerance = 1.e-2f;
 
-				if (fabsf(sqrtf(tSq) - sqrtf(dSq)) <= kTolerance)
+				if (fabsf(t - sqrtf(dSq)) <= kTolerance)
 				{				
 					const float nl = Dot(lightNormal, -wi);
 
