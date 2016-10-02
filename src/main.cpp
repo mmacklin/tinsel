@@ -98,7 +98,7 @@ void Render()
         {            
             float s = g_options.exposure / g_pixels[i].w;
 
-            g_filtered[i] = LinearToSrgb(g_pixels[i] * s);
+            g_filtered[i] = LinearToSrgb(ToneMap(g_pixels[i] * s, g_options.limit));
         }
 
         presentMem = g_filtered;
@@ -296,6 +296,7 @@ int main(int argc, char* argv[])
     g_options.filter = Filter(eFilterGaussian, 1.1f, 1.0f);
     g_options.mode = eNormals;
     g_options.exposure = 1.0f;
+    g_options.limit = 1.5f;
 	g_options.clamp = FLT_MAX;
 	g_options.maxDepth = 4;
 	g_options.maxSamples = INT_MAX;

@@ -19,11 +19,11 @@ inline MeshGeometry GeometryFromMesh(const Mesh* mesh)
 }
 
 	
-CUDA_CALLABLE inline Color ToneMap(const Color& c)
+CUDA_CALLABLE inline Color ToneMap(const Color& c, float limit)
 {
 	float luminance = 0.3f*c.x + 0.6f*c.y + 0.1f*c.z;
 
-	return c * 1.0f/(1.0f + luminance);
+	return c * 1.0f/(1.0f + luminance/limit);
 }
 
 

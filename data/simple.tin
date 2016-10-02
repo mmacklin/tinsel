@@ -1,5 +1,10 @@
 # emissive sphere above plane
 
+options
+{
+	maxDepth 1
+}
+
 material light
 {
 	emission 1.0 1.0 1.0

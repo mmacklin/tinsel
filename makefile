@@ -12,7 +12,7 @@ HEADERS = $(wildcard src/*.h)
 OBJECTS = $(SOURCES:.cpp=.o) 
 
 all: $(TARGET)
-	./$(TARGET) data/emitter.tin
+	./$(TARGET) 
 
 $(TARGET): $(OBJECTS) makefile
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(TARGET) 

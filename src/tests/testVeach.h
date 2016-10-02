@@ -97,8 +97,6 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 
 	for (int i=0; i < 4; ++i)
 	{
-		printf("Luminance %d: %f\n", i, Luminance(colors[i]));
-
 		float area = 4.0f*kPi*radii[i]*radii[i];
 		float power = 1.0f;
 
@@ -127,14 +125,14 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 	
 	scene->AddPrimitive(light);
 	scene->AddPrimitive(ground);
-    //scene->AddPrimitive(back);	
+    //scene->AddPrimitive(back);
 
 	// original dimensions from Veach's paper
-	options->width = 1000;
-	options->height = 900;
+	options->width = 500;
+	options->height = 450;
 	options->exposure = 0.5f;
 
 	// only used as a poor mans tone mapping
-	options->clamp = 4.0f;
+	//options->clamp = 4.0f;
 }
 
