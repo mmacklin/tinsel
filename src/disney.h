@@ -20,7 +20,7 @@
 
 #include "maths.h"
 
-#define DISABLE_IMPORTANCE 0 
+#define DISABLE_IMPORTANCE 0
 
 CUDA_CALLABLE inline float sqr(float x) { return x*x; }
 

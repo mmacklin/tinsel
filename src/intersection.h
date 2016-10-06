@@ -544,7 +544,6 @@ CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, con
 	}		
 }
 
-
 struct MeshQuery
 {
 	CUDA_CALLABLE inline MeshQuery(const MeshGeometry& m, const Vec3& origin, const Vec3& dir) : mesh(m), rayOrigin(origin), rayDir(dir), closestT(FLT_MAX) {}
@@ -558,9 +557,7 @@ struct MeshQuery
 		const Vec3& b = mesh.positions[mesh.indices[i*3+1]];
 		const Vec3& c = mesh.positions[mesh.indices[i*3+2]];
 
-		//if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
-		float sign;
-		if (IntersectRayTriTwoSided(rayOrigin, rayDir, a, b, c, t, u, v, w, sign, &n))
+		if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
 		{
 			if (t > 0.0f && t < closestT)
 			{
@@ -589,7 +586,7 @@ struct MeshQuery
 };
 
 
-CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3& origin, const Vec3& dir, float& t, float& u, float& v, float& w, int& tri)
+CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3& origin, const Vec3& dir, float& t, float& u, float& v, float& w, int& tri, Vec3& triNormal)
 {
 #if 1
 
@@ -605,6 +602,7 @@ CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3&
 		v = query.closestV;
 		w = query.closestW;	
 		tri = query.closestTri;
+		triNormal = query.closestNormal;
 
 		return true;
 	}
@@ -749,10 +747,10 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 
 			float t, u, v, w;
 			int tri;
+			Vec3 triNormal;
 
 			// transform ray to mesh space
-			bool hit = IntersectRayMesh(p.mesh, localOrigin, localDir, t, u, v, w, tri);
-			//bool hit = IntersectRayMesh(p.mesh, ray.origin, ray.dir, t, u, v, w, tri);
+			bool hit = IntersectRayMesh(p.mesh, localOrigin, localDir, t, u, v, w, tri, triNormal);
 			
 			if (hit)
 			{

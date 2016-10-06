@@ -96,6 +96,8 @@ void Render()
 
         for (int i=0; i < numPixels; ++i)
         {            
+            assert(g_pixels[i].w > 0.0f);
+            
             float s = g_options.exposure / g_pixels[i].w;
 
             g_filtered[i] = LinearToSrgb(ToneMap(g_pixels[i] * s, g_options.limit));

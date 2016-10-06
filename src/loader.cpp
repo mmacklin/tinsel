@@ -63,7 +63,9 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 
 
 				sscanf(line, " clamp %f", &options->clamp);
+				sscanf(line, " limit %f", &options->limit);
 				sscanf(line, " exposure %f", &options->exposure);
+
 
 				char type[kMaxLineLength];
 				sscanf(line, " filter %s %f %f", type, &options->filter.width, &options->filter.falloff);

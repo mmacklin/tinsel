@@ -17,6 +17,8 @@ struct BVHNode
 	bool leaf : 1;
 };
 
+static_assert(sizeof(BVHNode) == 32, "Error BVHNode size larger than expected");
+
 struct BVH
 {
 	BVHNode* nodes;
@@ -51,6 +53,7 @@ struct BVHBuilder
 
 		return bvh;
 	}
+
 
 	std::vector<BVHNode> nodes;
 	int usedNodes;
@@ -139,9 +142,70 @@ private:
 
 		const int k = (start+end)/2;
 
-		std::nth_element(&indices[start], &indices[k], &indices[end], PartitionMedianPredicate(&bounds[0], longestAxis));
+		std::nth_element(&indices[0]+start, &indices[0]+k, &indices[0]+end, PartitionMedianPredicate(&bounds[0], longestAxis));
 
 		return k;
+	}	
+
+	float Area(const Bounds& b)
+	{
+		Vec3 edges = b.GetEdges();
+
+		return 2.0f*(edges.x*edges.y + edges.x*edges.z + edges.y*edges.z);
+
+	}
+
+	int PartitionObjectsSAH(int start, int end, Bounds rangeBounds)
+	{
+		assert(end-start >= 2);
+
+		int n = end-start;
+		Vec3 edges = rangeBounds.GetEdges();
+
+		int longestAxis = LongestAxis(edges);
+
+		// sort along longest axis
+		std::sort(&indices[0]+start, &indices[0]+end, PartitionMedianPredicate(&bounds[0], longestAxis));
+
+		// total area for range from [0, split]
+		std::vector<float> leftAreas(n);
+		// total area for range from (split, end]
+		std::vector<float> rightAreas(n);
+
+		Bounds left;
+		Bounds right;
+
+		// build cumulative bounds and area from left and right
+		for (int i=0; i < n; ++i)
+		{
+			left = Union(left, bounds[indices[start+i]]);
+			right = Union(right, bounds[indices[end-i-1]]);
+
+			leftAreas[i] = Area(left);
+			rightAreas[n-i-1] = Area(right);
+		}
+
+		float invTotalArea = 1.0f/Area(rangeBounds);
+
+		// find split point i that minimizes area(left[i]) + area(right[i])
+		int minSplit = 0;
+		float minCost = FLT_MAX;
+
+		for (int i=0; i < n; ++i)
+		{
+			float pBelow = leftAreas[i]*invTotalArea;
+			float pAbove = rightAreas[i]*invTotalArea;
+
+			float cost = pBelow*i + pAbove*(n-i);
+
+			if (cost < minCost)
+			{
+				minCost = cost;
+				minSplit = i;
+			}
+		}
+
+		return start + minSplit + 1;
 	}	
 
 	int AddNode()
@@ -154,7 +218,7 @@ private:
 		return index;
 	}
 
-	// returns the index of the node created for this range
+	// returns the index of the node created for this range [start, end)
 	int BuildRecursive(int start, int end)
 	{
 		assert(start < end);
@@ -173,23 +237,14 @@ private:
 		else
 		{
 			//const int split = PartitionObjectsMidPoint(start, end, node.bounds);
-			int split = PartitionObjectsMedian(start, end, node.bounds);
+			//int split = PartitionObjectsMedian(start, end, node.bounds);
+			int split = PartitionObjectsSAH(start, end, node.bounds);
 
 			if (split == start || split == end)
 			{
-				/*
-				// end splitting early if partitioning fails (only applies to midpoint, not object splitting)
-				node.leaf = true;
-				node.leftIndex = start;
-				node.rightIndex = end;
-				*/
-
-				// split at mid point
-				assert(0);
-				printf("hhow ?");
+				// partitioning failed, split down the middle
+				split = (start+end)/2;
 			}
-
-			
 
 			node.leaf = false;
 			node.leftIndex = BuildRecursive(start, split);
@@ -201,5 +256,7 @@ private:
 
 		return nodeIndex;
 	}
+
+
 };
 

@@ -148,6 +148,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
         // find closest hit
         if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
         {	
+
 #if 1
 			
 			if (i == 0)
@@ -176,16 +177,24 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 				}
 			}
 
-            // calculate a basis for this hit point
+        	// calculate a basis for this hit point
+            Vec3 u, v;
+            BasisFromVector(n, &u, &v);
+
+            const Vec3 p = rayOrigin + rayDir*t + n*0.001f;
+
+			// integrate direct light over hemisphere
+			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);			
+
+			//totalRadiance = Color(u*0.5f + 0.5f, 1.0f);
+#else
+
+        	// calculate a basis for this hit point
             Vec3 u, v;
             BasisFromVector(n, &u, &v);
 
             const Vec3 p = rayOrigin + rayDir*t;
 
-			// integrate direct light over hemisphere
-			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
-#else
-			
 			totalRadiance += pathThroughput*hit->material.emission;
 
 #endif
@@ -196,7 +205,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             Vec3 brdfDir = BRDFSample(hit->material, p, Mat33(u, v, n), -rayDir, rand);
 			brdfPdf = BRDFPdf(hit->material, p, n, -rayDir, brdfDir);
 
-            if (brdfPdf == 0.0f)
+            if (brdfPdf <= 0.0f)
             	break;
 
             // reflectance
@@ -234,22 +243,25 @@ struct CpuRenderer : public Renderer
 		{
 			case eFilterBox:
 			{		
-				int x = Min(width-1, int(rasterX));
-				int y = Min(height-1, int(rasterY));
+				int startX = Max(0, int(rasterX - filter.width));
+				int startY = Max(0, int(rasterY - filter.width));
+				int endX = Min(int(rasterX + filter.width), width-1);
+				int endY = Min(int(rasterY + filter.width), height-1);
 
-				output[y*width+x] += Color(sample.x, sample.y, sample.z, 1.0f);
-				/*
-				Color old = output[(height-1-y)*width+x];
-				float oldCount = old.w;
-				float newCount = oldCount + 1.0f;
+				Color c =  ClampLength(sample, clamp);
+				c.w = 1.0f;
 
-				output[(height-1-y)*width+x].x += (sample.x - old.x) / newCount;
-				output[(height-1-y)*width+x].y += (sample.y - old.y) / newCount;
-				output[(height-1-y)*width+x].z += (sample.z - old.z) / newCount;
-				output[(height-1-y)*width+x].w = newCount;
-				*/
+				for (int x=startX; x <= endX; ++x)
+				{
+					for (int y=startY; y <= endY; ++y)
+					{
+						float w = 1.0f;
 
-				return;
+						output[y*width+x] += c*w;
+					}
+				}
+
+				break;
 			}
 			case eFilterGaussian:
 			{
@@ -270,6 +282,7 @@ struct CpuRenderer : public Renderer
 						output[y*width+x] += c*w;
 					}
 				}
+				break;
 			}
 		};
 	}
@@ -298,7 +311,7 @@ struct CpuRenderer : public Renderer
 					switch (options.mode)
 					{
 						case ePathTrace:
-						{							
+						{	
 							const float x = i + rand.Randf(-0.5f, 0.5f) + 0.5f;
 							const float y = j + rand.Randf(-0.5f, 0.5f) + 0.5f;
 
@@ -317,8 +330,8 @@ struct CpuRenderer : public Renderer
 						}
 						case eNormals:
 						{
-							const float x = i + 0.5f;
-							const float y = j + 0.5f;
+							const float x = i;// + 0.5f;
+							const float y = j;// + 0.5f;
 
 							sampler.GenerateRay(x, y, origin, dir);
 

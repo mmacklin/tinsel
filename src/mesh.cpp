@@ -1,5 +1,6 @@
 #include "mesh.h"
 #include "maths.h"
+#include "util.h"
 
 #include <map>
 #include <fstream>
@@ -61,7 +62,7 @@ void Mesh::CalculateNormals()
 	int numVertices = int(positions.size());
 
 	for (int i=0; i < numVertices; ++i)
-		normals[i] = ::Normalize(normals[i]);
+		normals[i] = ::SafeNormalize(normals[i]);
 }
 
 namespace 
@@ -335,6 +336,8 @@ void Mesh::RebuildBVH()
 
 Mesh* ImportMeshFromObj(const char* path)
 {
+    double start = GetSeconds();
+
     ifstream file(path);
 
     if (!file)
@@ -533,11 +536,239 @@ Mesh* ImportMeshFromObj(const char* path)
         m->normals[i] = SafeNormalize(m->normals[i], Vec3(0.0f, 1.0f, 0.0f));
     }
         
+    double end = GetSeconds();
+
     //cout << "Imported mesh " << path << " in " << (GetSeconds()-startTime)*1000.f << "ms" << endl;
 	m->RebuildBVH();
 
+    double endBuild = GetSeconds();
+
+    printf("Imported mesh %s (%d vertices, %d triangles) in %fms, build BVH in %fms\n", path, int(m->positions.size()), int(m->indices.size()/3), (end-start)*1000.0f, (endBuild-end)*1000.0f);
+
+
+
     return m;
 }
+
+
+Mesh* ImportMeshFromObjNew(const char* path)
+{
+    double start = GetSeconds();
+
+    FILE* file = fopen(path, "r");
+
+    if (!file)
+    {
+        printf("Could not open %s\n", path);
+        return NULL;
+    }
+
+    Mesh* m = new Mesh();
+
+    vector<Vec3> positions;
+    vector<Vec3> normals; 
+    vector<Vec2> texcoords;
+    vector<Vec3> colors;
+    vector<int>& indices = m->indices;
+
+    //typedef unordered_map<VertexKey, int, MemoryHash<VertexKey> > VertexMap;
+    typedef map<VertexKey, int> VertexMap;
+    VertexMap vertexLookup; 
+
+    // some scratch memory
+    const int kMaxLineLength = 1024;
+    char line[kMaxLineLength];
+
+    //double startTime = GetSeconds();
+
+    while (!feof(file))
+    {
+        fgets(line, kMaxLineLength, file);
+
+        Vec3 v;
+        if (line[0] == 'v')
+        {
+            if (line[1] == ' ')
+            {
+                sscanf(&line[2], "%f %f %f", &v.x, &v.y, &v.z);
+                positions.push_back(v);
+            }
+            else if (line[1] == 'n')
+            {
+                sscanf(&line[2], "%f %f %f", &v.x, &v.y, &v.z);
+                normals.push_back(v);
+            }
+            else if (line[1] == 't')
+            {
+                sscanf(&line[2], "%f %f", &v.x, &v.y);
+                texcoords.push_back(Vec2(v.x, v.y));
+            }
+        }
+        else if (line[0] == 's' || line[0] == 'g' || line[0] == 'o')
+        {
+            // ignore smoothing group  
+        }
+        /*
+        else if (sscanf(line, " mtllib ") == 0)
+        {
+            // ignore material libs
+            //std::string MaterialFile;
+            //file >> MaterialFile;
+        }       
+        else if (sscanf(line, "usemtl") == 0)
+        {
+            // read Material name
+            //std::string materialName;
+            //file >> materialName;
+        }
+        */
+        else if (line[0] == 'f')
+        {
+            // faces
+            int faceIndices[4];
+            int faceIndexCount = 0;
+            int attribCount = 0;
+
+            // eat "f "
+            int cursor = 2;
+            int start = cursor;
+
+            VertexKey key;
+            int* keyptr = (int*)(&key);
+
+            for(;;)
+            {
+                if (line[cursor] == '/' || line[cursor] == ' ' || line[cursor] == 0)
+                {
+                    // read index
+                    sscanf(&line[start], "%d", &keyptr[attribCount]);
+
+                    attribCount++;
+
+                    start = cursor+1;
+
+                }
+
+                // end of vertex definition, add to lookup
+                if (line[cursor] == ' ' || line[cursor] == 0)
+                {
+                    attribCount = 0;
+
+                    // find / add vertex, index
+                    VertexMap::iterator iter = vertexLookup.find(key);
+
+                    if (iter != vertexLookup.end())
+                    {
+                        faceIndices[faceIndexCount] = iter->second;
+                    }
+                    else
+                    {
+                        // add vertex
+                        int newIndex = m->positions.size();
+                        faceIndices[faceIndexCount] = newIndex;
+
+                        vertexLookup.insert(make_pair(key, newIndex));  
+
+                        // push back vertex data
+                        assert(key.v > 0);
+
+                        m->positions.push_back(positions[key.v-1]);
+                        
+                        // obj format doesn't support mesh Colors so add default value
+                        m->Colors.push_back(Color(1.0f, 1.0f, 1.0f));
+
+                        // normal [optional]
+                        if (key.vn)
+                        {
+                            m->normals.push_back(normals[key.vn-1]);
+                        }
+
+                        // texcoord [optional]
+                        if (key.vt)
+                        {
+                            m->texcoords[0].push_back(texcoords[key.vt-1]);
+                        }
+                    }
+            
+                    faceIndexCount++;
+                }
+    
+                if (line[cursor] == 0)
+                    break;
+                
+                ++cursor;
+            }
+
+           // printf("%d %d %d\n", faceIndices[0], faceIndices[1], faceIndices[2]);;
+
+            if (faceIndexCount == 3)
+            {
+                // a triangle
+                indices.insert(indices.end(), faceIndices, faceIndices+3);
+            }
+            else if (faceIndexCount == 4)
+            {
+                // a quad, triangulate clockwise
+                indices.insert(indices.end(), faceIndices, faceIndices+3);
+
+                indices.push_back(faceIndices[2]);
+                indices.push_back(faceIndices[3]);
+                indices.push_back(faceIndices[0]);
+            }
+            else
+            {
+                cout << "Face with more than 4 vertices are not supported" << endl;
+            }
+
+        }       
+        /*
+        else if (line[0] == '#')
+        {
+            // comment
+        }
+        */
+    }
+
+    // calculate normals if none specified in file
+    m->normals.resize(m->positions.size());
+
+    const int numFaces = indices.size()/3;
+    for (int i=0; i < numFaces; ++i)
+    {
+        int a = indices[i*3+0];
+        int b = indices[i*3+1];
+        int c = indices[i*3+2];
+
+        Vec3& v0 = m->positions[a];
+        Vec3& v1 = m->positions[b];
+        Vec3& v2 = m->positions[c];
+
+        Vec3 n = SafeNormalize(Cross(v1-v0, v2-v0), Vec3(0.0f, 1.0f, 0.0f));
+
+        m->normals[a] += n;
+        m->normals[b] += n;
+        m->normals[c] += n;
+    }
+
+    for (int i=0; i < m->normals.size(); ++i)
+    {
+        m->normals[i] = SafeNormalize(m->normals[i], Vec3(0.0f, 1.0f, 0.0f));
+    }
+        
+    double end = GetSeconds();
+
+    //cout << "Imported mesh " << path << " in " << (GetSeconds()-startTime)*1000.f << "ms" << endl;
+    m->RebuildBVH();
+
+    double endBuild = GetSeconds();
+
+    printf("Imported mesh %s (%d vertices, %d triangles) in %fms, build BVH in %fms\n", path, int(m->positions.size()), int(m->indices.size()/3), (end-start)*1000.0f, (endBuild-end)*1000.0f);
+
+    fclose(file);
+
+    return m;
+}
+
 
 void ExportToObj(const char* path, const Mesh& m)
 {

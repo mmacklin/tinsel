@@ -83,13 +83,14 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 	}
 
 
-	// lights
+	// lights of roughly constant luminance, will be
+	// scaled to emit equal power according to radius
 	Color colors[4] =
 	{
 		SrgbToLinear(Color(250.0f, 180.0f, 220.0f)/255.f),
 		SrgbToLinear(Color(250.0, 240.0, 170.0)/255.f),
 		SrgbToLinear(Color(180.0, 250.0, 170.0)/255.f),
-		SrgbToLinear(Color(120.0, 150.0, 220.0)/155.f)
+		SrgbToLinear(Color(120.0, 150.0, 220.0)*1.5f/255.f)
 	};
 
 
@@ -97,6 +98,8 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 
 	for (int i=0; i < 4; ++i)
 	{
+		printf("%f", Luminance(colors[i]));
+
 		float area = 4.0f*kPi*radii[i]*radii[i];
 		float power = 1.0f;
 
@@ -131,8 +134,11 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 	options->width = 500;
 	options->height = 450;
 	options->exposure = 0.5f;
+	options->limit = 1.5f;
 
-	// only used as a poor mans tone mapping
-	//options->clamp = 4.0f;
+	options->filter.type = eFilterGaussian;
+	options->filter.width = 1.0f;
+	options->filter.falloff = 1.0f;
+
 }
 

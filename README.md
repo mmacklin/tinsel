@@ -109,17 +109,18 @@ Todo List
 [ ] Mesh, Disc, Sphere, Plane primitives
 [ ] Mesh sampling
 [ ] Multi material meshes
-[ ] SAH and BVH splitting
+[x] SAH and BVH splitting heuristics
 [ ] Clean up mesh allocations
 [ ] Command line interface
 [x] Scene sky parameters
 [x] Scene camera parameters
 [ ] Scene include files
 [x] Scene camera definition
-[ ] Tone mapping
+[x] Tone mapping
 [ ] Bloom filter
+[ ] Blackbody emitters
 [x] Output formats
-[ ] Triangular noise dither
+[x] Triangular noise dither
 [ ] FFmpeg encoding
 [x] Reconstruction filter
 [x] Correctness checks

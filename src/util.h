@@ -66,3 +66,5 @@ struct CameraSampler
 	Mat44 cameraToWorld;
 	Mat44 rasterToWorld;
 };
+
+double GetSeconds();
