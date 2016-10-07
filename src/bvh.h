@@ -11,10 +11,10 @@ struct BVHNode
 	Bounds bounds;
 		
 	// for leaf nodes these store the range into the items array
-	int leftIndex;
-	int rightIndex : 31;
+	unsigned int leftIndex;
+	unsigned int rightIndex : 31;
 
-	bool leaf : 1;
+	unsigned int leaf : 1;
 };
 
 static_assert(sizeof(BVHNode) == 32, "Error BVHNode size larger than expected");

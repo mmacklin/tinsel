@@ -515,7 +515,7 @@ CUDA_CALLABLE inline bool IntersectPlaneAABB(const Vec4& plane, const Vec3& cent
 template <typename Func>
 CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, const Vec3& dir)
 {
-	//const Vec3 rcpDir(1.0f/dir.x, 1.0f/dir.y, 1.0f/dir.z);
+	const Vec3 rcpDir(1.0f/dir.x, 1.0f/dir.y, 1.0f/dir.z);
 
 	const BVHNode* stack[64];
 	stack[0] = root;
@@ -527,15 +527,15 @@ CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, con
 		const BVHNode* n = stack[--count];
 
 		float t;
-		if (IntersectRayAABB(start, dir, n->bounds.lower, n->bounds.upper, t, NULL))
+		//if (IntersectRayAABB(start, dir, n->bounds.lower, n->bounds.upper, t, NULL))
 			
-		//if (IntersectRayAABBFast(start, rcpDir, n->bounds.lower, n->bounds.upper, t))
+		if (IntersectRayAABBFast(start, rcpDir, n->bounds.lower, n->bounds.upper, t))
 		{
 			if (n->leaf)
 			{	
 				f(n->leftIndex);
 			}
-			else
+			else// if (t >= 0.0f)
 			{
 				stack[count++] = &root[n->leftIndex];
 				stack[count++] = &root[n->rightIndex];
@@ -557,7 +557,9 @@ struct MeshQuery
 		const Vec3& b = mesh.positions[mesh.indices[i*3+1]];
 		const Vec3& c = mesh.positions[mesh.indices[i*3+2]];
 
-		if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
+		//if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
+		float sign;
+		if (IntersectRayTriTwoSided(rayOrigin, rayDir, a, b, c, t, u, v, w, sign, &n))
 		{
 			if (t > 0.0f && t < closestT)
 			{
@@ -567,7 +569,7 @@ struct MeshQuery
 				closestW = w;
 
 				closestTri = i;
-				closestNormal = n;
+				closestNormal = n*sign;
 			}
 		}
 	}
@@ -759,8 +761,14 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 				Vec3 n2 = p.mesh.normals[p.mesh.indices[tri*3+1]];
 				Vec3 n3 = p.mesh.normals[p.mesh.indices[tri*3+2]];
 
+				Vec3 smoothNormal = Normalize(TransformVector(transform, u*n1 + v*n2 + w*n3));
+
+				// ensure smooth normal lies on the same side of the geometric normal
+				if (Dot(smoothNormal, triNormal) < 0.0f)
+					smoothNormal *= -1.0f;
+
 				outT = t;
-				*outNormal = Normalize(TransformVector(transform, u*n1 + v*n2 + w*n3));
+				*outNormal = smoothNormal;
 			}			
 
 			return hit;

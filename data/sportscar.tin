@@ -2,48 +2,55 @@
 
 options
 {
-	width 200
-	height 200
+	width 600
+	height 300
+}
+
+sky
+{
+	horizon 0.2 0.4 0.6
+	zenith 0.02 0.05 0.4
 }
 
 camera
 {
-	position 1.0 2.0 5.0
-	target 0.0 0.0 0.0
+	position 2.30804968 0.446040124 2.51327014 
+	rotation -0.0454292409 0.416349620 0.0208347924 0.907829881
 }
 
 material plaster
 {
 	color 0.3 0.3 0.9
-	roughness 0.2
+	roughness 0.5
 	metallic 0.0	
 }
 
 material silver
 {
 	color 0.95 0.93 0.88
-	roughness 0.1
+	roughness 0.2
 	metalic 1.0
 }
 
 material ground
 {
-	color 0.15 0.15 0.85
-	roughness 0.2
+	color 0.05 0.05 0.05
+	roughness 0.1
+	metalic 1.0
 }
 
 material light
 {
-	emission 10.0 10.0 10.0
+	emission 100.0 100.0 100.0
 	color 0.0 0.0 0.0
 }
 
 primitive 
 {
 	type sphere
-	radius 1.0
+	radius 0.5
 
-	position 2.0 5.0 5.0
+	position 5.0 5.0 5.0
 	material light
 
 	lightSamples 1

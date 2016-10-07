@@ -6,14 +6,12 @@
 
 
 #define kBrdfSamples 1.0f
-
+#define kRayEpsilon 0.001f
 
 // trace a ray against the scene returning the closest intersection
 inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
 	// disgard hits closer than this distance to avoid self intersection artifacts
-	const float kEpsilon = 0.00001f;
-
 	float minT = REAL_MAX;
 	const Primitive* closestPrimitive = NULL;
 	Vec3 closestNormal(0.0f);
@@ -27,7 +25,7 @@ inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNorm
 
 		if (Intersect(primitive, ray, t, &n))
 		{
-			if (t < minT && t > kEpsilon)
+			if (t < minT && t > 0.0f)
 			{
 				minT = t;
 				closestPrimitive = &primitive;
@@ -181,7 +179,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             Vec3 u, v;
             BasisFromVector(n, &u, &v);
 
-            const Vec3 p = rayOrigin + rayDir*t + n*0.001f;
+            const Vec3 p = rayOrigin + rayDir*t + n*kRayEpsilon;
 
 			// integrate direct light over hemisphere
 			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);			

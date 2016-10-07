@@ -111,9 +111,18 @@ void Render()
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     
-    //glPixelZoom(float(g_windowWidth)/g_options.width, float(g_windowHeight)/g_options.height);
-	glRasterPos2f(-1,1);
-	glPixelZoom( 1, -1 );
+	glViewport(0, 0, g_options.width, g_options.height);
+	
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0.0f, g_options.width, 0.0f, g_options.height, -1.0f, 1.0f);
+	
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	glPixelZoom(1.0f, -1.0f);
+	glRasterPos2f(0, g_options.height);
+
     glDrawPixels(g_options.width, g_options.height, GL_RGBA, GL_FLOAT, presentMem);
 }
 

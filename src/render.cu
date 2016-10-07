@@ -17,6 +17,7 @@ struct GPUScene
 };
 
 #define kBrdfSamples 1.0f
+#define kRayEpsilon 0.001f
 
 MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 {
@@ -55,8 +56,6 @@ void DestroyGPUMesh(const MeshGeometry& m)
 __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
 	// disgard hits closer than this distance to avoid self intersection artifacts
-	const float kEpsilon = 0.00001f;
-
 	float minT = REAL_MAX;
 	const Primitive* closestPrimitive = NULL;
 	Vec3 closestNormal(0.0f);
@@ -70,7 +69,7 @@ __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& 
 
 		if (Intersect(primitive, ray, t, &n))
 		{
-			if (t < minT && t > kEpsilon)
+			if (t < minT && t > 0.0f)
 			{
 				minT = t;
 				closestPrimitive = &primitive;
@@ -222,7 +221,7 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
             Vec3 u, v;
             BasisFromVector(n, &u, &v);
 
-            const Vec3 p = rayOrigin + rayDir*t;
+            const Vec3 p = rayOrigin + rayDir*t + n*kRayEpsilon;
 
 			// integrate direct light over hemisphere
 			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
@@ -238,7 +237,7 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
             Vec3 brdfDir = BRDFSample(hit->material, p, Mat33(u, v, n), -rayDir, rand);
 			brdfPdf = BRDFPdf(hit->material, p, n, -rayDir, brdfDir);
 
-            if (brdfPdf == 0.0f)
+            if (brdfPdf <= 0.0f)
             	break;
 
             // reflectance

@@ -13,7 +13,7 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
-    <Filter Include="Examples">
+    <Filter Include="Header Files\Examples">
       <UniqueIdentifier>{6865d109-aac0-4757-bc04-c05088578d04}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -90,22 +90,22 @@
   <ItemGroup>
     <None Include="README.md" />
     <None Include="data\conservation.tin">
-      <Filter>Examples</Filter>
+      <Filter>Header Files\Examples</Filter>
     </None>
     <None Include="data\cornell.tin">
-      <Filter>Examples</Filter>
+      <Filter>Header Files\Examples</Filter>
     </None>
     <None Include="data\example.tin">
-      <Filter>Examples</Filter>
+      <Filter>Header Files\Examples</Filter>
     </None>
     <None Include="data\simple.tin">
-      <Filter>Examples</Filter>
+      <Filter>Header Files\Examples</Filter>
     </None>
     <None Include="data\gloss.tin">
-      <Filter>Examples</Filter>
+      <Filter>Header Files\Examples</Filter>
     </None>
     <None Include="data\veach.tin">
-      <Filter>Examples</Filter>
+      <Filter>Header Files\Examples</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
