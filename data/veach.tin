@@ -1,0 +1,189 @@
+# Veach MIS test
+
+options
+{
+	width 512
+	height 512
+
+	clamp 4.0	
+	fov 35.0
+
+	exposure 0.25
+}
+
+camera
+{
+	position 0.0 2.5 3.0
+	target 0.0 1.0 0.0
+}
+
+mesh plane
+{
+	verts 4
+	-1 0 0.25
+	1 0 0.25
+	1 0 -0.25
+	-1 0 -0.25
+
+	tris 2
+	0 1 2 
+	0 2 3
+}
+
+material lightRed
+{
+	emission 250.0 180.0 220.0
+	color 0 0 0
+	specular 0
+	roughness 1
+	metallic 0
+
+}
+
+material lightYellow
+{
+	emission 25.0 24.0 17.0
+	color 0 0 0
+	specular 0
+	roughness 1
+	metallic 0
+
+}
+
+material lightGreen
+{
+	emission 21.0 25.0 17.0
+	color 0 0 0
+	specular 0
+	roughness 1
+	metallic 0
+
+}
+
+material lightBlue
+{
+	emission 12.0 15.0 17.0
+	color 0 0 0
+	specular 0
+	roughness 1
+	metallic 0
+
+}
+
+material background
+{
+	color 0.5 0.5 0.5
+	specular 0
+	roughness 0.7
+	metallic 0
+}
+
+material gloss
+{
+	color 0.1 0.1 0.1
+	specular 0.5
+	roughness 0.05
+	metallic 0.9
+}
+
+primitive
+{
+	type plane
+	plane 0 1 0 0
+	material background
+}
+
+primitive
+{
+	type plane
+	plane 0 0 -1 -10
+	material background
+}
+
+primitive
+{
+	type mesh
+	mesh plane
+	material gloss
+
+	position 0 0.25 0
+}
+
+primitive
+{
+	type mesh
+	mesh plane
+	material gloss
+
+	position 0 0.3 -0.6
+	rotation 0.173648 0 0 0.98480
+		
+}
+
+primitive
+{
+	type mesh
+	mesh plane
+	material gloss
+
+	position 0 0.4 -1.1
+	rotation 0.34202014 0 0 0.939692620
+		
+}
+
+primitive
+{
+	type sphere
+	radius 0.01
+
+	position -1 1.5 -1.5
+
+	lightSamples 1
+
+	material lightRed
+
+}
+
+
+primitive
+{
+	type sphere
+	radius 0.05
+
+	position -0.33 1.5 -1.5
+
+	lightSamples 1
+
+	material lightYellow
+
+}
+
+
+primitive
+{
+	type sphere
+	radius 0.1
+
+	position 0.33 1.5 -1.5
+
+	lightSamples 1
+
+	material lightGreen
+
+}
+
+
+
+primitive
+{
+	type sphere
+	radius 0.3
+
+	position 1.0 1.5 -1.5
+
+	lightSamples 1
+
+	material lightBlue
+
+}
+

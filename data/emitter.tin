@@ -1,0 +1,52 @@
+# emissive sphere above plane
+
+options
+{
+	width 256
+	height 256
+}
+
+camera
+{
+	position 0.0 1.0 5.0
+	target 0.0 0.0 0.0
+}
+
+material light
+{
+	emission 1.0 1.0 1.0
+	color 0 0 0
+	specular 0
+	roughness 1
+	metallic 0
+
+}
+
+material white
+{
+	color 0.5 0.5 0.5
+	specular 0
+	roughness 1
+	metallic 0
+}
+
+primitive
+{
+	type plane
+	plane 0 1 0 0
+
+	material white
+}
+
+primitive
+{
+	type sphere
+	radius 1.0
+	position 0 1.0 0
+	
+	lightSamples 20
+	
+	material light
+
+}
+

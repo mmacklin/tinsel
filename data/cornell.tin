@@ -1,0 +1,137 @@
+# cornell box
+
+options
+{
+	width 256
+	height 256
+	exposure 1.0
+	#clamp 2.0
+	
+	filter gaussian 1.0 1.0
+}
+
+camera
+{
+	position 0.0 1.0 4.0
+	rotation 0 0 0 1
+	fov 35
+
+	shutterspeed 1.0
+}
+
+material light
+{
+	emission 18.4 15.6 8.0
+	color 0 0 0
+	specular 0
+	roughness 1
+	metallic 0
+
+}
+
+material white
+{
+	color 0.725 0.71 0.68
+	specular 0
+	roughness 1
+	metallic 0
+}
+
+material green
+{
+	color 0.14 0.45 0.091
+	specular 0
+	roughness 1
+	metallic 0
+
+}
+
+material red
+{
+	color 0.63 0.065 0.05
+	specular 0
+	roughness 1
+	metallic 0
+
+}
+
+material gloss
+{
+	color 0.7 0.7 0.7
+	specular 0.8
+	roughness 0.1
+	metallic 0
+
+}
+
+primitive
+{
+	type plane
+	plane 0 1 0 0
+
+	material white
+}
+
+primitive
+{
+	type plane
+	plane 1 0 0 1
+
+	material red
+}
+
+primitive
+{
+	type plane
+	plane -1 0 0 1
+
+	material green
+}
+
+primitive
+{
+	type plane
+	plane 0 -1 0 2
+
+	material white
+}
+
+primitive
+{
+	type plane
+	plane 0 0 1 1
+
+	material white
+}
+
+primitive
+{
+	type sphere
+	radius 1.0
+
+	position 0 2.95 0
+
+	material light
+	lightSamples 10
+}
+
+
+primitive
+{
+	type sphere
+	radius 0.25
+
+	position 0.5 0.25 0
+
+	material white
+}
+
+#primitive
+#{
+#	type sphere
+#	radius 0.25
+#
+#	position -0.5 0.25 0
+#
+#	material gloss
+#}
