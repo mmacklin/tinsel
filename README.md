@@ -126,7 +126,8 @@ Todo List
 [x] Reconstruction filter
 [x] Correctness checks
 [ ] Volume rendering
-[ ] Environment maps
+[x] Environment maps
+[ ] Lens modelling
 [ ] Examples
 
 Supported Platforms

@@ -1,0 +1,74 @@
+# .tin file format
+
+options
+{
+	width 200
+	height 200
+}
+
+sky
+{
+	probe probes/vankleef.hdr
+}
+
+camera
+{
+	position 1.0 2.0 5.0
+	target 0.0 0.0 0.0
+}
+
+material gold
+{
+	color 1.0 0.71 0.29
+	roughness 0.2
+	metallic 1.0	
+}
+
+
+material ground
+{
+	color 0.85 0.85 0.85
+	roughness 0.2
+}
+
+material light
+{
+	emission 10.0 10.0 10.0
+	color 0.0 0.0 0.0
+}
+
+
+mesh plane
+{
+	verts 4
+	-2 0 2
+	2 0 2
+	2 0 -2
+	-2 0 -2
+
+	tris 2
+	0 1 2 
+	0 2 3
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/ajax.obj
+	material gold
+
+	position 0.0 0.0 0.0
+	rotation 0 0 0 1
+	scale 2.0
+}
+
+
+primitive
+{
+	type mesh
+	#plane 0 1 0 0
+	mesh plane
+
+	material ground
+}
+
