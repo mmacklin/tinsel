@@ -11,6 +11,8 @@
 
 #include "freeglut/include/GL/glut.h"
 
+#include "cuda_runtime.h"
+
 #elif __APPLE__
 
 #define GL_DO_NOT_WARN_IF_MULTI_GL_VERSION_HEADERS_INCLUDED 
@@ -356,7 +358,7 @@ int main(int argc, char* argv[])
 
     Init();
 
-    glutMouseFunc(GLUTMouseFunc);
+	glutMouseFunc(GLUTMouseFunc);
 	glutReshapeFunc(GLUTReshape);
 	glutDisplayFunc(GLUTUpdate);
 	glutKeyboardFunc(GLUTKeyboardDown);

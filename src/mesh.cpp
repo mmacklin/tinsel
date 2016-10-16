@@ -5,6 +5,7 @@
 #include <map>
 #include <fstream>
 #include <iostream>
+#include <string>
 
 using namespace std;
 
@@ -398,14 +399,14 @@ Mesh* ImportMeshFromObj(const char* path)
         else if (strcmp(buffer, "mtllib") == 0)
         {
             // ignored
-            //std::string MaterialFile;
-            //file >> MaterialFile;
+            std::string MaterialFile;
+            file >> MaterialFile;
         }		
         else if (strcmp(buffer, "usemtl") == 0)
         {
             // read Material name
-            //std::string materialName;
-            //file >> materialName;
+            std::string materialName;
+            file >> materialName;
         }
         else if (buffer[0] == 'f')
         {
