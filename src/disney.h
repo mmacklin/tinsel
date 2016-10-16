@@ -19,6 +19,10 @@
 */
 
 #include "maths.h"
+#include "pfm.h"
+
+//#include "blinn.h"
+#if 1
 
 #define DISABLE_IMPORTANCE 0
 
@@ -81,8 +85,8 @@ CUDA_CALLABLE inline float BRDFPdf(const Material& mat, const Vec3& P, const Vec
     float pdfDiff = Abs(Dot(L, n))*kInvPi;
     assert(isfinite(pdfDiff));
 
-    // weight pdfs according to roughness
-    return Lerp(pdfSpec, pdfDiff, mat.roughness);
+    // weight pdfs equally
+    return Lerp(pdfSpec, pdfDiff, 0.5f);
 	
 #endif
 
@@ -102,7 +106,7 @@ CUDA_CALLABLE inline Vec3 BRDFSample(const Material& mat, const Vec3& P, const M
 
     const float select = rand.Randf();
 
-    if (select < mat.roughness)
+    if (select < 0.5f)
     {
         // sample diffuse
         light = frame*CosineSampleHemisphere(rand);
@@ -123,6 +127,10 @@ CUDA_CALLABLE inline Vec3 BRDFSample(const Material& mat, const Vec3& P, const M
 
         Vec3 half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
         
+        // ensure half angle in same hemisphere as incoming light vector
+        if (Dot(half, V) <= 0.0f)
+            half *= -1.0f;
+
         light = 2.0f*Dot(V, half)*half - V;
     }
 
@@ -188,3 +196,76 @@ CUDA_CALLABLE inline Color BRDFEval(const Material& mat, const Vec3& P, const Ve
 
     return Vec4(out, 0.0f);
 }
+#endif
+
+inline void BRDFTest(Material mat, Mat33 frame, float woTheta, const char* filename)
+{
+    /* example code to visualize a BRDF, its PDF and sampling
+
+    Material mat;
+    mat.color = Color(0.95, 0.9, 0.9);
+    mat.specular = 1.0;
+    mat.roughness = 0.025;
+    mat.metallic = 0.0;
+
+    Vec3 n = Normalize(Vec3(1.0f, 0.0f, 0.0f));
+    Vec3 u, v;
+    BasisFromVector(n, &u, &v);
+    
+    BRDFTest(mat, Mat33(u, v, n), kPi/2.05f, "brdftest.pfm");
+    */
+
+    int width = 512;
+    int height = 256;
+
+    PfmImage image;
+    image.width = width;
+    image.height = height;
+    image.depth = 1;
+
+    image.data = new float[width*height*3];
+
+    Vec3* pixels = (Vec3*)image.data;
+
+    Vec3 wo = frame*Vec3(0.0f, -sinf(woTheta), cosf(woTheta));
+
+    Random rand;
+
+    for (int j=0; j < height; ++j)
+    {
+        for (int i=0; i < width; ++i)
+        {
+            float u = float(i)/width;
+            float v = float(j)/height;
+
+            Vec3 wi = ProbeUVToDir(Vec2(u,v));
+
+            Color f = BRDFEval(mat, Vec3(0.0f), frame.GetCol(2), wo, wi); 
+            float pdf = BRDFPdf(mat, Vec3(0.0f), frame.GetCol(2), wo, wi);
+
+          //  f.x = u;
+            //f.y = v;
+            //f.z = 1.0;
+        //    printf("%f %f %f\n", f.x, f.y, f.z);
+
+            pixels[j*width + i] = Vec3(f.x, pdf, 0.5f);
+        }
+    }
+
+    int numSamples = 1000;
+
+    for (int i=0; i < numSamples; ++i)
+    {
+        Vec3 wi = BRDFSample(mat, Vec3(0.0f), frame, wo, rand);
+            
+        Vec2 uv = ProbeDirToUV(wi);
+
+        int px = Clamp(int(uv.x*width), 0, width-1);
+        int py = Clamp(int(uv.y*height), 0, height-1);
+
+        pixels[py*width + px] = Vec3(1.0f, 0.0f, 0.0f);
+    }
+
+    PfmSave(filename, image);
+}
+

@@ -4,20 +4,29 @@
 #include "mesh.h"
 #include "bvh.h"
 #include "skylight.h"
+#include "probe.h"
 
 #include <vector>
 
 struct Camera
 {
+	Camera()
+	{
+		fov = DegToRad(45.0f);
+
+		shutterStart = 0.0f;
+		shutterEnd = 1.0f;
+	}
+
 	Vec3 position;
 	Quat rotation;
 
 	float fov;
 
+	float shutterStart;
+	float shutterEnd;
+
 	// todo: lens options
-
-	// todo: shutter options
-
 };
 
 
@@ -113,9 +122,18 @@ struct Sky
 	Color horizon;
 	Color zenith;
 
+	Probe probe;
+
 	CUDA_CALLABLE Color Eval(const Vec3& dir) const
 	{
-		return Lerp(horizon, zenith, sqrtf(Abs(dir.y)));
+		if (probe.valid)
+		{
+			return ProbeEval(probe, ProbeDirToUV(dir));
+		}
+		else
+		{
+			return Lerp(horizon, zenith, sqrtf(Abs(dir.y)));
+		}
 	}
 
 	// map

@@ -761,14 +761,14 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 				Vec3 n2 = p.mesh.normals[p.mesh.indices[tri*3+1]];
 				Vec3 n3 = p.mesh.normals[p.mesh.indices[tri*3+2]];
 
-				Vec3 smoothNormal = Normalize(TransformVector(transform, u*n1 + v*n2 + w*n3));
+				Vec3 smoothNormal = u*n1 + v*n2 + w*n3;
 
 				// ensure smooth normal lies on the same side of the geometric normal
 				if (Dot(smoothNormal, triNormal) < 0.0f)
 					smoothNormal *= -1.0f;
 
 				outT = t;
-				*outNormal = smoothNormal;
+				*outNormal = Normalize(TransformVector(transform, smoothNormal));
 			}			
 
 			return hit;

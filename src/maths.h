@@ -584,7 +584,7 @@ CUDA_CALLABLE inline Vec3 TransformVector(const Transform& t, const Vec3& v)
 
 CUDA_CALLABLE inline Vec3 TransformPoint(const Transform& t, const Vec3& v)
 {
-	return t.r*(t.s*v) + t.p;
+	return t.p + t.r*(t.s*v);
 }
 
 CUDA_CALLABLE inline Vec3 InverseTransformVector(const Transform& t, const Vec3& v)

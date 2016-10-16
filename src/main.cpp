@@ -7,6 +7,7 @@
 #include "util.h"
 #include "png.h"
 #include "nlm.h"
+#include "disney.h"
 
 #if _WIN32
 
@@ -49,9 +50,10 @@ Color* g_pixels;
 Color* g_filtered;
 Color* g_exposed;
 
-// 
+// total sample count so far
 int g_sampleCount;
 
+// nonlinear means filter
 float g_nlmFalloff = 200.0f;
 int g_nlmWidth = 0;
 
@@ -238,7 +240,7 @@ void GLUTKeyboardDown(unsigned char key, int x, int y)
         if (g_nlmWidth)
             g_nlmWidth = 0;
         else
-            g_nlmWidth = 3;
+            g_nlmWidth = 1;
         break;
     }
 	case 'i':
@@ -321,7 +323,6 @@ void ProcessCommandLine(int argc, char* argv[])
 {
 
 }
-
 int main(int argc, char* argv[])
 {	
     // set up defaults

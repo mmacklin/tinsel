@@ -6,6 +6,7 @@
 
 
 #define kBrdfSamples 1.0f
+#define kProbeSamples 1.0f
 #define kRayEpsilon 0.001f
 
 // trace a ray against the scene returning the closest intersection
@@ -46,6 +47,49 @@ inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNorm
 inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Color sum(0.0f);
+
+	if (scene.sky.probe.valid)
+	{
+		for (int i=0; i < kProbeSamples; ++i)
+		{
+
+			Color skyColor;
+			float skyPdf;
+			Vec3 wi;
+
+			ProbeSample(scene.sky.probe, wi, skyColor, skyPdf, rand);
+			
+			/*	
+			wi = UniformSampleSphere(rand);
+			skyColor = ProbeEval(scene.sky.probe, ProbeDirToUV(wi));
+			skyPdf = 0.5f*kInv2Pi;
+			*/
+			
+			if (Dot(wi, surfaceNormal) <= 0.0f)
+				continue;
+
+			// check if occluded
+			float t;
+			Vec3 n;
+			const Primitive* hit;
+			if (Trace(scene, Ray(surfacePos, wi, time), t, n, &hit) == false)
+			{
+				float brdfPdf = BRDFPdf(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+				Color f = BRDFEval(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+				
+				int N = kProbeSamples+kBrdfSamples;
+				float cbrdf = kBrdfSamples/N;
+				float csky = float(kProbeSamples)/N;
+				float weight = csky*skyPdf/(cbrdf*brdfPdf + csky*skyPdf);
+
+				if (weight > 0.0f)
+					sum += weight*skyColor*f*Abs(Dot(wi, surfaceNormal))/skyPdf;
+			}
+		}
+
+		if (kProbeSamples > 0)
+			sum /= float(kProbeSamples);
+	}
 
 	for (int i=0; i < int(scene.primitives.size()); ++i)
 	{
@@ -124,7 +168,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 
 
 // reference, no light sampling, uniform hemisphere sampling
-Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir, int maxDepth, Random& rand)
+Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir, float time, int maxDepth, Random& rand)
 {	
     // path throughput
     Color pathThroughput(1.0f, 1.0f, 1.0f, 1.0f);
@@ -133,7 +177,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 
     Vec3 rayOrigin = startOrigin;
     Vec3 rayDir = startDir;
-	float rayTime = rand.Randf();
+	float rayTime = time;
 
     float t = 0.0f;
     Vec3 n(rayDir);
@@ -148,7 +192,6 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
         {	
 
 #if 1
-			
 			if (i == 0)
 			{
 				// first trace is our only chance to add contribution from directly visible light sources        
@@ -191,7 +234,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             Vec3 u, v;
             BasisFromVector(n, &u, &v);
 
-            const Vec3 p = rayOrigin + rayDir*t;
+            const Vec3 p = rayOrigin + rayDir*t + n*kRayEpsilon;
 
 			totalRadiance += pathThroughput*hit->material.emission;
 
@@ -206,6 +249,9 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             if (brdfPdf <= 0.0f)
             	break;
 
+            if (Dot(brdfDir, n) <= 0.0f)
+            	break;
+
             // reflectance
             Color f = BRDFEval(hit->material, p, n, -rayDir, brdfDir);
 
@@ -218,10 +264,23 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
         }
         else
         {
-            // hit nothing, terminate loop
-        	totalRadiance += scene.sky.Eval(rayDir)*pathThroughput;
+            // hit nothing, sample sky dome and terminate         
+            float weight = 1.0f;
+
+        	if (scene.sky.probe.valid && i > 0)
+        	{
+        		// probability that this dir was already sampled by probe sampling
+        		float skyPdf = ProbePdf(scene.sky.probe, rayDir);
+
+				int N = kProbeSamples+kBrdfSamples;
+				float cbrdf = kBrdfSamples/N;
+				float csky = float(kProbeSamples)/N;
+				
+				weight = cbrdf*brdfPdf/(cbrdf*brdfPdf+ csky*skyPdf);
+			}
+		
+       		totalRadiance += weight*scene.sky.Eval(rayDir)*pathThroughput; 
 			break;
-			
         }
     }
 
@@ -310,15 +369,13 @@ struct CpuRenderer : public Renderer
 					{
 						case ePathTrace:
 						{	
+							const float time = rand.Randf(camera.shutterStart, camera.shutterEnd);
 							const float x = i + rand.Randf(-0.5f, 0.5f) + 0.5f;
 							const float y = j + rand.Randf(-0.5f, 0.5f) + 0.5f;
 
 							sampler.GenerateRay(x, y, origin, dir);
 
-							//origin = Vec3(0.0f, 1.0f, 5.0f);
-							//dir = Normalize(-origin);
-
-							Color sample = PathTrace(*scene, origin, dir, options.maxDepth, rand);
+							Color sample = PathTrace(*scene, origin, dir, time, options.maxDepth, rand);
 
 							Validate(sample);
 

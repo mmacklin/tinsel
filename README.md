@@ -125,6 +125,8 @@ Todo List
 [ ] FFmpeg encoding
 [x] Reconstruction filter
 [x] Correctness checks
+[ ] Volume rendering
+[ ] Environment maps
 [ ] Examples
 
 Supported Platforms

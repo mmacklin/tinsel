@@ -5,6 +5,7 @@
 #include "maths.h"
 #include "render.h"
 #include "util.h"
+#include "pfm.h"
 
 #include <stdio.h>
 
@@ -12,6 +13,31 @@
 #include <string>
 
 static const int kMaxLineLength = 2048;
+
+void MakeRelativePath(const char* filePath, const char* fileRelativePath, char* fullPath)
+{
+	// get base path of file
+	const char* lastSlash = NULL;
+
+	if (!lastSlash)
+		lastSlash = strrchr(filePath, '\\');
+	if (!lastSlash)
+		lastSlash = strrchr(filePath, '/');
+
+	int baseLength = 0;
+
+	if (lastSlash)
+	{
+		baseLength = (lastSlash-filePath)+1;
+
+		// copy base path (including slash to relative path)
+		memcpy(fullPath, filePath, baseLength);
+	}
+
+	// append mesh filename
+	strcpy(fullPath + baseLength, fileRelativePath);
+}
+
 
 bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* options)
 {
@@ -99,8 +125,14 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 				if (sscanf(line, " fov %f", &camera->fov) == 1)
 					camera->fov = DegToRad(camera->fov);
 
+				sscanf(line, " shutterstart %f", &camera->shutterStart);
+				sscanf(line, " shutterend %f", &camera->shutterEnd);
+
 				// todo: load transform directly
 			}
+
+			printf("shutter [%f, %f]\n", camera->shutterStart, camera->shutterEnd);
+	
 
 			if (targetValid)
 			{
@@ -126,6 +158,15 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 	
 				sscanf(line, " horizon %f %f %f", &sky.horizon.x, &sky.horizon.y, &sky.horizon.z);
 				sscanf(line, " zenith %f %f %f", &sky.zenith.x, &sky.zenith.y, &sky.zenith.z);
+
+				char probeName[kMaxLineLength];
+				if (sscanf(line, " probe %s", probeName) == 1)
+				{
+					char path[kMaxLineLength];
+					MakeRelativePath(filename, probeName, path);
+
+					sky.probe = ProbeLoadFromFile(path);
+				}
 			}
 
 			scene->sky = sky;
@@ -221,7 +262,7 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 					&primitive.endTransform.r.y,
 					&primitive.endTransform.r.z, 
 					&primitive.endTransform.r.w);
-
+		
 				if (count > 0 && count < 8)
 					primitive.endTransform.r = primitive.startTransform.r;
 
@@ -262,26 +303,8 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 					{
 						char relativePath[kMaxLineLength];
 
-						// get base path of tin file
-						const char* lastSlash = NULL;
-
-						if (!lastSlash)
-							lastSlash = strrchr(filename, '\\');
-						if (!lastSlash)
-							lastSlash = strrchr(filename, '/');
-
-						int baseLength = 0;
-
-						if (lastSlash)
-						{
-							baseLength = (lastSlash-filename)+1;
-
-							// copy base path (including slash to relative path)
-							memcpy(relativePath, filename, baseLength);
-						}
-
-						// append mesh filename
-						strcpy(relativePath + baseLength, path);
+						// make relative path to .tin
+						MakeRelativePath(filename, path, relativePath);
 
 						// import mesh
 						Mesh* mesh = ImportMeshFromObj(relativePath);
