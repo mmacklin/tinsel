@@ -17,6 +17,7 @@ struct GPUScene
 };
 
 #define kBrdfSamples 1.0f
+#define kProbeSamples 1.0f
 #define kRayEpsilon 0.001f
 
 MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
@@ -49,6 +50,46 @@ MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 void DestroyGPUMesh(const MeshGeometry& m)
 {
 
+}
+
+Sky CreateGPUSky(const Sky& sky)
+{
+	Sky gpuSky = sky;
+
+	// copy probe
+	if (sky.probe.valid)
+	{
+		const int numPixels = sky.probe.width*sky.probe.height;
+
+		// copy pixel data
+		cudaMalloc(&gpuSky.probe.data, numPixels*sizeof(float)*4);
+		cudaMemcpy(gpuSky.probe.data, sky.probe.data, numPixels*sizeof(float)*4, cudaMemcpyHostToDevice);
+
+		// copy cdf tables
+		cudaMalloc(&gpuSky.probe.cdfValuesX, numPixels*sizeof(float));
+		cudaMemcpy(gpuSky.probe.cdfValuesX, sky.probe.cdfValuesX, numPixels*sizeof(float), cudaMemcpyHostToDevice);
+
+		cudaMalloc(&gpuSky.probe.cdfValuesY, sky.probe.height*sizeof(float));
+		cudaMemcpy(gpuSky.probe.cdfValuesY, sky.probe.cdfValuesY, sky.probe.height*sizeof(float), cudaMemcpyHostToDevice);
+
+		// copy pdf tables
+		cudaMalloc(&gpuSky.probe.pdfValuesX, numPixels*sizeof(float));
+		cudaMemcpy(gpuSky.probe.pdfValuesX, sky.probe.pdfValuesX, numPixels*sizeof(float), cudaMemcpyHostToDevice);
+
+		cudaMalloc(&gpuSky.probe.pdfValuesY, sky.probe.height*sizeof(float));
+		cudaMemcpy(gpuSky.probe.pdfValuesY, sky.probe.pdfValuesY, sky.probe.height*sizeof(float), cudaMemcpyHostToDevice);
+
+	}
+
+	return gpuSky;
+}
+
+void DestroyGPUSky(const Sky& gpuSky)
+{
+	if (gpuSky.probe.valid)
+	{
+		cudaFree(gpuSky.probe.data);
+	}
 }
 
 
@@ -89,6 +130,52 @@ __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& 
 __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& surfacePrimitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Color sum(0.0f);
+
+	if (scene.sky.probe.valid)
+	{
+		for (int i=0; i < kProbeSamples; ++i)
+		{
+
+			Color skyColor;
+			float skyPdf;
+			Vec3 wi;
+
+			ProbeSample(scene.sky.probe, wi, skyColor, skyPdf, rand);
+			
+			/*
+			wi = UniformSampleSphere(rand);
+			skyColor = ProbeEval(scene.sky.probe, ProbeDirToUV(wi));
+			skyPdf = 0.5f*kInv2Pi;
+			*/	
+			
+			
+			if (Dot(wi, surfaceNormal) <= 0.0f)
+				continue;
+
+			// check if occluded
+			float t;
+			Vec3 n;
+			const Primitive* hit;
+			if (Trace(scene, Ray(surfacePos, wi, time), t, n, &hit) == false)
+			{
+				float brdfPdf = BRDFPdf(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+				Color f = BRDFEval(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+				
+				int N = kProbeSamples+kBrdfSamples;
+				float cbrdf = kBrdfSamples/N;
+				float csky = float(kProbeSamples)/N;
+				float weight = csky*skyPdf/(cbrdf*brdfPdf + csky*skyPdf);
+
+				Validate(weight);
+
+				if (weight > 0.0f)
+					sum += weight*skyColor*f*Abs(Dot(wi, surfaceNormal))/skyPdf;
+			}
+		}
+
+		if (kProbeSamples > 0)
+			sum /= float(kProbeSamples);
+	}
 
 	for (int i=0; i < scene.numLights; ++i)
 	{
@@ -212,6 +299,8 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 					float clight = float(hit->lightSamples)/N;
 					float weight = cbrdf*brdfPdf/(cbrdf*brdfPdf+ clight*lightPdf);
 							
+					Validate(weight);
+
 					// pathThroughput already includes the brdf pdf
 					totalRadiance += weight*pathThroughput*hit->material.emission;
 				}
@@ -227,6 +316,12 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
 #else
 			
+			// calculate a basis for this hit point
+            Vec3 u, v;
+            BasisFromVector(n, &u, &v);
+
+            const Vec3 p = rayOrigin + rayDir*t + n*kRayEpsilon;
+
 			totalRadiance += pathThroughput*hit->material.emission;
 
 #endif
@@ -237,8 +332,16 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
             Vec3 brdfDir = BRDFSample(hit->material, p, Mat33(u, v, n), -rayDir, rand);
 			brdfPdf = BRDFPdf(hit->material, p, n, -rayDir, brdfDir);
 
+			
             if (brdfPdf <= 0.0f)
             	break;
+
+            if (Dot(brdfDir, n) <= 0.0f)
+            	break;
+				
+
+			Validate(brdfPdf);
+
 
             // reflectance
             Color f = BRDFEval(hit->material, p, n, -rayDir, brdfDir);
@@ -252,22 +355,29 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
         }
         else
         {
-            // hit nothing, terminate loop
-        	totalRadiance += scene.sky.Eval(rayDir)*pathThroughput;
+            // hit nothing, sample sky dome and terminate         
+            float weight = 1.0f;
+
+        	if (scene.sky.probe.valid && i > 0)
+        	{ 
+        		// probability that this dir was already sampled by probe sampling
+        		float skyPdf = ProbePdf(scene.sky.probe, rayDir);
+				 
+				int N = kProbeSamples+kBrdfSamples;
+				float cbrdf = kBrdfSamples/N;
+				float csky = float(kProbeSamples)/N;
+			
+				weight = cbrdf*brdfPdf/(cbrdf*brdfPdf+ csky*skyPdf);
+
+				Validate(brdfPdf);
+				Validate(skyPdf);
+
+			}
+
+			Validate(weight);
+		
+       		totalRadiance += weight*scene.sky.Eval(rayDir)*pathThroughput; 
 			break;
-			/*
-			// reset path, this is the persistent threads model to keep generating new work
-			GenerateRay(camera, x, y, rayOrigin, rayDir, rand);
-
-			rayTime = rand.Randf();
-
-			t = 0.0f;
-			n = rayDir;
-
-			pathThroughput = Color(1.0f, 1.0f, 1.0f);			
-			pathCount++;
-			pathDepth = 0;
-			*/
         }
     }
 
@@ -318,7 +428,7 @@ __device__ void AddSample(Color* output, int width, int height, float rasterX, f
 	};
 }
 
-__global__ void RenderGpu(GPUScene scene, CameraSampler sampler, Options options, int seed, Color* output)
+__global__ void RenderGpu(GPUScene scene, Camera camera, CameraSampler sampler, Options options, int seed, Color* output)
 {
 	const int tid = blockDim.x*blockIdx.x + threadIdx.x;
 
@@ -353,20 +463,12 @@ __global__ void RenderGpu(GPUScene scene, CameraSampler sampler, Options options
 		}
 		else if (options.mode == ePathTrace)
 		{
-			float fx = i + rand.Randf(-0.5f, 0.5f) + 0.5f;
-			float fy = j + rand.Randf(-0.5f, 0.5f) + 0.5f;
+			const float time = rand.Randf(camera.shutterStart, camera.shutterEnd);
+			const float fx = i + rand.Randf(-0.5f, 0.5f) + 0.5f;
+			const float fy = j + rand.Randf(-0.5f, 0.5f) + 0.5f;
 
 			Vec3 origin, dir;
 			sampler.GenerateRay(fx, fy, origin, dir);
-
-#if 0
-			// stratified motion blur sampling
-			int strata = 16;
-			float strataWidth = 1.0f/strata;
-			float time = (float(sampleIndex%strata) + rand.Randf())*strataWidth;
-#else
-			float time = rand.Randf();
-#endif
 
 			//output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
 			Color sample = PathTrace(scene, origin, dir, time, options.maxDepth, rand);
@@ -435,8 +537,8 @@ struct GpuRenderer : public Renderer
 			cudaMemcpy(sceneGPU.primitives, &primitives[0], sizeof(Primitive)*primitives.size(), cudaMemcpyHostToDevice);
 		}
 
-		// misc params
-		sceneGPU.sky = s->sky;
+		// copy sky and probe texture
+		sceneGPU.sky = CreateGPUSky(s->sky);
 	}
 
 	virtual ~GpuRenderer()
@@ -468,7 +570,7 @@ struct GpuRenderer : public Renderer
 			options.width,
 			options.height);
 
-		RenderGpu<<<kNumBlocks, kNumThreadsPerBlock>>>(sceneGPU, sampler, options, seed.Rand(), output);
+		RenderGpu<<<kNumBlocks, kNumThreadsPerBlock>>>(sceneGPU, camera, sampler, options, seed.Rand(), output);
 
 		// copy back to output
 		cudaMemcpy(outputHost, output, sizeof(Color)*numThreads, cudaMemcpyDeviceToHost);

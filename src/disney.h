@@ -121,9 +121,14 @@ CUDA_CALLABLE inline Vec3 BRDFSample(const Material& mat, const Vec3& P, const M
         const float phiHalf = r1*k2Pi;
         
         const float cosThetaHalf = sqrtf((1.0f-r2)/(1.0f + (sqr(a)-1.0f)*r2));      
-        const float sinThetaHalf = sqrtf(1.0f-sqr(cosThetaHalf));
+        const float sinThetaHalf = sqrtf(Max(0.0f, 1.0f-sqr(cosThetaHalf)));
         const float sinPhiHalf = sinf(phiHalf);
         const float cosPhiHalf = cosf(phiHalf);
+
+		Validate(cosThetaHalf);
+		Validate(sinThetaHalf);
+		Validate(sinPhiHalf);
+		Validate(cosPhiHalf);
 
         Vec3 half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
         

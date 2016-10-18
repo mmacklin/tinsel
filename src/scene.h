@@ -94,7 +94,7 @@ struct MeshGeometry
 	int numIndices;
 	int numNodes;
 
-	int id;
+	unsigned long id;
 };
 
 

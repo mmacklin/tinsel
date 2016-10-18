@@ -368,10 +368,10 @@ CUDA_CALLABLE inline float maxf(const float a, const float b) { return a > b ? a
 CUDA_CALLABLE inline bool IntersectRayAABBFast(const Vec3& pos, const Vec3& rcp_dir, const Vec3& min, const Vec3& max, float& t) {
        
     float
-        l1	= (min.x - pos.x) * rcp_dir.x,
-        l2	= (max.x - pos.x) * rcp_dir.x,
-        lmin	= minf(l1,l2),
-        lmax	= maxf(l1,l2);
+    l1	= (min.x - pos.x) * rcp_dir.x,
+    l2	= (max.x - pos.x) * rcp_dir.x,
+    lmin	= minf(l1,l2),
+    lmax	= maxf(l1,l2);
 
     l1	= (min.y - pos.y) * rcp_dir.y;
     l2	= (max.y - pos.y) * rcp_dir.y;
@@ -387,7 +387,7 @@ CUDA_CALLABLE inline bool IntersectRayAABBFast(const Vec3& pos, const Vec3& rcp_
     //return ((lmax > 0.f) & (lmax > lmin));
     bool hit = ((lmax >= 0.f) & (lmax >= lmin));
     if (hit)
-        t = lmin;
+        t = Max(0.0f, lmin);	// clamp to zero for rays starting inside the box
     return hit;
 }
 
@@ -515,7 +515,10 @@ CUDA_CALLABLE inline bool IntersectPlaneAABB(const Vec4& plane, const Vec3& cent
 template <typename Func>
 CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, const Vec3& dir)
 {
-	const Vec3 rcpDir(1.0f/dir.x, 1.0f/dir.y, 1.0f/dir.z);
+	Vec3 rcpDir;
+	rcpDir.x = 1.0f/dir.x;
+	rcpDir.y = 1.0f/dir.y;
+	rcpDir.z = 1.0f/dir.z;
 
 	const BVHNode* stack[64];
 	stack[0] = root;
@@ -535,7 +538,7 @@ CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, con
 			{	
 				f(n->leftIndex);
 			}
-			else// if (t >= 0.0f)
+			else if (t >= 0.0f)
 			{
 				stack[count++] = &root[n->leftIndex];
 				stack[count++] = &root[n->rightIndex];
@@ -557,8 +560,8 @@ struct MeshQuery
 		const Vec3& b = mesh.positions[mesh.indices[i*3+1]];
 		const Vec3& c = mesh.positions[mesh.indices[i*3+2]];
 
-		//if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
 		float sign;
+		//if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
 		if (IntersectRayTriTwoSided(rayOrigin, rayDir, a, b, c, t, u, v, w, sign, &n))
 		{
 			if (t > 0.0f && t < closestT)

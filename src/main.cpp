@@ -12,6 +12,7 @@
 #if _WIN32
 
 #include "freeglut/include/GL/glut.h"
+#include <cuda_runtime.h>
 
 #elif __APPLE__
 
@@ -165,12 +166,18 @@ void InitFrameBuffer()
 
 void Init()
 {
+	double start = GetSeconds();
+
 #if _WIN32
     // create renderer
     g_renderer = CreateGpuRenderer(&g_scene);
 #else
     g_renderer = CreateCpuRenderer(&g_scene);
 #endif
+
+	double end = GetSeconds();
+
+	printf("Created renderer in %fms\n", (end-start)*1000.0f);
 
     InitFrameBuffer();
 }
@@ -325,6 +332,26 @@ void ProcessCommandLine(int argc, char* argv[])
 }
 int main(int argc, char* argv[])
 {	
+	const int device = 1;
+	cudaSetDevice(device);
+	
+	cudaDeviceProp props;
+	cudaError err = cudaGetDeviceProperties(&props, device);
+	
+	// require SM .0 GPU
+	if (props.major < 5)
+	{
+		printf("Need a compute capable 5.0 device\n");
+		return -1;
+	}
+
+	// retrieve device name
+	char name[256];
+	memcpy((void*)name, props.name, 256);
+
+	printf("Compute device: %s\n", name);
+
+
     // set up defaults
     g_options.width = 512;
     g_options.height = 256;
@@ -343,9 +370,30 @@ int main(int argc, char* argv[])
     // the last argument should be the input file
     const char* filename = NULL;
 
+	if (argc > 1)
+		filename = argv[argc-1];
+
     for (int i=1; i < argc; ++i)
     {
-        filename = argv[i];
+		if (strstr(argv[i], "-convert") && filename)
+		{
+			Mesh* m = ImportMesh(filename);
+			if (m)
+			{
+				const char* extension = strrchr(filename, '.');
+
+				std::string s(filename, extension);
+				s += ".bin";
+
+				ExportMeshToBin(s.c_str(), m);
+				return 0;
+			}
+			else
+			{
+				printf("Could open mesh %s for conversion\n", filename);
+				return -1;
+			}
+		}        
     }
 
     if (filename)
@@ -362,6 +410,7 @@ int main(int argc, char* argv[])
     {
         // default test scene
         TestVeach(&g_scene, &g_camera, &g_options);
+		//TestMaterials(&g_scene, &g_camera, &g_options);
     }
 
 	// set fly cam

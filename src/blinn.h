@@ -3,19 +3,19 @@
 #include "maths.h"
 
 // cosTheta should be the angle between the wi and wh
-inline Color Schlick(const Color& c, float cosTheta)
+CUDA_CALLABLE inline Color Schlick(const Color& c, float cosTheta)
 {
 	return c + (Color(1.0f, 1.0f, 1.0f)-c)*powf(1.0f-cosTheta, 5.0f);
 }
 
-inline Vec3 SphericalDirection(float sinTheta, float cosTheta, float phi)
+CUDA_CALLABLE inline Vec3 SphericalDirection(float sinTheta, float cosTheta, float phi)
 {
 	return Vec3(sinTheta * cosf(phi),
               	   sinTheta * sinf(phi),
 			  	   cosTheta);
 }
 
-inline float Exponent(const Material& mat)
+CUDA_CALLABLE inline float Exponent(const Material& mat)
 {
 	return 10.0f/mat.roughness;
 }

@@ -3,6 +3,8 @@
 #include "maths.h"
 #include "pfm.h"
 
+double GetSeconds();
+
 struct Probe
 {
 	int width;
@@ -85,7 +87,7 @@ struct Probe
 };
 
 
-inline Color SampleProbeSphere(const Probe& image, const Vec3& dir)
+CUDA_CALLABLE inline Color SampleProbeSphere(const Probe& image, const Vec3& dir)
 {
 	// convert world space dir to probe space
 	float c = kInvPi * acosf(dir.z)/sqrt(dir.x*dir.x + dir.y*dir.y);
@@ -99,17 +101,17 @@ inline Color SampleProbeSphere(const Probe& image, const Vec3& dir)
 	return image.data[py*image.width+px];
 }
 
-inline Vec2 ProbeDirToUV(const Vec3& dir)
+CUDA_CALLABLE inline Vec2 ProbeDirToUV(const Vec3& dir)
 {
-	float theta = acosf(dir.y);
-    float phi = atan2(dir.z, dir.x);
+	float theta = acosf(Clamp(dir.y, -1.0f, 1.0f));
+    float phi = (dir.x == 0.0f && dir.z == 0.0f)?0.0f:atan2(dir.z, dir.x);
     float u = (kPi + phi)*kInvPi*0.5f;
     float v = theta*kInvPi;	
 
     return Vec2(u, v);
 }
 
-inline Vec3 ProbeUVToDir(const Vec2& uv)
+CUDA_CALLABLE inline Vec3 ProbeUVToDir(const Vec2& uv)
 {
 	float theta = uv.y * kPi;
     float phi = uv.x * 2.0f * kPi;
@@ -122,7 +124,7 @@ inline Vec3 ProbeUVToDir(const Vec2& uv)
 }
 
 
-inline Color ProbeEval(const Probe& image, const Vec2& uv)
+CUDA_CALLABLE inline Color ProbeEval(const Probe& image, const Vec2& uv)
 {
 	int px = Clamp(int(uv.x*image.width), 0, image.width-1);
 	int py = Clamp(int(uv.y*image.height), 0, image.height-1);
@@ -130,37 +132,71 @@ inline Color ProbeEval(const Probe& image, const Vec2& uv)
 	return image.data[py*image.width+px];
 }
 
-inline float ProbePdf(const Probe& image, const Vec3& d)
+CUDA_CALLABLE inline float ProbePdf(const Probe& image, const Vec3& d)
 {
+
 	Vec2 uv = ProbeDirToUV(d);
 
-	int col = uv.x * image.width;
-	int row = uv.y * image.height;
+	int col = Clamp(int(uv.x * image.width), 0, image.width-1);
+	int row = Clamp(int(uv.y * image.height), 0, image.height-1);
 
 	float pdf = image.pdfValuesX[row*image.width + col]*image.pdfValuesY[row];
 
+	Validate(image.pdfValuesX[row*image.width + col]);
+	Validate(image.pdfValuesY[row]);
+	Validate(pdf);
+	Validate(uv.y);
+	Validate(uv.x);
+	
 	float sinTheta = sinf(uv.y*kPi);
-	if (sinTheta == 0.0f)
+	Validate(sinTheta);
+	if (fabsf(sinTheta) < 0.0001f)
 		pdf = 0.0f;
 	else
-		pdf *= image.width*image.height/(2.0f*kPi*kPi*sinTheta);
+		pdf *= float(image.width)*float(image.height)/(2.0f*kPi*kPi*sinTheta);
+
+	Validate(pdf);
 
 	return pdf;
 }
 
+template <typename T>
+CUDA_CALLABLE inline const T* LowerBound(const T* begin, const T* end, const T& value)
+{
+	const T* lower = begin;
+	const T* upper = end;
+	
+	while(lower < upper)
+	{
+		const T* mid = lower + (upper-lower)/2;
+
+		if (*mid < value)
+		{
+			lower = mid+1;
+		}
+		else
+		{
+			upper = mid;
+		}
+	}
+
+	return lower;
+}
 
 
-inline void ProbeSample(const Probe& image, Vec3& dir, Color& color, float& pdf, Random& rand)
+CUDA_CALLABLE inline void ProbeSample(const Probe& image, Vec3& dir, Color& color, float& pdf, Random& rand)
 {
 	float r1 = rand.Randf();
 	float r2 = rand.Randf();
 
 	// sample rows
-	float* rowPtr = std::lower_bound(image.cdfValuesY, image.cdfValuesY+image.height, r1);
+	//float* rowPtr = std::lower_bound(image.cdfValuesY, image.cdfValuesY+image.height, r1);
+	const float* rowPtr = LowerBound(image.cdfValuesY, image.cdfValuesY+image.height, r1);
 	int row = rowPtr - image.cdfValuesY;
 
 	// sample cols of row
-	float* colPtr = std::lower_bound(&image.cdfValuesX[row*image.width], &image.cdfValuesX[(row+1)*image.width], r2);
+	//float* colPtr = std::lower_bound(&image.cdfValuesX[row*image.width], &image.cdfValuesX[(row+1)*image.width], r2);
+	const float* colPtr = LowerBound(&image.cdfValuesX[row*image.width], &image.cdfValuesX[(row+1)*image.width], r2);
 	int col = colPtr - &image.cdfValuesX[row*image.width];
 
 	color = image.data[row*image.width + col];
@@ -181,6 +217,8 @@ inline void ProbeSample(const Probe& image, Vec3& dir, Color& color, float& pdf,
 
 inline Probe ProbeLoadFromFile(const char* path)
 {
+	double start = GetSeconds();
+
 	PfmImage image;
 	//PfmLoad(path, image);
 	HdrLoad(path, image);
@@ -200,6 +238,10 @@ inline Probe ProbeLoadFromFile(const char* path)
 	probe.BuildCDF();
 
 	delete[] image.data;
+
+	double end = GetSeconds();
+
+	printf("Imported probe %s in %fms\n", path, (end-start)*1000.0f);
 
 	return probe;
 }

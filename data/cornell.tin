@@ -119,9 +119,9 @@ primitive
 primitive
 {
 	type sphere
-	radius 0.25
+	radius 0.5
 
-	position 0.5 0.25 0
+	position 0.25 0.5 0
 
 	material white
 }

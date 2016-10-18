@@ -19,6 +19,13 @@ material gold
 	metallic 1.0	
 }
 
+material gloss
+{
+	color 0.95 0.9 0.9
+	specular 1.0
+	roughness 0.025
+	metallic 0.0
+}
 
 material ground
 {
@@ -47,7 +54,7 @@ primitive
 {
 	type mesh
 	mesh meshes/ajax.obj
-	material gold
+	material gloss
 
 	position 0.0 0.0 0.0
 	rotation 0 0 0 1

@@ -57,6 +57,7 @@
     <ClCompile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PreprocessorDefinitions>_ITERATOR_DEBUG_LEVEL=0</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(CUDA_PATH_V7_5)\include</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -75,6 +76,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <AdditionalIncludeDirectories>$(CUDA_PATH_V7_5)\include</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -82,14 +84,18 @@
     <ClCompile Include="src\loader.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mesh.cpp" />
+    <ClCompile Include="src\nlm.cpp" />
+    <ClCompile Include="src\pfm.cpp" />
     <ClCompile Include="src\platform.cpp" />
     <ClCompile Include="src\png.cpp" />
+    <ClCompile Include="src\probe.cpp" />
     <ClCompile Include="src\render.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\blinn.h" />
     <ClInclude Include="src\bvh.h" />
     <ClInclude Include="src\camera.h" />
     <ClInclude Include="src\disney.h" />
@@ -97,7 +103,10 @@
     <ClInclude Include="src\loader.h" />
     <ClInclude Include="src\maths.h" />
     <ClInclude Include="src\mesh.h" />
+    <ClInclude Include="src\nlm.h" />
+    <ClInclude Include="src\pfm.h" />
     <ClInclude Include="src\png.h" />
+    <ClInclude Include="src\probe.h" />
     <ClInclude Include="src\render.h" />
     <ClInclude Include="src\scene.h" />
     <ClInclude Include="src\skylight.h" />
@@ -111,7 +120,7 @@
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O0 -g -G --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MTd,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">intermediate\$(Configuration)\rendercuda.obj</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O3 --resource-usage --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DNDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O3 --resource-usage -lineinfo --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">intermediate\$(Configuration)\rendercuda.obj</Outputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">src\disney.h;src\render.h</AdditionalInputs>
     </CustomBuild>

@@ -121,7 +121,8 @@ Todo List
 [ ] Blackbody emitters
 [x] Output formats
 [x] Triangular noise dither
-[ ] NLM noise filter
+[x] NLM noise filter
+[ ] Two-level BVH
 [ ] FFmpeg encoding
 [x] Reconstruction filter
 [x] Correctness checks

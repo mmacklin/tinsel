@@ -5,6 +5,7 @@
 #include <map>
 #include <fstream>
 #include <iostream>
+#include <string>
 
 using namespace std;
 
@@ -101,22 +102,28 @@ namespace
 
 } // namespace anonymous
 
-/*
 Mesh* ImportMesh(const char* path)
 {
-	std::string ext = GetExtension(path);
+	const char* ext = strrchr(path, '.');
 
 	Mesh* mesh = NULL;
 
-	if (ext == "ply")
+	if (strcmp(ext, ".ply") == 0)
 		mesh = ImportMeshFromPly(path);
-	else if (ext == "obj")
+	else if (strcmp(ext, ".obj") == 0)
 		mesh = ImportMeshFromObj(path);
+	else if (strcmp(ext, ".bin") == 0)
+		mesh = ImportMeshFromBin(path);
 
+	if (mesh && strcmp(ext, ".bin") != 0)
+	{
+		mesh->Normalize();
+		mesh->CalculateNormals();
+		mesh->RebuildBVH();
+	}
 
 	return mesh;
 }
-*/
 
 Mesh* ImportMeshFromPly(const char* path)
 {
@@ -415,14 +422,14 @@ Mesh* ImportMeshFromObj(const char* path)
         else if (strcmp(buffer, "mtllib") == 0)
         {
             // ignored
-            //std::string MaterialFile;
-            //file >> MaterialFile;
+            std::string MaterialFile;
+            file >> MaterialFile;
         }		
         else if (strcmp(buffer, "usemtl") == 0)
         {
             // read Material name
-            //std::string materialName;
-            //file >> materialName;
+            std::string materialName;
+            file >> materialName;
         }
         else if (buffer[0] == 'f')
         {
@@ -780,8 +787,73 @@ Mesh* ImportMeshFromObjNew(const char* path)
     return m;
 }
 
+Mesh* ImportMeshFromBin(const char* path)
+{
+	double start = GetSeconds();
 
-void ExportToObj(const char* path, const Mesh& m)
+	FILE* f = fopen(path, "rb");
+
+	if (f)
+	{
+		int numVertices;
+		int numIndices;
+		int numNodes;
+
+		fread(&numVertices, sizeof(numVertices), 1, f);
+		fread(&numIndices, sizeof(numIndices), 1, f);
+		fread(&numNodes, sizeof(numNodes), 1, f);
+
+		Mesh* m = new Mesh();
+		m->positions.resize(numVertices);
+		m->normals.resize(numVertices);
+		m->indices.resize(numIndices);
+		
+		m->bvh.nodes = new BVHNode[numNodes];
+		m->bvh.numNodes = numNodes;
+
+		fread(&m->positions[0], sizeof(Vec3)*numVertices, 1, f);
+		fread(&m->normals[0], sizeof(Vec3)*numVertices, 1, f);
+		fread(&m->indices[0], sizeof(int)*numIndices, 1, f);
+		fread(m->bvh.nodes, sizeof(BVHNode)*numNodes, 1, f);
+		
+		fclose(f);
+
+		double end = GetSeconds();
+
+		printf("Imported mesh %s in %f ms\n", path, (end-start)*1000.0f);
+
+		return m;
+	}
+
+	return NULL;
+}
+
+void ExportMeshToBin(const char* path, const Mesh* m)
+{
+	FILE* f = fopen(path, "wb");
+
+	if (f)
+	{
+		int numVertices = m->positions.size();
+		int numIndices = m->indices.size();
+		int numNodes = m->bvh.numNodes;
+
+		fwrite(&numVertices, sizeof(numVertices), 1, f);
+		fwrite(&numIndices, sizeof(numIndices), 1, f);
+		fwrite(&numNodes, sizeof(numNodes), 1, f);
+
+		// write data blocks
+		fwrite(&m->positions[0], sizeof(Vec3)*numVertices, 1, f);
+		fwrite(&m->normals[0], sizeof(Vec3)*numVertices, 1, f);		
+		fwrite(&m->indices[0], sizeof(int)*numIndices, 1, f);
+		fwrite(m->bvh.nodes, sizeof(BVHNode)*numNodes, 1, f);
+
+		fclose(f);
+	}
+}
+
+
+void ExportMeshToObj(const char* path, const Mesh& m)
 {
 	ofstream file(path);
 

@@ -307,15 +307,11 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 						MakeRelativePath(filename, path, relativePath);
 
 						// import mesh
-						Mesh* mesh = ImportMeshFromObj(relativePath);
+						Mesh* mesh = ImportMesh(relativePath);
 
 						if (mesh)
 						{
-							mesh->Normalize();
-							mesh->CalculateNormals();
-							mesh->RebuildBVH();
-
-							primitive.mesh = GeometryFromMesh(mesh);
+							primitive.mesh = GeometryFromMesh(mesh);							
 
 							meshes[path] = mesh;
 						}
