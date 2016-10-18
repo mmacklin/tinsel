@@ -6,12 +6,13 @@
 #include "loader.h"
 #include "util.h"
 #include "png.h"
+#include "nlm.h"
+#include "disney.h"
 
 #if _WIN32
 
 #include "freeglut/include/GL/glut.h"
-
-#include "cuda_runtime.h"
+#include <cuda_runtime.h>
 
 #elif __APPLE__
 
@@ -48,9 +49,14 @@ Camera g_camera;
 // output buffers
 Color* g_pixels;
 Color* g_filtered;
+Color* g_exposed;
 
-// 
+// total sample count so far
 int g_sampleCount;
+
+// nonlinear means filter
+float g_nlmFalloff = 200.0f;
+int g_nlmWidth = 0;
 
 
 double GetSeconds();
@@ -99,13 +105,21 @@ void Render()
         for (int i=0; i < numPixels; ++i)
         {            
             assert(g_pixels[i].w > 0.0f);
-            
+
             float s = g_options.exposure / g_pixels[i].w;
 
             g_filtered[i] = LinearToSrgb(ToneMap(g_pixels[i] * s, g_options.limit));
         }
 
-        presentMem = g_filtered;
+        if (g_nlmWidth)
+        {
+            NonLocalMeansFilter(g_filtered, g_exposed, g_options.width, g_options.height, g_nlmFalloff, g_nlmWidth);
+            presentMem = g_exposed;
+        }
+        else
+        {
+            presentMem = g_filtered;
+        }
     }
 
     glDisable(GL_BLEND);
@@ -132,9 +146,11 @@ void InitFrameBuffer()
 {
     delete[] g_pixels;
     delete[] g_filtered;
+    delete[] g_exposed;
 
     g_pixels = new Color[g_options.width*g_options.height];
     g_filtered = new Color[g_options.width*g_options.height];
+    g_exposed = new Color[g_options.width*g_options.height];
 
     g_sampleCount = 0;
 
@@ -150,12 +166,18 @@ void InitFrameBuffer()
 
 void Init()
 {
+	double start = GetSeconds();
+
 #if _WIN32
     // create renderer
     g_renderer = CreateGpuRenderer(&g_scene);
 #else
     g_renderer = CreateCpuRenderer(&g_scene);
 #endif
+
+	double end = GetSeconds();
+
+	printf("Created renderer in %fms\n", (end-start)*1000.0f);
 
     InitFrameBuffer();
 }
@@ -220,6 +242,14 @@ void GLUTKeyboardDown(unsigned char key, int x, int y)
 	case ']':
 		g_options.exposure += 0.01f;
 		break;
+    case 'n':
+    {
+        if (g_nlmWidth)
+            g_nlmWidth = 0;
+        else
+            g_nlmWidth = 1;
+        break;
+    }
 	case 'i':
 	{
 		WritePng(g_filtered, g_options.width, g_options.height, "images/output.png");
@@ -300,9 +330,28 @@ void ProcessCommandLine(int argc, char* argv[])
 {
 
 }
-
 int main(int argc, char* argv[])
 {	
+	const int device = 1;
+	cudaSetDevice(device);
+	
+	cudaDeviceProp props;
+	cudaError err = cudaGetDeviceProperties(&props, device);
+	
+	// require SM .0 GPU
+	if (props.major < 5)
+	{
+		printf("Need a compute capable 5.0 device\n");
+		return -1;
+	}
+
+	// retrieve device name
+	char name[256];
+	memcpy((void*)name, props.name, 256);
+
+	printf("Compute device: %s\n", name);
+
+
     // set up defaults
     g_options.width = 512;
     g_options.height = 256;
@@ -321,9 +370,30 @@ int main(int argc, char* argv[])
     // the last argument should be the input file
     const char* filename = NULL;
 
+	if (argc > 1)
+		filename = argv[argc-1];
+
     for (int i=1; i < argc; ++i)
     {
-        filename = argv[i];
+		if (strstr(argv[i], "-convert") && filename)
+		{
+			Mesh* m = ImportMesh(filename);
+			if (m)
+			{
+				const char* extension = strrchr(filename, '.');
+
+				std::string s(filename, extension);
+				s += ".bin";
+
+				ExportMeshToBin(s.c_str(), m);
+				return 0;
+			}
+			else
+			{
+				printf("Could open mesh %s for conversion\n", filename);
+				return -1;
+			}
+		}        
     }
 
     if (filename)
@@ -340,6 +410,7 @@ int main(int argc, char* argv[])
     {
         // default test scene
         TestVeach(&g_scene, &g_camera, &g_options);
+		//TestMaterials(&g_scene, &g_camera, &g_options);
     }
 
 	// set fly cam
@@ -358,7 +429,7 @@ int main(int argc, char* argv[])
 
     Init();
 
-	glutMouseFunc(GLUTMouseFunc);
+    glutMouseFunc(GLUTMouseFunc);
 	glutReshapeFunc(GLUTReshape);
 	glutDisplayFunc(GLUTUpdate);
 	glutKeyboardFunc(GLUTKeyboardDown);

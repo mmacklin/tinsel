@@ -1,4 +1,4 @@
-SHELL = /bin/sh
+IISHELL = /bin/sh
 CC = g++
 
 CFLAGS = -g  -m64 -Wall -I"../.." -I"/opt/local/include" -O3 -DNDEBUG -ffast-math -Wno-deprecated-declarations 
@@ -8,11 +8,12 @@ TARGET  = tinsel
 
 SOURCES = $(wildcard src/*.cpp)
 HEADERS = $(wildcard src/*.h)
+TESTS = $(wildcard src/tests/*.h)
 
 OBJECTS = $(SOURCES:.cpp=.o) 
 
 all: $(TARGET)
-	./$(TARGET) data/sportscar.tin
+	./$(TARGET)
 
 $(TARGET): $(OBJECTS) makefile
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(TARGET) 
@@ -21,7 +22,7 @@ clean:
 	-rm -f $(OBJECTS)
 	-rm -f $(TARGET)
 
-%.o: %.cpp $(HEADERS) makefile
+%.o: %.cpp $(HEADERS) $(TESTS) makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../probe.h"
+
 void TestMaterials(Scene* scene, Camera* camera, Options* options)
 {
 
@@ -140,8 +142,11 @@ void TestMaterials(Scene* scene, Camera* camera, Options* options)
 	scene->sky.horizon = Color(0.1f, 0.3f, 0.6f)*2.0f;
     scene->sky.zenith = scene->sky.horizon;
 
+    scene->sky.probe = ProbeLoadFromFile("data/probes/vankleef.hdr");
+
     // set up camera
-    camera->position = Vec3(0.0f, 2.0f, 10.0f);
+    camera->position = Vec3(0.0f, 2.0f, 20.0f);
+    camera->fov = DegToRad(15.0f);
 }
 
 

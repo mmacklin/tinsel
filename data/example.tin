@@ -33,6 +33,8 @@ material green
 	specular 0.1
 }
 
+
+
 material light
 {
 	emission 10.0 10.0 10.0

@@ -121,9 +121,14 @@ Todo List
 [ ] Blackbody emitters
 [x] Output formats
 [x] Triangular noise dither
+[x] NLM noise filter
+[ ] Two-level BVH
 [ ] FFmpeg encoding
 [x] Reconstruction filter
 [x] Correctness checks
+[ ] Volume rendering
+[x] Environment maps
+[ ] Lens modelling
 [ ] Examples
 
 Supported Platforms

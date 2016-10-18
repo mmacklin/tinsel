@@ -38,9 +38,14 @@ struct Mesh
 // create mesh from file
 Mesh* ImportMeshFromObj(const char* path);
 Mesh* ImportMeshFromPly(const char* path);
+Mesh* ImportMeshFromBin(const char* path);
 
 // just switches on filename
 Mesh* ImportMesh(const char* path);
+
+// save mesh in optimized binary format
+void ExportMeshToBin(const char* path, const Mesh* m);
+void ExportMeshToObj(const char* path, const Mesh* m);
 
 // create procedural primitives
 Mesh* CreateQuadMesh(float size, float y=0.0f);

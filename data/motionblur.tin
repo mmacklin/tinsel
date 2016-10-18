@@ -1,0 +1,70 @@
+# .tin file format
+
+options
+{
+	width 512
+	height 512
+}
+
+camera
+{
+	position 0.0 3.0 7.0
+	target 1.0 0.0 0.0
+
+	shutterstart 0.0
+	shutterend 0.15
+}
+
+material gold
+{
+	color 1.0 0.71 0.29
+	roughness 0.2
+	metallic 1.0	
+}
+
+material ground
+{
+	color 0.85 0.85 0.85
+	roughness 0.2
+}
+
+material light
+{
+	emission 10.0 10.0 10.0
+}
+
+
+
+
+primitive
+{
+	type plane
+	plane 0 1 0 0
+	material ground
+}
+
+primitive
+{
+	type sphere
+	radius 2.0
+	material light
+	
+	lightSamples 10
+
+	position 5 10 5
+	rotation 0 0 0 1
+	scale 1
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/octopus.obj
+	material gold
+
+	position 0.0 0.0 0.0
+	rotation 0 0 0 1, 0 1 0 0
+
+	scale 2.0
+}
+

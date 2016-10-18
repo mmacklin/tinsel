@@ -1,0 +1,85 @@
+# .tin file format
+
+options
+{
+	width 500
+	height 500
+}
+
+sky
+{
+	probe probes/vankleef.hdr
+}
+
+camera
+{
+
+	position -1.46373057 1.23615110 3.53553891 
+	rotation -0.0431064218 -0.285662651 -0.0128635028 0.957273841
+
+	#position -1.48325872 0.563038588 4.02174854
+	#rotation 0.00470542070 -0.338192463 0.00169099902 0.941063643
+}
+
+material gold
+{
+	color 1.0 0.71 0.29
+	roughness 0.2
+	metallic 1.0	
+}
+
+material porcelein
+{
+	color 0.95 0.9 0.9
+	specular 1.0
+	roughness 0.025
+	subsurface 0.25
+	metallic 0.0
+}
+
+material ground
+{
+	color 0.85 0.85 0.85
+	roughness 0.2
+}
+
+material light
+{
+	emission 10.0 10.0 10.0
+	color 0.0 0.0 0.0
+}
+
+
+mesh plane
+{
+	verts 4
+	-2 0 2
+	2 0 2
+	2 0 -2
+	-2 0 -2
+
+	tris 2
+	0 1 2 
+	0 2 3
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/ajax.bin
+	material porcelein
+
+	position 0.0 0.0 0.0
+	rotation 0 0 0 1
+	scale 2.0
+}
+
+
+primitive
+{
+	type mesh
+	mesh plane
+
+	material ground
+}
+

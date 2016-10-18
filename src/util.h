@@ -15,6 +15,8 @@ inline MeshGeometry GeometryFromMesh(const Mesh* mesh)
     geo.numIndices = mesh->indices.size();
     geo.numVertices = mesh->positions.size();
 
+	geo.id = (unsigned long)mesh;
+
     return geo;
 }
 
