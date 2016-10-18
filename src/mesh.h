@@ -23,13 +23,14 @@ struct Mesh
     void GetBounds(Vec3& minExtents, Vec3& maxExtents) const;
 
 	void RebuildBVH();
+    void RebuildCDF();
     
     std::vector<Vec3> positions;
     std::vector<Vec3> normals;
-    std::vector<Vec2> texcoords[2];
-    std::vector<Color> Colors;
-
     std::vector<int> indices;
+
+    std::vector<float> cdf;
+    float area;
 
 	BVH bvh;
 };

@@ -667,7 +667,7 @@ CUDA_CALLABLE inline float LightArea(const Primitive& p)
 		}
 		case eMesh:
 		{
-			return 0.0f;
+			return p.mesh.area*p.endTransform.s;
 		}
 	};
 
@@ -695,7 +695,27 @@ CUDA_CALLABLE inline void LightSample(const Primitive& p, float time, Vec3& pos,
 		}
 		case eMesh:
 		{
-			assert(0);
+			assert(p.mesh.cdf);
+
+			float r = rand.Randf();
+
+			const float* triPtr = std::lower_bound(p.mesh.cdf, p.mesh.cdf+p.mesh.numIndices/3, r);
+			int tri = triPtr-p.mesh.cdf;
+
+			float u, v;
+			UniformSampleTriangle(rand, u, v);
+
+		    const Vec3 a = p.mesh.positions[p.mesh.indices[tri*3+0]];
+	        const Vec3 b = p.mesh.positions[p.mesh.indices[tri*3+1]];
+	        const Vec3 c = p.mesh.positions[p.mesh.indices[tri*3+2]];
+
+		    const Vec3 n1 = p.mesh.normals[p.mesh.indices[tri*3+0]];
+	        const Vec3 n2 = p.mesh.normals[p.mesh.indices[tri*3+1]];
+	        const Vec3 n3 = p.mesh.normals[p.mesh.indices[tri*3+2]];
+
+	        pos = TransformPoint(transform, u*a + v*b + (1.0f-u-v)*c);
+	        normal = SafeNormalize(TransformVector(transform, u*n1 + v*n2 + (1.0f-u-v)*n3));
+
 			return;
 		}
 	}

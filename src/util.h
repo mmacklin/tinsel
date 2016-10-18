@@ -10,6 +10,8 @@ inline MeshGeometry GeometryFromMesh(const Mesh* mesh)
     geo.normals = &mesh->normals[0];
     geo.indices = &mesh->indices[0];
     geo.nodes = &mesh->bvh.nodes[0];
+    geo.cdf = &mesh->cdf[0];
+    geo.area = mesh->area;
     
     geo.numNodes = mesh->bvh.numNodes;
     geo.numIndices = mesh->indices.size();

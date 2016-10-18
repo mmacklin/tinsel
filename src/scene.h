@@ -86,6 +86,9 @@ struct MeshGeometry
 	const Vec3* normals;
 	const int* indices;
 	const BVHNode* nodes;
+	const float* cdf;
+
+	float area;
 
 	int numVertices;
 	int numIndices;

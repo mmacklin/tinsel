@@ -15,16 +15,6 @@ void Mesh::DuplicateVertex(int i)
 	
 	if (normals.size() > i)
 		normals.push_back(normals[i]);
-	
-	if (Colors.size() > i)
-		Colors.push_back(Colors[i]);
-	
-	if (texcoords[0].size() > i)
-		texcoords[0].push_back(texcoords[0][i]);
-	
-	if (texcoords[1].size() > i)
-		texcoords[1].push_back(texcoords[1][i]);
-	
 }
 
 void Mesh::Normalize(float s)
@@ -214,8 +204,6 @@ Mesh* ImportMeshFromPly(const char* path)
 
     mesh->positions.resize(numVertices);
     mesh->normals.resize(numVertices);
-    mesh->Colors.resize(numVertices, Color(1.0f, 1.0f, 1.0f, 1.0f));
-
     mesh->indices.reserve(numFaces*3);
 
     // read vertices
@@ -332,6 +320,35 @@ void Mesh::RebuildBVH()
 		BVHBuilder builder;
 		bvh = builder.Build(&triangleBounds[0], numTris);
 	}
+
+    RebuildCDF();
+}
+
+void Mesh::RebuildCDF()
+{
+    int numTris = indices.size()/3;
+
+    float totalArea = 0.0f;
+
+    for (int i=0; i < numTris; ++i)
+    {
+        const Vec3 a = positions[indices[i*3+0]];
+        const Vec3 b = positions[indices[i*3+1]];
+        const Vec3 c = positions[indices[i*3+2]];
+
+        const float area = 0.5f*Length(Cross(b-a, c-a));
+
+        totalArea += area;
+
+        cdf.push_back(totalArea);
+    }
+
+    // normalize cdf
+    for (int i=0; i < numTris; ++i)
+        cdf[i] /= totalArea;
+
+    // save total area
+    area = totalArea;
 }
 
 Mesh* ImportMeshFromObj(const char* path)
@@ -464,9 +481,6 @@ Mesh* ImportMeshFromObj(const char* path)
 
 						m->positions.push_back(positions[key.v-1]);
 						
-						// obj format doesn't support mesh Colors so add default value
-						m->Colors.push_back(Color(1.0f, 1.0f, 1.0f));
-
 						// normal [optional]
 						if (key.vn)
 						{
@@ -476,7 +490,7 @@ Mesh* ImportMeshFromObj(const char* path)
 						// texcoord [optional]
 						if (key.vt)
 						{
-							m->texcoords[0].push_back(texcoords[key.vt-1]);
+							//m->texcoords[0].push_back(texcoords[key.vt-1]);
 						}
 					}
 				}
@@ -674,9 +688,6 @@ Mesh* ImportMeshFromObjNew(const char* path)
 
                         m->positions.push_back(positions[key.v-1]);
                         
-                        // obj format doesn't support mesh Colors so add default value
-                        m->Colors.push_back(Color(1.0f, 1.0f, 1.0f));
-
                         // normal [optional]
                         if (key.vn)
                         {
@@ -686,7 +697,7 @@ Mesh* ImportMeshFromObjNew(const char* path)
                         // texcoord [optional]
                         if (key.vt)
                         {
-                            m->texcoords[0].push_back(texcoords[key.vt-1]);
+                           // m->texcoords[0].push_back(texcoords[key.vt-1]);
                         }
                     }
             
@@ -784,7 +795,7 @@ void ExportToObj(const char* path, const Mesh& m)
 		Vec3 v = m.positions[i];
 		file << "v " << v.x << " " << v.y << " " << v.z << endl;
 	}
-
+/*
 	file << "# texcoords" << endl;
 
 	for (int i=0; i < m.texcoords[0].size(); ++i)
@@ -792,7 +803,7 @@ void ExportToObj(const char* path, const Mesh& m)
 		Vec2 t = m.texcoords[0][i];
 		file << "vt " << t.x << " " << t.y << endl;
 	}
-
+*/
 	file << "# normals" << endl;
 
 	for (int i=0; i < m.normals.size(); ++i)
@@ -808,7 +819,7 @@ void ExportToObj(const char* path, const Mesh& m)
 		int j = i+1;
 
 		// no sharing, assumes there is a unique position, texcoord and normal for each vertex
-		file << "f " << j << "/" << j << "/" << j << endl;
+		file << "f " << j << "/"/* << j << */"/" << j << endl;
 	}
 }
 
@@ -819,7 +830,6 @@ void Mesh::AddMesh(Mesh& m)
     // add new vertices
     positions.insert(positions.end(), m.positions.begin(), m.positions.end());
     normals.insert(normals.end(), m.normals.begin(), m.normals.end());
-    Colors.insert(Colors.end(), m.Colors.begin(), m.Colors.end());
 
     // add new indices with offset
     for (int i=0; i < m.indices.size(); ++i)

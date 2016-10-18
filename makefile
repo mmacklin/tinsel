@@ -13,9 +13,9 @@ TESTS = $(wildcard src/tests/*.h)
 OBJECTS = $(SOURCES:.cpp=.o) 
 
 all: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) data/example.tin
 
-$(TARGET): $(OBJECTS) makefile
+$(TARGET): $(OBJECTS) makefile $(TESTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(TARGET) 
 
 clean:

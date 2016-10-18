@@ -1,0 +1,155 @@
+# .tin file format
+
+options
+{
+	width 256
+	height 256
+	
+}
+
+camera
+{
+	position 0.2 2.0 10.0
+	target 0.0 0.0 0.0
+}
+
+material gold
+{
+	color 1.0 0.71 0.29
+	roughness 0.2
+	metallic 1.0	
+}
+
+material ground
+{
+	color 0.85 0.85 0.85
+	roughness 0.2
+}
+
+material green
+{
+	color 0.25 0.85 0.25
+	roughness 0.2
+	specular 0.1
+	emission 1.0 5.0 1.0
+}
+
+
+
+material light
+{
+	emission 10.0 10.0 10.0
+}
+
+material lightred
+{
+	emission 10.0 3.0 3.0
+}
+
+sky
+{
+#	horizon 0.2 0.4 0.6
+#	zenith 0.02 0.05 0.4
+}
+
+mesh cube
+{
+	verts 24
+	0.5 0.5 0.5
+	-0.5 0.5 0.5
+	0.5 -0.5 0.5
+	-0.5 -0.5 0.5
+	0.5 0.5 -0.5
+	-0.5 0.5 -0.5
+	0.5 -0.5 -0.5
+	-0.5 -0.5 -0.5
+	0.5 0.5 0.5
+	0.5 -0.5 0.5
+	0.5 0.5 0.5
+	0.5 0.5 -0.5
+	-0.5 0.5 0.5
+	-0.5 0.5 -0.5
+	0.5 -0.5 -0.5
+	0.5 0.5 -0.5
+	-0.5 -0.5 -0.5
+	0.5 -0.5 -0.5
+	-0.5 -0.5 0.5
+	0.5 -0.5 0.5
+	-0.5 -0.5 -0.5
+	-0.5 -0.5 0.5
+	-0.5 0.5 -0.5
+	-0.5 0.5 0.5	
+
+	tris 12
+	0 1 2 
+	3 2 1 
+	8 9 4 
+	6 4 9 
+	10 11 12 
+	5 12 11 
+	7 13 14 
+	15 14 13 
+	16 17 18 
+	19 18 17 
+	20 21 22 
+	23 22 21 
+}
+
+
+primitive
+{
+	type plane
+	plane 0 1 0 0
+	material ground
+}
+
+primitive
+{
+	type sphere
+	radius 2.0
+	material light
+	
+	lightSamples 10
+
+	position 5 10 5
+	rotation 0 0 0 1
+	scale 1
+}
+
+primitive
+{
+	type sphere
+	radius 0.5
+	material gold
+	
+	position -2 0.5 0
+	rotation 0 0 0 1
+	scale 1.0
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/sphere.obj
+	material lightred
+
+	lightSamples 1
+
+	position 1 0.0 0
+	rotation 0 0 0 1
+	scale 2.0
+}
+
+
+primitive
+{
+	type sphere
+	radius 1
+	material light
+
+	lightSamples 1
+
+	position 0 1.0 0
+	rotation 0 0 0 1
+	scale 1.0
+}
