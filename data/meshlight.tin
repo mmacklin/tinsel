@@ -9,8 +9,8 @@ options
 
 camera
 {
-	position 0.2 2.0 10.0
-	target 0.0 0.0 0.0
+	position 0.5 2.0 10.0
+	target 0.5 0.0 0.0
 }
 
 material gold
@@ -45,6 +45,12 @@ material lightred
 {
 	emission 10.0 3.0 3.0
 }
+
+material lightgreen
+{
+	emission 3.0 10.0 3.0
+}
+
 
 sky
 {
@@ -109,7 +115,7 @@ primitive
 	radius 2.0
 	material light
 	
-	lightSamples 10
+	lightSamples 1
 
 	position 5 10 5
 	rotation 0 0 0 1
@@ -118,34 +124,37 @@ primitive
 
 primitive
 {
-	type sphere
-	radius 0.5
-	material gold
-	
-	position -2 0.5 0
-	rotation 0 0 0 1
-	scale 1.0
-}
-
-primitive
-{
 	type mesh
-	mesh meshes/sphere.obj
+	mesh meshes/sphere.ply
 	material lightred
 
 	lightSamples 1
 
-	position 1 0.0 0
+	position 2.5 1.0 0
 	rotation 0 0 0 1
-	scale 2.0
+	scale 1.0
 }
 
 
 primitive
 {
 	type sphere
-	radius 1
-	material light
+	radius 0.5
+	material lightred
+
+	lightSamples 1
+
+	position -2 1.5 0
+	rotation 0 0 0 1
+	scale 1.0
+}
+
+
+primitive
+{
+	type mesh
+	mesh meshes/brain.obj
+	material lightgreen
 
 	lightSamples 1
 
@@ -153,3 +162,4 @@ primitive
 	rotation 0 0 0 1
 	scale 1.0
 }
+

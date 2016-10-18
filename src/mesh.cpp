@@ -336,6 +336,7 @@ void Mesh::RebuildCDF()
     int numTris = indices.size()/3;
 
     float totalArea = 0.0f;
+    cdf.resize(0);
 
     for (int i=0; i < numTris; ++i)
     {
@@ -352,7 +353,9 @@ void Mesh::RebuildCDF()
 
     // normalize cdf
     for (int i=0; i < numTris; ++i)
+    {
         cdf[i] /= totalArea;
+    }
 
     // save total area
     area = totalArea;

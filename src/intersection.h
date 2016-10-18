@@ -702,8 +702,8 @@ CUDA_CALLABLE inline void LightSample(const Primitive& p, float time, Vec3& pos,
 
 			float r = rand.Randf();
 
-			const float* triPtr = std::lower_bound(p.mesh.cdf, p.mesh.cdf+p.mesh.numIndices/3, r);
-			int tri = triPtr-p.mesh.cdf;
+			const float* triPtr = LowerBound(p.mesh.cdf, p.mesh.cdf+p.mesh.numIndices/3, r);
+			int tri = Min(int(triPtr-p.mesh.cdf), p.mesh.numIndices/3 - 1);
 
 			float u, v;
 			UniformSampleTriangle(rand, u, v);

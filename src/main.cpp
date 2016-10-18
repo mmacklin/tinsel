@@ -332,6 +332,8 @@ void ProcessCommandLine(int argc, char* argv[])
 }
 int main(int argc, char* argv[])
 {	
+#if _WIN32 
+
 	const int device = 1;
 	cudaSetDevice(device);
 	
@@ -351,6 +353,7 @@ int main(int argc, char* argv[])
 
 	printf("Compute device: %s\n", name);
 
+#endif // _WIN32
 
     // set up defaults
     g_options.width = 512;
