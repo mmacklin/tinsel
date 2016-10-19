@@ -334,7 +334,7 @@ int main(int argc, char* argv[])
 {	
 #if _WIN32 
 
-	const int device = 1;
+	const int device = 0;
 	cudaSetDevice(device);
 	
 	cudaDeviceProp props;

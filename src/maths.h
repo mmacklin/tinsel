@@ -1069,6 +1069,85 @@ public:
 	unsigned int seed2;
 };
 
+/* LuxRender PRNG
+
+#define FLOATMASK 0x00ffffffu
+
+class Random
+{
+public:
+
+CUDA_CALLABLE inline unsigned int TAUSWORTHE(const unsigned int s, const unsigned int a, const unsigned int b, const unsigned int c, const unsigned int d) { return ((s&c)<<d) ^ (((s << a) ^ s) >> b); }
+
+
+CUDA_CALLABLE inline unsigned int LCG(const unsigned int x) { return x * 69069; }
+
+CUDA_CALLABLE inline unsigned int ValidSeed(const unsigned int x, const unsigned int m) {
+	return (x < m) ? (x + m) : x;
+}
+
+CUDA_CALLABLE inline unsigned long Rnd_UintValue() {
+	seed1 = TAUSWORTHE(seed1, 13, 19, 4294967294UL, 12);
+	seed2 = TAUSWORTHE(seed2, 2, 25, 4294967288UL, 4);
+	seed3 = TAUSWORTHE(seed3, 3, 11, 4294967280UL, 17);
+
+	return ((seed1) ^ (seed2) ^ (seed3));
+}
+
+
+	CUDA_CALLABLE inline Random(int seed=0)
+	{
+		//seed1 = 315645664 + seed;
+		//seed2 = seed1 ^ 0x13ab45fe;
+
+		seed = (seed == 0) ? (seed + 0xffffffu) : seed;
+
+		seed1 = ValidSeed(LCG(seed), 1);
+		seed2 = ValidSeed(LCG(seed1), 7);
+		seed3 = ValidSeed(LCG(seed2), 15);
+	}
+
+	CUDA_CALLABLE inline unsigned int Rand()
+	{
+		seed1 = ( seed2 ^ ( ( seed1 << 5 ) | ( seed1 >> 27 ) ) ) ^ ( seed1*seed2 );
+		seed2 = seed1 ^ ( ( seed2 << 12 ) | ( seed2 >> 20 ) );
+
+		return seed1;
+	}
+
+	// returns a random number in the range [min, max)
+	CUDA_CALLABLE inline unsigned int Rand(unsigned int min, unsigned int max)
+	{
+		return min + Rand()%(max-min);
+	}
+
+
+	// returns random number between 0-1
+	CUDA_CALLABLE inline float Randf()
+	{
+		return (Rnd_UintValue() & FLOATMASK) * (1.f / (FLOATMASK + 1UL));
+		
+	}
+
+	// returns random number between min and max
+	CUDA_CALLABLE inline float Randf(float min, float max)
+	{
+		float t = Randf();
+		return (1.0f-t)*min + t*max;
+	}
+
+	// returns random number between 0-max
+	CUDA_CALLABLE inline float Randf(float max)
+	{
+		return Randf()*max;
+	}
+
+	unsigned int seed1;
+	unsigned int seed2;
+	unsigned int seed3;
+};
+*/
+
 //----------------------
 // bitwise operations
 
@@ -1509,3 +1588,50 @@ CUDA_CALLABLE inline void ValidateImpl(const Color& c, const char* file, int lin
 #else
 #define Validate(x)
 #endif
+
+#define USE_TEXTURES 1
+
+CUDA_CALLABLE inline int fetchInt(const int* ptr, int index)
+{
+#if __CUDA_ARCH__ && USE_TEXTURES
+	return tex1Dfetch<int>((cudaTextureObject_t)ptr, index);
+#else
+	return ptr[index];
+#endif
+
+}
+
+CUDA_CALLABLE inline float fetchFloat(const float* ptr, int index)
+{
+#if __CUDA_ARCH__ && USE_TEXTURES
+	return tex1Dfetch<float>((cudaTextureObject_t)ptr, index);
+#else
+	return ptr[index];
+#endif
+
+}
+
+CUDA_CALLABLE inline Vec3 fetchVec3(const Vec3* ptr, int index)
+{
+#if __CUDA_ARCH__ && USE_TEXTURES
+	float x = tex1Dfetch<float>((cudaTextureObject_t)ptr, index*3+0);
+	float y = tex1Dfetch<float>((cudaTextureObject_t)ptr, index*3+1);
+	float z = tex1Dfetch<float>((cudaTextureObject_t)ptr, index*3+2);
+	
+	return Vec3(x, y, z);
+#else
+	return ptr[index];
+#endif
+
+}
+
+CUDA_CALLABLE inline Vec4 fetchVec4(const Vec4* ptr, int index)
+{
+#if __CUDA_ARCH__ && USE_TEXTURES
+	float4 x = tex1Dfetch<float4>((cudaTextureObject_t)ptr, index);
+	return Vec4(x.x, x.y, x.z, x.w);
+#else
+	return ptr[index];
+#endif
+
+}

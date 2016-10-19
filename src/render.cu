@@ -20,6 +20,115 @@ struct GPUScene
 #define kProbeSamples 1.0f
 #define kRayEpsilon 0.001f
 
+// create a texture object from memory and store it in a 64-bit pointer
+void CreateIntTexture(int** deviceBuffer, const int* hostBuffer, int sizeInBytes)
+{
+	int* buffer;
+	cudaMalloc(&buffer, sizeInBytes);
+	cudaMemcpy(buffer, hostBuffer, sizeInBytes, cudaMemcpyHostToDevice);
+
+#if USE_TEXTURES
+
+	// create texture object
+	cudaResourceDesc resDesc;
+	memset(&resDesc, 0, sizeof(resDesc));
+	resDesc.resType = cudaResourceTypeLinear;
+	resDesc.res.linear.devPtr = (void*)buffer;
+	resDesc.res.linear.desc.f = cudaChannelFormatKindSigned;
+	resDesc.res.linear.desc.x = 32; // bits per channel
+	resDesc.res.linear.sizeInBytes = sizeInBytes;
+
+	cudaTextureDesc texDesc;
+	memset(&texDesc, 0, sizeof(texDesc));
+	texDesc.readMode = cudaReadModeElementType;
+
+	cudaTextureObject_t tex;
+	cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
+
+	// cast to pointer
+	*deviceBuffer = (int*)tex;
+#else
+
+	*deviceBuffer = buffer;
+
+#endif
+}
+
+// create a texture object from memory and store it in a 64-bit pointer
+void CreateFloatTexture(float** deviceBuffer, const float* hostBuffer, int sizeInBytes)
+{
+	float* buffer;
+	cudaMalloc(&buffer, sizeInBytes);
+	cudaMemcpy(buffer, hostBuffer, sizeInBytes, cudaMemcpyHostToDevice);
+
+#if USE_TEXTURES
+
+	// create texture object
+	cudaResourceDesc resDesc;
+	memset(&resDesc, 0, sizeof(resDesc));
+	resDesc.resType = cudaResourceTypeLinear;
+	resDesc.res.linear.devPtr = (void*)buffer;
+	resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
+	resDesc.res.linear.desc.x = 32; // bits per channel
+	resDesc.res.linear.sizeInBytes = sizeInBytes;
+
+	cudaTextureDesc texDesc;
+	memset(&texDesc, 0, sizeof(texDesc));
+	texDesc.readMode = cudaReadModeElementType;
+
+	cudaTextureObject_t tex;
+	cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
+
+	// cast to pointer
+	*deviceBuffer = (float*)tex;
+
+#else
+
+	*deviceBuffer = buffer;
+
+#endif
+}
+
+// create a texture object from memory and store it in a 64-bit pointer
+void CreateVec4Texture(Vec4** deviceBuffer, const Vec4* hostBuffer, int sizeInBytes)
+{
+	Vec4* buffer;
+	cudaMalloc(&buffer, sizeInBytes);
+	cudaMemcpy(buffer, hostBuffer, sizeInBytes, cudaMemcpyHostToDevice);
+
+#if USE_TEXTURES
+
+	// create texture object
+	cudaResourceDesc resDesc;
+	memset(&resDesc, 0, sizeof(resDesc));
+	resDesc.resType = cudaResourceTypeLinear;
+	resDesc.res.linear.devPtr = (void*)buffer;
+	resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
+	resDesc.res.linear.desc.x = 32; // bits per channel
+	resDesc.res.linear.desc.y = 32; // bits per channel
+	resDesc.res.linear.desc.z = 32; // bits per channel
+	resDesc.res.linear.desc.w = 32; // bits per channel
+	resDesc.res.linear.sizeInBytes = sizeInBytes;
+
+	cudaTextureDesc texDesc;
+	memset(&texDesc, 0, sizeof(texDesc));
+	texDesc.readMode = cudaReadModeElementType;
+
+	cudaTextureObject_t tex;
+	cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
+
+	// cast to pointer
+	*deviceBuffer = (Vec4*)tex;
+
+#else
+
+	*deviceBuffer = buffer;
+
+#endif
+
+}
+
+
 MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 {
 	const int numVertices = hostMesh.numVertices;
@@ -27,21 +136,33 @@ MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 	const int numNodes = hostMesh.numNodes;
 
 	MeshGeometry gpuMesh;
-	cudaMalloc(&gpuMesh.positions, sizeof(Vec3)*numVertices);
+	CreateFloatTexture((float**)&gpuMesh.positions, (float*)&hostMesh.positions[0], sizeof(Vec3)*numVertices);
+	CreateFloatTexture((float**)&gpuMesh.normals, (float*)&hostMesh.normals[0], sizeof(Vec3)*numVertices);
+	CreateIntTexture((int**)&gpuMesh.indices, (int*)&hostMesh.indices[0], sizeof(int)*numIndices);
+	
+
+	/*
+	cudaMalloc((Vec3**)&gpuMesh.positions, sizeof(Vec3)*numVertices);
 	cudaMemcpy((Vec3*)gpuMesh.positions, &hostMesh.positions[0], sizeof(Vec3)*numVertices, cudaMemcpyHostToDevice);
 
-	cudaMalloc(&gpuMesh.normals, sizeof(Vec3)*numVertices);
+	cudaMalloc((Vec3**)&gpuMesh.normals, sizeof(Vec3)*numVertices);
 	cudaMemcpy((Vec3*)gpuMesh.normals, &hostMesh.normals[0], sizeof(Vec3)*numVertices, cudaMemcpyHostToDevice);
 
-	cudaMalloc(&gpuMesh.indices, sizeof(int)*numIndices);
+	cudaMalloc((int**)&gpuMesh.indices, sizeof(int)*numIndices);
 	cudaMemcpy((int*)gpuMesh.indices, &hostMesh.indices[0], sizeof(int)*numIndices, cudaMemcpyHostToDevice);
+	*/
+	//cudaMalloc((BVHNode**)&gpuMesh.nodes, sizeof(BVHNode)*numNodes);
+	//cudaMemcpy((BVHNode*)gpuMesh.nodes, &hostMesh.nodes[0], sizeof(BVHNode)*numNodes, cudaMemcpyHostToDevice);
 
-	cudaMalloc(&gpuMesh.nodes, sizeof(BVHNode)*numNodes);
-	cudaMemcpy((BVHNode*)gpuMesh.nodes, &hostMesh.nodes[0], sizeof(BVHNode)*numNodes, cudaMemcpyHostToDevice);
+	CreateVec4Texture((Vec4**)&gpuMesh.nodes, (Vec4*)&hostMesh.nodes[0], sizeof(BVHNode)*numNodes);
+	
+	cudaMalloc((float**)&gpuMesh.cdf, sizeof(float)*numIndices/3);
+	cudaMemcpy((float*)gpuMesh.cdf, &hostMesh.cdf[0], sizeof(float)*numIndices/3, cudaMemcpyHostToDevice);
 	
 	gpuMesh.numIndices = numIndices;
 	gpuMesh.numVertices = numVertices;
 	gpuMesh.numNodes = numNodes;
+	gpuMesh.area = hostMesh.area;
 
 	return gpuMesh;
 
@@ -62,23 +183,14 @@ Sky CreateGPUSky(const Sky& sky)
 		const int numPixels = sky.probe.width*sky.probe.height;
 
 		// copy pixel data
-		cudaMalloc(&gpuSky.probe.data, numPixels*sizeof(float)*4);
-		cudaMemcpy(gpuSky.probe.data, sky.probe.data, numPixels*sizeof(float)*4, cudaMemcpyHostToDevice);
+		CreateVec4Texture((Vec4**)&gpuSky.probe.data, sky.probe.data, numPixels*sizeof(float)*4);
 
 		// copy cdf tables
-		cudaMalloc(&gpuSky.probe.cdfValuesX, numPixels*sizeof(float));
-		cudaMemcpy(gpuSky.probe.cdfValuesX, sky.probe.cdfValuesX, numPixels*sizeof(float), cudaMemcpyHostToDevice);
+		CreateFloatTexture((float**)&gpuSky.probe.cdfValuesX, sky.probe.cdfValuesX, numPixels*sizeof(float));
+		CreateFloatTexture((float**)&gpuSky.probe.pdfValuesX, sky.probe.pdfValuesX, numPixels*sizeof(float));
 
-		cudaMalloc(&gpuSky.probe.cdfValuesY, sky.probe.height*sizeof(float));
-		cudaMemcpy(gpuSky.probe.cdfValuesY, sky.probe.cdfValuesY, sky.probe.height*sizeof(float), cudaMemcpyHostToDevice);
-
-		// copy pdf tables
-		cudaMalloc(&gpuSky.probe.pdfValuesX, numPixels*sizeof(float));
-		cudaMemcpy(gpuSky.probe.pdfValuesX, sky.probe.pdfValuesX, numPixels*sizeof(float), cudaMemcpyHostToDevice);
-
-		cudaMalloc(&gpuSky.probe.pdfValuesY, sky.probe.height*sizeof(float));
-		cudaMemcpy(gpuSky.probe.pdfValuesY, sky.probe.pdfValuesY, sky.probe.height*sizeof(float), cudaMemcpyHostToDevice);
-
+		CreateFloatTexture((float**)&gpuSky.probe.cdfValuesY, sky.probe.cdfValuesY, sky.probe.height*sizeof(float));
+		CreateFloatTexture((float**)&gpuSky.probe.pdfValuesY, sky.probe.pdfValuesY, sky.probe.height*sizeof(float));
 	}
 
 	return gpuSky;
@@ -88,7 +200,7 @@ void DestroyGPUSky(const Sky& gpuSky)
 {
 	if (gpuSky.probe.valid)
 	{
-		cudaFree(gpuSky.probe.data);
+		// todo
 	}
 }
 
@@ -96,7 +208,6 @@ void DestroyGPUSky(const Sky& gpuSky)
 // trace a ray against the scene returning the closest intersection
 __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
-	// disgard hits closer than this distance to avoid self intersection artifacts
 	float minT = REAL_MAX;
 	const Primitive* closestPrimitive = NULL;
 	Vec3 closestNormal(0.0f);
@@ -333,11 +444,11 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 			brdfPdf = BRDFPdf(hit->material, p, n, -rayDir, brdfDir);
 
 			
-            if (brdfPdf <= 0.0f)
-            	break;
+            //if (brdfPdf <= 0.0f)
+            	//break;
 
-            if (Dot(brdfDir, n) <= 0.0f)
-            	break;
+            //if (Dot(brdfDir, n) <= 0.0f)
+            	//break;
 				
 
 			Validate(brdfPdf);
@@ -430,10 +541,11 @@ __device__ void AddSample(Color* output, int width, int height, float rasterX, f
 
 __global__ void RenderGpu(GPUScene scene, Camera camera, CameraSampler sampler, Options options, int seed, Color* output)
 {
-	const int tid = blockDim.x*blockIdx.x + threadIdx.x;
+	const int tx = blockIdx.x*blockDim.x;
+	const int ty = blockIdx.y*blockDim.y;
 
-	const int i = tid%options.width;
-	const int j = tid/options.width;
+	const int i = tx + threadIdx.x;
+	const int j = ty + threadIdx.y;
 
 	if (i < options.width && j < options.height)
 	{
@@ -441,7 +553,7 @@ __global__ void RenderGpu(GPUScene scene, Camera camera, CameraSampler sampler, 
 		Vec3 dir;
 
 		// initialize a per-thread PRNG
-		Random rand(tid + seed);
+		Random rand(i + j*options.width + seed);
 
 		if (options.mode == eNormals)
 		{
@@ -499,11 +611,6 @@ struct GpuRenderer : public Renderer
 		{
 			Primitive primitive = s->primitives[i];
 
-			if (primitive.lightSamples)
-			{
-				lights.push_back(primitive);
-			}
-
 			// if mesh primitive then copy to the GPU
 			if (primitive.type == eMesh)
 			{
@@ -518,6 +625,12 @@ struct GpuRenderer : public Renderer
 				}
 			}	
 			
+			// create explicit list of light primitives
+			if (primitive.lightSamples)
+			{
+				lights.push_back(primitive);
+			}
+
 			primitives.push_back(primitive);
 		}
 
@@ -557,10 +670,6 @@ struct GpuRenderer : public Renderer
 
 	void Render(const Camera& camera, const Options& options, Color* outputHost)
 	{
-		const int numThreads = options.width*options.height;
-		const int kNumThreadsPerBlock = 256;
-		const int kNumBlocks = (numThreads + kNumThreadsPerBlock - 1) / (kNumThreadsPerBlock);
-	
 		// create a sampler for the camera
 		CameraSampler sampler(
 			Transform(camera.position, camera.rotation),
@@ -570,10 +679,21 @@ struct GpuRenderer : public Renderer
 			options.width,
 			options.height);
 
-		RenderGpu<<<kNumBlocks, kNumThreadsPerBlock>>>(sceneGPU, camera, sampler, options, seed.Rand(), output);
+
+		// assign threads in non-square tiles to match warp width
+		const int blockWidth = 32;
+		const int blockHeight = 8;
+
+		const int gridWidth = (options.width + blockWidth - 1)/blockWidth;
+		const int gridHeight = (options.height + blockHeight - 1)/blockHeight;
+
+		dim3 blockDim(blockWidth, blockHeight);
+		dim3 gridDim(gridWidth, gridHeight);
+
+		RenderGpu<<<gridDim, blockDim>>>(sceneGPU, camera, sampler, options, seed.Rand(), output);
 
 		// copy back to output
-		cudaMemcpy(outputHost, output, sizeof(Color)*numThreads, cudaMemcpyDeviceToHost);
+		cudaMemcpy(outputHost, output, sizeof(Color)*options.width*options.height, cudaMemcpyDeviceToHost);
 	}
 };
 

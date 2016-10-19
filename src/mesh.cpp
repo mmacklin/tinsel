@@ -810,6 +810,7 @@ Mesh* ImportMeshFromBin(const char* path)
 		m->positions.resize(numVertices);
 		m->normals.resize(numVertices);
 		m->indices.resize(numIndices);
+		m->cdf.resize(numIndices/3);
 		
 		m->bvh.nodes = new BVHNode[numNodes];
 		m->bvh.numNodes = numNodes;
@@ -819,6 +820,9 @@ Mesh* ImportMeshFromBin(const char* path)
 		fread(&m->indices[0], sizeof(int)*numIndices, 1, f);
 		fread(m->bvh.nodes, sizeof(BVHNode)*numNodes, 1, f);
 		
+		fread(&m->area, sizeof(float), 1, f);
+		fread(&m->cdf[0], sizeof(float)*numIndices/3, 1, f);
+
 		fclose(f);
 
 		double end = GetSeconds();
@@ -850,6 +854,10 @@ void ExportMeshToBin(const char* path, const Mesh* m)
 		fwrite(&m->normals[0], sizeof(Vec3)*numVertices, 1, f);		
 		fwrite(&m->indices[0], sizeof(int)*numIndices, 1, f);
 		fwrite(m->bvh.nodes, sizeof(BVHNode)*numNodes, 1, f);
+
+		// cdf for light sampling
+		fwrite(&m->area, sizeof(float), 1, f);
+		fwrite(&m->cdf[0], sizeof(float)*numIndices/3, 1, f);
 
 		fclose(f);
 	}

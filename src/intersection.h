@@ -387,7 +387,7 @@ CUDA_CALLABLE inline bool IntersectRayAABBFast(const Vec3& pos, const Vec3& rcp_
     //return ((lmax > 0.f) & (lmax > lmin));
     bool hit = ((lmax >= 0.f) & (lmax >= lmin));
     if (hit)
-        t = Max(0.0f, lmin);	// clamp to zero for rays starting inside the box
+        t = lmin;
     return hit;
 }
 
@@ -513,6 +513,69 @@ CUDA_CALLABLE inline bool IntersectPlaneAABB(const Vec4& plane, const Vec3& cent
 // Templated query methods
 
 template <typename Func>
+CUDA_CALLABLE void QueryRayOld(const BVHNode* root, Func& f, const Vec3& start, const Vec3& dir)
+{
+	Vec3 rcpDir;
+	rcpDir.x = 1.0f/dir.x;
+	rcpDir.y = 1.0f/dir.y;
+	rcpDir.z = 1.0f/dir.z;
+
+	int stack[32];
+	stack[0] = 0;
+
+	int count = 1;
+
+	while (count)
+	{
+		const BVHNode* n = root + stack[--count];
+
+#if CUDA
+		// load using two 128 bit loads
+		float4 f4[2];
+
+		const float4* __restrict__ fn = (const float4*)(n);
+		f4[0] = fn[0];
+		f4[1] = fn[1];
+
+		const BVHNode& node = (const BVHNode&)(f4[0]);
+#else
+		const BVHNode node = *n;
+#endif
+
+		float t;
+		//if (IntersectRayAABB(start, dir, n->bounds.lower, n->bounds.upper, t, NULL))			
+		if (IntersectRayAABBFast(start, rcpDir, node.bounds.lower, node.bounds.upper, t))
+		{
+			if (node.leaf)
+			{	
+				f(node.leftIndex);
+			}
+			else
+			{
+				stack[count++] = node.leftIndex;
+				stack[count++] = node.rightIndex;
+			}
+		}
+	}		
+}
+
+CUDA_CALLABLE inline BVHNode fetchNode(const BVHNode* ptr, int index)
+{
+#if __CUDA_ARCH__ && USE_TEXTURES
+		
+		// load using two 128 bit loads
+		float4 f4[2];
+
+		f4[0] = tex1Dfetch<float4>((cudaTextureObject_t)ptr, index*2+0);
+		f4[1] = tex1Dfetch<float4>((cudaTextureObject_t)ptr, index*2+1);
+
+		return (const BVHNode&)(f4[0]);
+#else
+		return ptr[index];
+#endif
+}
+
+template <typename Func>
 CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, const Vec3& dir)
 {
 	Vec3 rcpDir;
@@ -520,32 +583,40 @@ CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, con
 	rcpDir.y = 1.0f/dir.y;
 	rcpDir.z = 1.0f/dir.z;
 
-	const BVHNode* stack[64];
-	stack[0] = root;
+	int stack[32];
+	stack[0] = 0;
 
 	int count = 1;
 
-	while (count)
+	while(count)
 	{
-		const BVHNode* n = stack[--count];
+		BVHNode node = fetchNode(root, stack[--count]);
 
-		float t;
-		//if (IntersectRayAABB(start, dir, n->bounds.lower, n->bounds.upper, t, NULL))
-			
-		if (IntersectRayAABBFast(start, rcpDir, n->bounds.lower, n->bounds.upper, t))
+		if (node.leaf)
 		{
-			if (n->leaf)
-			{	
-				f(n->leftIndex);
-			}
-			else if (t >= 0.0f)
-			{
-				stack[count++] = &root[n->leftIndex];
-				stack[count++] = &root[n->rightIndex];
-			}
+			f(node.leftIndex);
+		}
+		else
+		{
+			// check children
+			BVHNode left = fetchNode(root, node.leftIndex);
+			BVHNode right = fetchNode(root, node.rightIndex);
+
+			float tLeft = FLT_MAX;
+			bool hitLeft = IntersectRayAABBFast(start, rcpDir, left.bounds.lower, left.bounds.upper, tLeft);
+
+			float tRight = FLT_MAX;
+			bool hitRight = IntersectRayAABBFast(start, rcpDir, right.bounds.lower, right.bounds.upper, tRight);
+
+			if (hitLeft)
+				stack[count++] = node.leftIndex;
+
+			if (hitRight)
+				stack[count++] = node.rightIndex;
 		}
 	}		
 }
+
 
 struct MeshQuery
 {
@@ -556,9 +627,13 @@ struct MeshQuery
 		float t, u, v, w;
 		Vec3 n;
 
-		const Vec3& a = mesh.positions[mesh.indices[i*3+0]];
-		const Vec3& b = mesh.positions[mesh.indices[i*3+1]];
-		const Vec3& c = mesh.positions[mesh.indices[i*3+2]];
+		int i0 = fetchInt(mesh.indices, i*3+0);
+		int i1 = fetchInt(mesh.indices, i*3+1);
+		int i2 = fetchInt(mesh.indices, i*3+2);
+
+		const Vec3 a = fetchVec3(mesh.positions, i0);
+		const Vec3 b = fetchVec3(mesh.positions, i1);
+		const Vec3 c = fetchVec3(mesh.positions, i2);
 
 		float sign;
 		//if (IntersectRayTri(rayOrigin, rayDir, a, b, c, t, u, v, w, &n))
@@ -688,7 +763,6 @@ CUDA_CALLABLE inline void LightSample(const Primitive& p, float time, Vec3& pos,
 			// todo: handle scaling in transform matrix
 			pos = TransformPoint(transform, UniformSampleSphere(rand)*p.sphere.radius);			
 			normal = Normalize(pos-transform.p);
-
 			return;
 		}
 		case ePlane:
@@ -698,8 +772,6 @@ CUDA_CALLABLE inline void LightSample(const Primitive& p, float time, Vec3& pos,
 		}
 		case eMesh:
 		{
-			assert(p.mesh.cdf);
-
 			float r = rand.Randf();
 
 			const float* triPtr = LowerBound(p.mesh.cdf, p.mesh.cdf+p.mesh.numIndices/3, r);
@@ -707,18 +779,22 @@ CUDA_CALLABLE inline void LightSample(const Primitive& p, float time, Vec3& pos,
 
 			float u, v;
 			UniformSampleTriangle(rand, u, v);
+			
+			// interpolate tri data
+			int i0 = fetchInt(p.mesh.indices, tri*3+0);
+			int i1 = fetchInt(p.mesh.indices, tri*3+1);
+			int i2 = fetchInt(p.mesh.indices, tri*3+2);
 
-		    const Vec3 a = p.mesh.positions[p.mesh.indices[tri*3+0]];
-	        const Vec3 b = p.mesh.positions[p.mesh.indices[tri*3+1]];
-	        const Vec3 c = p.mesh.positions[p.mesh.indices[tri*3+2]];
+			const Vec3 a = fetchVec3(p.mesh.positions, i0);
+			const Vec3 b  = fetchVec3(p.mesh.positions, i1);
+			const Vec3 c = fetchVec3(p.mesh.positions, i2);
 
-		    const Vec3 n1 = p.mesh.normals[p.mesh.indices[tri*3+0]];
-	        const Vec3 n2 = p.mesh.normals[p.mesh.indices[tri*3+1]];
-	        const Vec3 n3 = p.mesh.normals[p.mesh.indices[tri*3+2]];
+			const Vec3 n1 = fetchVec3(p.mesh.normals, i0);
+			const Vec3 n2  = fetchVec3(p.mesh.normals, i1);
+			const Vec3 n3 = fetchVec3(p.mesh.normals, i2);
 
 	        pos = TransformPoint(transform, u*a + v*b + (1.0f-u-v)*c);
 	        normal = SafeNormalize(TransformVector(transform, u*n1 + v*n2 + (1.0f-u-v)*n3));
-
 			return;
 		}
 	}
@@ -780,9 +856,19 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 			if (hit)
 			{
 				// interpolate vertex normals
+#if CUDA
+				int i0 = fetchInt(p.mesh.indices, tri*3+0);
+				int i1 = fetchInt(p.mesh.indices, tri*3+1);
+				int i2 = fetchInt(p.mesh.indices, tri*3+2);
+
+				const Vec3 n1 = fetchVec3(p.mesh.normals, i0);
+				const Vec3 n2  = fetchVec3(p.mesh.normals, i1);
+				const Vec3 n3 = fetchVec3(p.mesh.normals, i2);
+#else
 				Vec3 n1 = p.mesh.normals[p.mesh.indices[tri*3+0]];
 				Vec3 n2 = p.mesh.normals[p.mesh.indices[tri*3+1]];
 				Vec3 n3 = p.mesh.normals[p.mesh.indices[tri*3+2]];
+#endif
 
 				Vec3 smoothNormal = u*n1 + v*n2 + w*n3;
 

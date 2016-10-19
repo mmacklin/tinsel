@@ -16,6 +16,9 @@
     <Filter Include="Header Files\Examples">
       <UniqueIdentifier>{6865d109-aac0-4757-bc04-c05088578d04}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Tests">
+      <UniqueIdentifier>{b19a3e71-e3fd-4e9b-8351-e141ffdf2bdd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\bvh.cpp">
@@ -80,18 +83,6 @@
     <ClInclude Include="src\skylight.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\tests\testMaterials.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\tests\testMesh.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\tests\testMotionBlur.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\tests\testVeach.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\png.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -106,6 +97,18 @@
     </ClInclude>
     <ClInclude Include="src\probe.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tests\testVeach.h">
+      <Filter>Header Files\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tests\testMaterials.h">
+      <Filter>Header Files\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tests\testMesh.h">
+      <Filter>Header Files\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tests\testMotionBlur.h">
+      <Filter>Header Files\Tests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

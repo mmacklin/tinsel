@@ -107,7 +107,7 @@ Todo List
 [x] Multiple importance sampling
 [x] Mesh affine transformation support
 [ ] Mesh, Disc, Sphere, Plane primitives
-[ ] Mesh sampling
+[x] Mesh sampling
 [ ] Multi material meshes
 [x] SAH and BVH splitting heuristics
 [ ] Clean up mesh allocations
@@ -129,6 +129,7 @@ Todo List
 [ ] Volume rendering
 [x] Environment maps
 [ ] Lens modelling
+[ ] Refraction
 [ ] Examples
 
 Supported Platforms

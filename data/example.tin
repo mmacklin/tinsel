@@ -2,8 +2,8 @@
 
 options
 {
-	width 1280
-	height 720
+	width 500
+	height 200
 	
 }
 
@@ -11,6 +11,11 @@ camera
 {
 	position 0.2 2.0 10.0
 	target 0.0 0.0 0.0
+}
+
+sky
+{
+	probe probes/vankleef.hdr
 }
 
 material gold
@@ -40,11 +45,6 @@ material light
 	emission 10.0 10.0 10.0
 }
 
-sky
-{
-#	horizon 0.2 0.4 0.6
-#	zenith 0.02 0.05 0.4
-}
 
 mesh cube
 {
@@ -72,7 +72,7 @@ mesh cube
 	-0.5 -0.5 -0.5
 	-0.5 -0.5 0.5
 	-0.5 0.5 -0.5
-	-0.5 0.5 0.5	
+	-0.5 0.5 0.5
 
 	tris 12
 	0 1 2 
@@ -103,7 +103,7 @@ primitive
 	radius 2.0
 	material light
 	
-	lightSamples 10
+	lightSamples 1
 
 	position 5 10 5
 	rotation 0 0 0 1
@@ -124,7 +124,7 @@ primitive
 primitive
 {
 	type mesh
-	mesh meshes/octopus.obj
+	mesh meshes/brain_high.bin
 	material gold
 
 	position 1 0.0 0

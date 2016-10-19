@@ -82,17 +82,18 @@ struct PlaneGeometry
 
 struct MeshGeometry
 {
+
 	const Vec3* positions;
 	const Vec3* normals;
 	const int* indices;
 	const BVHNode* nodes;
 	const float* cdf;
 
-	float area;
-
 	int numVertices;
 	int numIndices;
 	int numNodes;
+
+	float area;
 
 	unsigned long id;
 };
@@ -106,7 +107,6 @@ struct Primitive
 	Transform startTransform;	
 	Transform endTransform;
 	
-	Material material;
 	GeometryType type;
 
 	union
@@ -115,6 +115,8 @@ struct Primitive
 		PlaneGeometry plane;
 		MeshGeometry mesh;
 	};
+
+	Material material;
 
 	// if > 0 then primitive will be explicitly sampled
 	int lightSamples;

@@ -120,9 +120,10 @@
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O0 -g -G --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MTd,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">intermediate\$(Configuration)\rendercuda.obj</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O3 --resource-usage -lineinfo --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O3 --resource-usage -lineinfo -m64 --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DNDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">intermediate\$(Configuration)\rendercuda.obj</Outputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">src\disney.h;src\render.h</AdditionalInputs>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">d</ExcludedFromBuild>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>

@@ -129,7 +129,7 @@ CUDA_CALLABLE inline Color ProbeEval(const Probe& image, const Vec2& uv)
 	int px = Clamp(int(uv.x*image.width), 0, image.width-1);
 	int py = Clamp(int(uv.y*image.height), 0, image.height-1);
 
-	return image.data[py*image.width+px];
+	return fetchVec4(image.data, py*image.width+px);
 }
 
 CUDA_CALLABLE inline float ProbePdf(const Probe& image, const Vec3& d)
@@ -140,10 +140,8 @@ CUDA_CALLABLE inline float ProbePdf(const Probe& image, const Vec3& d)
 	int col = Clamp(int(uv.x * image.width), 0, image.width-1);
 	int row = Clamp(int(uv.y * image.height), 0, image.height-1);
 
-	float pdf = image.pdfValuesX[row*image.width + col]*image.pdfValuesY[row];
+	float pdf = fetchFloat(image.pdfValuesX, row*image.width + col)*fetchFloat(image.pdfValuesY, row);
 
-	Validate(image.pdfValuesX[row*image.width + col]);
-	Validate(image.pdfValuesY[row]);
 	Validate(pdf);
 	Validate(uv.y);
 	Validate(uv.x);
@@ -184,6 +182,25 @@ CUDA_CALLABLE inline const T* LowerBound(const T* begin, const T* end, const T& 
 }
 
 
+CUDA_CALLABLE inline int LowerBound(const float* array, int lower, int upper, const float value)
+{	
+	while(lower < upper)
+	{
+		int mid = lower + (upper-lower)/2;
+
+		if (fetchFloat(array, mid) < value)
+		{
+			lower = mid+1;
+		}
+		else
+		{
+			upper = mid;
+		}
+	}
+
+	return lower;
+}
+
 CUDA_CALLABLE inline void ProbeSample(const Probe& image, Vec3& dir, Color& color, float& pdf, Random& rand)
 {
 	float r1 = rand.Randf();
@@ -191,16 +208,18 @@ CUDA_CALLABLE inline void ProbeSample(const Probe& image, Vec3& dir, Color& colo
 
 	// sample rows
 	//float* rowPtr = std::lower_bound(image.cdfValuesY, image.cdfValuesY+image.height, r1);
-	const float* rowPtr = LowerBound(image.cdfValuesY, image.cdfValuesY+image.height, r1);
-	int row = rowPtr - image.cdfValuesY;
+	//const float* rowPtr = LowerBound(image.cdfValuesY, image.cdfValuesY+image.height, r1);
+	//int row = rowPtr - image.cdfValuesY;
+	int row = LowerBound(image.cdfValuesY, 0, image.height, r1);
 
 	// sample cols of row
 	//float* colPtr = std::lower_bound(&image.cdfValuesX[row*image.width], &image.cdfValuesX[(row+1)*image.width], r2);
-	const float* colPtr = LowerBound(&image.cdfValuesX[row*image.width], &image.cdfValuesX[(row+1)*image.width], r2);
-	int col = colPtr - &image.cdfValuesX[row*image.width];
+	//const float* colPtr = LowerBound(&image.cdfValuesX[row*image.width], &image.cdfValuesX[(row+1)*image.width], r2);
+	//int col = colPtr - &image.cdfValuesX[row*image.width];
+	int col = LowerBound(image.cdfValuesX, row*image.width, (row+1)*image.width, r2) - row*image.width;
 
-	color = image.data[row*image.width + col];
-	pdf = image.pdfValuesX[row*image.width + col]*image.pdfValuesY[row];
+	color = fetchVec4(image.data, row*image.width + col);
+	pdf = fetchFloat(image.pdfValuesX, row*image.width + col)*fetchFloat(image.pdfValuesY, row);
 
 	float u = col/float(image.width);
 	float v = row/float(image.height);
