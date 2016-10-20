@@ -1,6 +1,7 @@
 #include "render.h"
 #include "intersection.h"
 #include "util.h"
+#include "sampler.h"
 #include "disney.h"
 //#include "lambert.h"
 
@@ -8,6 +9,9 @@
 #define kBrdfSamples 1.0f
 #define kProbeSamples 1.0f
 #define kRayEpsilon 0.001f
+
+static int sampleCount = 0;
+
 
 // trace a ray against the scene returning the closest intersection
 inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
@@ -355,6 +359,11 @@ struct CpuRenderer : public Renderer
 			options.width,
 			options.height);
 
+		sampleCount = 0;
+
+		if (options.mode == ePathTrace)
+			sampleCount++;
+
 		//for (int k=0; k < options.numSamples; ++k)
 		{
 			for (int j=0; j < options.height; ++j)
@@ -369,9 +378,19 @@ struct CpuRenderer : public Renderer
 					{
 						case ePathTrace:
 						{	
-							const float time = rand.Randf(camera.shutterStart, camera.shutterEnd);
-							const float x = i + rand.Randf(-0.5f, 0.5f) + 0.5f;
-							const float y = j + rand.Randf(-0.5f, 0.5f) + 0.5f;
+							//float x = rand.Randf(-0.5f, 0.5f) + 0.5f;
+							//float y = rand.Randf(-0.5f, 0.5f) + 0.5f;
+							//const float time = rand.Randf(camera.shutterStart, camera.shutterEnd);
+							
+							
+							float x, y, t;
+							StratifiedSample2D(sampleCount, 8, 8, rand, x, y);
+							StratifiedSample1D(sampleCount, 64, rand, t);
+
+							float time = Lerp(camera.shutterStart, camera.shutterEnd, t);
+							
+							x += i;
+							y += j;
 
 							sampler.GenerateRay(x, y, origin, dir);
 

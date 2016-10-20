@@ -124,7 +124,7 @@ primitive
 primitive
 {
 	type mesh
-	mesh meshes/brain_high.bin
+	mesh meshes/brain.obj
 	material gold
 
 	position 1 0.0 0

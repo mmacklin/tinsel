@@ -4,6 +4,8 @@ options
 {
 	width 512
 	height 512
+
+	maxSamples 64
 }
 
 camera

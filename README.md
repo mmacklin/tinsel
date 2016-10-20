@@ -122,7 +122,8 @@ Todo List
 [x] Output formats
 [x] Triangular noise dither
 [x] NLM noise filter
-[ ] Two-level BVH
+[ ] Point sets
+[ ] Scene BVH
 [ ] FFmpeg encoding
 [x] Reconstruction filter
 [x] Correctness checks

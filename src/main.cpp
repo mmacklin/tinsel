@@ -8,6 +8,7 @@
 #include "png.h"
 #include "nlm.h"
 #include "disney.h"
+#include "sampler.h"
 
 #if _WIN32
 
@@ -332,6 +333,7 @@ void ProcessCommandLine(int argc, char* argv[])
 }
 int main(int argc, char* argv[])
 {	
+
 #if _WIN32 
 
 	const int device = 0;
