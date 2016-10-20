@@ -666,14 +666,90 @@ struct MeshQuery
 };
 
 
-CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3& origin, const Vec3& dir, float& t, float& u, float& v, float& w, int& tri, Vec3& triNormal)
+
+CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3& origin, const Vec3& dir, float tmax, float& t, float& u, float& v, float& w, int& tri, Vec3& triNormal)
 {
-#if 1
 
 	MeshQuery query(mesh, origin, dir);
 
-	// intersect against bvh
+	Vec3 rcpDir;
+	rcpDir.x = 1.0f/dir.x;
+	rcpDir.y = 1.0f/dir.y;
+	rcpDir.z = 1.0f/dir.z;
+
+	int stack[32];
+	stack[0] = 0;
+
+	int count = 1;
+
+	while(count)
+	{
+		BVHNode node = fetchNode(mesh.nodes, stack[--count]);
+
+		if (node.leaf)
+		{
+			query(node.leftIndex);
+
+			// truncate ray
+			tmax = query.closestT;
+		}
+		else
+		{
+			// check children
+			BVHNode left = fetchNode(mesh.nodes, node.leftIndex);
+			BVHNode right = fetchNode(mesh.nodes, node.rightIndex);
+
+			float tLeft;
+			bool hitLeft = IntersectRayAABBFast(origin, rcpDir, left.bounds.lower, left.bounds.upper, tLeft) && tLeft < tmax;
+
+			float tRight;
+			bool hitRight = IntersectRayAABBFast(origin, rcpDir, right.bounds.lower, right.bounds.upper, tRight) && tRight < tmax;
+
+			// traverse closest first
+			if (hitLeft && hitRight && (tLeft < tRight))
+			{
+				int tmp = node.leftIndex;
+				node.leftIndex = node.rightIndex;
+				node.rightIndex = tmp;
+			}
+
+			if (hitLeft)
+				stack[count++] = node.leftIndex;
+
+			if (hitRight)
+				stack[count++] = node.rightIndex;			
+		}
+	}		
+
+	// output results
+	if (query.closestT < FLT_MAX)
+	{
+		t = query.closestT;
+		u = query.closestU;
+		v = query.closestV;
+		w = query.closestW;	
+		tri = query.closestTri;
+		triNormal = query.closestNormal;
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+					
+}
+
+
+
+CUDA_CALLABLE bool inline IntersectRayMeshOld(const MeshGeometry& mesh, const Vec3& origin, const Vec3& dir, float tmax, float& t, float& u, float& v, float& w, int& tri, Vec3& triNormal)
+{
+
+	MeshQuery query(mesh, origin, dir);
+
+
 	QueryRay(mesh.nodes, query, origin, dir);
+
 
 	if (query.closestT < FLT_MAX)
 	{
@@ -690,42 +766,9 @@ CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3&
 	{
 		return false;
 	}
-						
-#else
-	float closestT = FLT_MAX;
-	Vec3 closestNormal;
-	bool hit = false;
-
-	const int numTris = p.mesh.mesh->indices.size()/3;
-
-	for (int i=0; i < numTris; ++i)
-	{
-		float t, u, v, w;
-		Vec3 n;
-
-		const Vec3& a = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+0]];
-		const Vec3& b = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+1]];
-		const Vec3& c = p.mesh.mesh->positions[p.mesh.mesh->indices[i*3+2]];
-
-		if (IntersectRayTri(ray.origin, ray.dir, a, b, c, t, u, v, w, &n))
-		{
-			if (t > 0.0f && t < closestT)
-			{
-				closestT = t;
-				closestNormal = n;
-				hit = true;
-			}
-		}
-	}
-
-	outT = closestT;
-	*outNormal = closestNormal;
-
-	return hit;
-#endif
+			
 
 }
-
 
 //-------------
 // pdf that a point and dir were sampled by the light (assuming the ray hits the shape)
@@ -851,12 +894,11 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 			Vec3 triNormal;
 
 			// transform ray to mesh space
-			bool hit = IntersectRayMesh(p.mesh, localOrigin, localDir, t, u, v, w, tri, triNormal);
+			bool hit = IntersectRayMesh(p.mesh, localOrigin, localDir, FLT_MAX, t, u, v, w, tri, triNormal);
 			
 			if (hit)
 			{
 				// interpolate vertex normals
-#if CUDA
 				int i0 = fetchInt(p.mesh.indices, tri*3+0);
 				int i1 = fetchInt(p.mesh.indices, tri*3+1);
 				int i2 = fetchInt(p.mesh.indices, tri*3+2);
@@ -864,11 +906,6 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 				const Vec3 n1 = fetchVec3(p.mesh.normals, i0);
 				const Vec3 n2  = fetchVec3(p.mesh.normals, i1);
 				const Vec3 n3 = fetchVec3(p.mesh.normals, i2);
-#else
-				Vec3 n1 = p.mesh.normals[p.mesh.indices[tri*3+0]];
-				Vec3 n2 = p.mesh.normals[p.mesh.indices[tri*3+1]];
-				Vec3 n3 = p.mesh.normals[p.mesh.indices[tri*3+2]];
-#endif
 
 				Vec3 smoothNormal = u*n1 + v*n2 + w*n3;
 
