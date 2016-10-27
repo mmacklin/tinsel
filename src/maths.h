@@ -1254,11 +1254,8 @@ CUDA_CALLABLE inline void BasisFromVector(const Vec3& w, Vec3* u, Vec3* v)
 }
 
 
-CUDA_CALLABLE inline Vec3 UniformSampleSphere(Random& rand)
+CUDA_CALLABLE inline Vec3 UniformSampleSphere(float u1, float u2)
 {
-	float u1 = rand.Randf(0.0f, 1.0f);
-	float u2 = rand.Randf(0.0f, 1.0f);
-
 	float z = 1.f - 2.f * u1;
 	float r = sqrtf(Max(0.f, 1.f - z*z));
 	float phi = 2.f * kPi * u2;
@@ -1283,10 +1280,10 @@ CUDA_CALLABLE inline Vec3 UniformSampleHemisphere(Random& rand)
 	return Vec3(x, y, z);
 }
 
-CUDA_CALLABLE inline Vec2 UniformSampleDisc(Random& rand)
+CUDA_CALLABLE inline Vec2 UniformSampleDisc(float u1, float u2)
 {
-	float r = sqrt(rand.Randf(0.0f, 1.0f));
-	float theta = k2Pi*rand.Randf(0.0f, 1.0f);
+	float r = sqrt(u1);
+	float theta = k2Pi*u2;
 
 	return Vec2(r * cos(theta), r * sin(theta));
 }
@@ -1298,9 +1295,9 @@ CUDA_CALLABLE inline void UniformSampleTriangle(Random& rand, float& u, float& v
 	v = rand.Randf() * r;
 }
 
-CUDA_CALLABLE inline Vec3 CosineSampleHemisphere(Random& rand)
+CUDA_CALLABLE inline Vec3 CosineSampleHemisphere(float u1, float u2)
 {
-	Vec2 s = UniformSampleDisc(rand);
+	Vec2 s = UniformSampleDisc(u1, u2);
 	float z = sqrt(Max(0.0f, 1.0f - s.x*s.x - s.y*s.y));
 
 	return Vec3(s.x, s.y, z);

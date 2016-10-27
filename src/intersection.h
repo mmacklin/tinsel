@@ -3,6 +3,7 @@
 #include "maths.h"
 #include "mesh.h"
 #include "scene.h"
+#include "sampler.h"
 
 template <typename T>
 CUDA_CALLABLE CUDA_CALLABLE inline void Sort2(T& a, T& b)
@@ -803,8 +804,11 @@ CUDA_CALLABLE inline void LightSample(const Primitive& p, float time, Vec3& pos,
 	{
 		case eSphere:
 		{
+			float u1, u2;
+			Sample2D(rand, u1, u2);
+
 			// todo: handle scaling in transform matrix
-			pos = TransformPoint(transform, UniformSampleSphere(rand)*p.sphere.radius);			
+			pos = TransformPoint(transform, UniformSampleSphere(u1, u2)*p.sphere.radius);			
 			normal = Normalize(pos-transform.p);
 			return;
 		}
@@ -914,7 +918,7 @@ CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& o
 					smoothNormal *= -1.0f;
 
 				outT = t;
-				*outNormal = Normalize(TransformVector(transform, smoothNormal));
+				*outNormal = SafeNormalize(TransformVector(transform, smoothNormal), triNormal);
 			}			
 
 			return hit;

@@ -106,17 +106,17 @@ CUDA_CALLABLE inline Vec3 BRDFSample(const Material& mat, const Vec3& P, const M
 
     const float select = rand.Randf();
 
+    float r1, r2;
+    Sample2D(rand, r1, r2);
+
     if (select < 0.5f)
     {
         // sample diffuse
-        light = frame*CosineSampleHemisphere(rand);
+        light = frame*CosineSampleHemisphere(r1, r2);
     }
     else
     {
 	    const float a = Max(0.001f, mat.roughness);
-
-        const float r1 = rand.Randf();
-        const float r2 = rand.Randf();
 
         const float phiHalf = r1*k2Pi;
         

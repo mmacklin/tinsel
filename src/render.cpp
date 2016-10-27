@@ -10,9 +10,6 @@
 #define kProbeSamples 1.0f
 #define kRayEpsilon 0.001f
 
-static int sampleCount = 0;
-
-
 // trace a ray against the scene returning the closest intersection
 inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
@@ -24,7 +21,7 @@ inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNorm
 	for (Scene::PrimitiveArray::const_iterator iter=scene.primitives.begin(), end=scene.primitives.end(); iter != end; ++iter)
 	{
 		float t;
-		Vec3 n;
+		Vec3 n, ns;
 
 		const Primitive& primitive = *iter;
 
@@ -293,7 +290,9 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 
 struct CpuRenderer : public Renderer
 {
-	CpuRenderer(const Scene* s) : scene(s) {}
+	CpuRenderer(const Scene* s) : scene(s) 
+	{	
+	}
 
 	const Scene* scene;
 	Random rand;
@@ -359,10 +358,7 @@ struct CpuRenderer : public Renderer
 			options.width,
 			options.height);
 
-		sampleCount = 0;
-
-		if (options.mode == ePathTrace)
-			sampleCount++;
+		Random decorrelation;
 
 		//for (int k=0; k < options.numSamples; ++k)
 		{
@@ -377,15 +373,11 @@ struct CpuRenderer : public Renderer
 					switch (options.mode)
 					{
 						case ePathTrace:
-						{	
-							//float x = rand.Randf(-0.5f, 0.5f) + 0.5f;
-							//float y = rand.Randf(-0.5f, 0.5f) + 0.5f;
-							//const float time = rand.Randf(camera.shutterStart, camera.shutterEnd);
-							
-							
+						{							
 							float x, y, t;
-							StratifiedSample2D(sampleCount, 8, 8, rand, x, y);
-							StratifiedSample1D(sampleCount, 64, rand, t);
+
+							Sample2D(rand, x, y);
+							Sample1D(rand, t);
 
 							float time = Lerp(camera.shutterStart, camera.shutterEnd, t);
 							

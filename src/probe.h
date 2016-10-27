@@ -2,6 +2,7 @@
 
 #include "maths.h"
 #include "pfm.h"
+#include "sampler.h"
 
 double GetSeconds();
 
@@ -203,8 +204,8 @@ CUDA_CALLABLE inline int LowerBound(const float* array, int lower, int upper, co
 
 CUDA_CALLABLE inline void ProbeSample(const Probe& image, Vec3& dir, Color& color, float& pdf, Random& rand)
 {
-	float r1 = rand.Randf();
-	float r2 = rand.Randf();
+    float r1, r2;
+    Sample2D(rand, r1, r2);
 
 	// sample rows
 	//float* rowPtr = std::lower_bound(image.cdfValuesY, image.cdfValuesY+image.height, r1);

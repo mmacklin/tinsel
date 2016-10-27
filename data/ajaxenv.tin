@@ -4,6 +4,8 @@ options
 {
 	width 500
 	height 500
+
+	maxSamples 64
 }
 
 sky
