@@ -235,7 +235,7 @@ extern float sample[];
 #define USE_RANDOM 1
 #define USE_BLUE_NOISE 0
 
-inline void Sample1D(Random& rand, float& u1)
+CUDA_CALLABLE inline void Sample1D(Random& rand, float& u1)
 {
 #if USE_RANDOM
 
@@ -249,7 +249,7 @@ inline void Sample1D(Random& rand, float& u1)
 
 }
 
-inline void Sample2D(Random& rand, float& u1, float& u2)
+CUDA_CALLABLE inline void Sample2D(Random& rand, float& u1, float& u2)
 {
 #if USE_RANDOM
 

@@ -110,6 +110,9 @@
     <ClInclude Include="src\tests\testMotionBlur.h">
       <Filter>Header Files\Tests</Filter>
     </ClInclude>
+    <ClInclude Include="src\sampler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />

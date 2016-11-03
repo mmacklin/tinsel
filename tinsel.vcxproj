@@ -90,7 +90,7 @@
     <ClCompile Include="src\png.cpp" />
     <ClCompile Include="src\probe.cpp" />
     <ClCompile Include="src\render.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
   </ItemGroup>
@@ -108,6 +108,7 @@
     <ClInclude Include="src\png.h" />
     <ClInclude Include="src\probe.h" />
     <ClInclude Include="src\render.h" />
+    <ClInclude Include="src\sampler.h" />
     <ClInclude Include="src\scene.h" />
     <ClInclude Include="src\skylight.h" />
     <ClInclude Include="src\tests\testMaterials.h" />

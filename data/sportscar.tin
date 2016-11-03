@@ -5,7 +5,7 @@ options
 	width 600
 	height 300
 
-	maxSamples 64
+	#maxSamples 64
 }
 
 sky
@@ -61,7 +61,7 @@ primitive
 primitive
 {
 	type mesh
-	mesh meshes/sportscar.obj
+	mesh meshes/sportscar.bin
 	material silver
 
 	position 0.0 0.0 0.0
