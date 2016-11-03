@@ -97,7 +97,7 @@ primitive
 	material ground
 }
 
-primitive
+#primitive
 {
 	type sphere
 	radius 2.0
@@ -124,7 +124,7 @@ primitive
 primitive
 {
 	type mesh
-	mesh meshes/brain.obj
+	mesh meshes/octopus.obj
 	material gold
 
 	position 1 0.0 0

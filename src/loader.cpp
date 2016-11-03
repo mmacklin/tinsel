@@ -202,6 +202,8 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 				sscanf(line, " sheenTint %f", &material.sheenTint);
 				sscanf(line, " clearcoat %f", &material.clearcoat);
 				sscanf(line, " clearcoatGloss %f", &material.clearcoatGloss);
+				sscanf(line, " transmission %f", &material.transmission);
+				sscanf(line, " eta %f", &material.eta);
 			}
 
 			// add material to map

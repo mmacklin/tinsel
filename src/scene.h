@@ -44,9 +44,19 @@ struct Material
 		specularTint = 0.0f;
 		anisotropic = 0.0f;
 		sheen = 0.0f;
-		sheenTint = 0.5f;
+		sheenTint = 0.0f;
 		clearcoat = 0.0f;
 		clearcoatGloss = 1.0f;
+		transmission = 0.0f;
+		eta = 0.0f;
+	}
+
+	CUDA_CALLABLE inline float GetIndexOfRefraction() const
+	{
+		if (eta == 0.0f)
+			return 2.0f/(1.0f-sqrtf(0.08*specular)) - 1.0f;
+		else
+			return eta;
 	}
 
 	Color emission;
@@ -61,6 +71,8 @@ struct Material
 	float sheenTint;
 	float clearcoat;
 	float clearcoatGloss;
+	float transmission;
+	float eta;
 };
 
 enum GeometryType
@@ -151,8 +163,8 @@ struct Scene
 	PrimitiveArray primitives;
 	
 	Sky sky;
-	Camera camera;
-	
+	Camera camera;	
+
 	void AddPrimitive(const Primitive& p)
 	{
 		primitives.push_back(p);

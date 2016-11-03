@@ -8,7 +8,7 @@
 
 #define kBrdfSamples 1.0f
 #define kProbeSamples 1.0f
-#define kRayEpsilon 0.001f
+#define kRayEpsilon 0.0001f
 
 // trace a ray against the scene returning the closest intersection
 inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
@@ -37,7 +37,7 @@ inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNorm
 	}
 	
 	outT = minT;		
-	outNormal = closestNormal;
+	outNormal = FaceForward(closestNormal, -ray.dir);
 	*outPrimitive = closestPrimitive;
 
 	return closestPrimitive != NULL;
@@ -45,7 +45,7 @@ inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNorm
 
 
 
-inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
+inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive, float etaI, float etaO, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Color sum(0.0f);
 
@@ -75,8 +75,8 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 			const Primitive* hit;
 			if (Trace(scene, Ray(surfacePos, wi, time), t, n, &hit) == false)
 			{
-				float brdfPdf = BRDFPdf(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
-				Color f = BRDFEval(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+				float brdfPdf = BRDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+				Color f = BRDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
 				
 				int N = kProbeSamples+kBrdfSamples;
 				float cbrdf = kBrdfSamples/N;
@@ -147,8 +147,8 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 					float lightPdf = ((1.0f/lightArea)*tSq)/nl;
 
 					// brdf pdf for light's direction
-					float brdfPdf = BRDFPdf(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
-					Color f = BRDFEval(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+					float brdfPdf = BRDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+					Color f = BRDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
 
 					// calculate relative weighting of the light and brdf sampling
 					int N = lightPrimitive.lightSamples+kBrdfSamples;
@@ -174,11 +174,12 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
     // path throughput
     Color pathThroughput(1.0f, 1.0f, 1.0f, 1.0f);
     // accumulated radiance
-    Color totalRadiance(0.0f);
+    Color totalRadiance(0.0f, 0.0f, 0.0f, 0.0f);
 
     Vec3 rayOrigin = startOrigin;
     Vec3 rayDir = startDir;
 	float rayTime = time;
+	float rayEta = 1.0f;
 
     float t = 0.0f;
     Vec3 n(rayDir);
@@ -186,11 +187,15 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 
 	float brdfPdf = 1.0f;
 
+	Color pathRadiance(0.0f);
+
     for (int i=0; i < maxDepth; ++i)
     {
         // find closest hit
         if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
         {	
+        	// index of refraction for transmission, 1.0 corresponds to air
+        	float outEta = (rayEta == 1.0f)?hit->material.GetIndexOfRefraction():1.0f;
 
 #if 1
 			if (i == 0)
@@ -223,10 +228,10 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             Vec3 u, v;
             BasisFromVector(n, &u, &v);
 
-            const Vec3 p = rayOrigin + rayDir*t + n*kRayEpsilon;
+            const Vec3 p = rayOrigin + rayDir*t;
 
 			// integrate direct light over hemisphere
-			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);			
+			totalRadiance += pathThroughput*SampleLights(scene, *hit, rayEta, outEta, p + n*kRayEpsilon, n, -rayDir, rayTime, rand);			
 
 			//totalRadiance = Color(u*0.5f + 0.5f, 1.0f);
 #else
@@ -244,24 +249,29 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 			// integrate indirect light by sampling BRDF
 			Mat33 localFrame(u, v, n);
 
-            Vec3 brdfDir = BRDFSample(hit->material, p, Mat33(u, v, n), -rayDir, rand);
-			brdfPdf = BRDFPdf(hit->material, p, n, -rayDir, brdfDir);
+			Vec3 brdfDir;
+			BRDFSample(hit->material, rayEta, outEta, p, Mat33(u,v,n), -rayDir, brdfDir, brdfPdf, rand);
 
             if (brdfPdf <= 0.0f)
+            {
+            	//totalRadiance += Color(0.0f, 0.1f, 0.0f);
             	break;
-
-            if (Dot(brdfDir, n) <= 0.0f)
-            	break;
+            }
 
             // reflectance
-            Color f = BRDFEval(hit->material, p, n, -rayDir, brdfDir);
+            Color f = BRDFEval(hit->material, rayEta, outEta, p, n, -rayDir, brdfDir);
+
+            // update ray medium if we are transmitting through the material
+            if (Dot(brdfDir, n) <= 0.0f)
+            	rayEta = outEta;
 
             // update throughput with primitive reflectance
-            pathThroughput *= f * Clamp(Dot(n, brdfDir), 0.0f, 1.0f)/brdfPdf;
+            //pathThroughput *= f * Clamp(Dot(n, brdfDir), 0.0f, 1.0f)/brdfPdf;
+            pathThroughput *= f * Abs(Dot(n, brdfDir))/brdfPdf;
 
             // update path direction
             rayDir = brdfDir;
-            rayOrigin = p;
+            rayOrigin = p + FaceForward(n, brdfDir)*kRayEpsilon;
         }
         else
         {

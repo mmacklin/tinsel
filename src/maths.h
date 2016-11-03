@@ -1567,6 +1567,15 @@ CUDA_CALLABLE inline T ClampLength(const T& v, float maxLength)
 	}
 }
 
+// make v lie in the same hemisphere as n
+CUDA_CALLABLE inline Vec3 FaceForward(const Vec3& n, const Vec3& v)
+{
+	if (Dot(v, n) < 0.0f)
+		return -n;
+	else
+		return n;
+}
+
 
 CUDA_CALLABLE inline void ValidateImpl(float x, const char* file, int line)
 {
