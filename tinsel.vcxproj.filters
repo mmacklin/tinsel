@@ -134,6 +134,18 @@
     <None Include="data\veach.tin">
       <Filter>Header Files\Examples</Filter>
     </None>
+    <None Include="data\ajaxenv.tin">
+      <Filter>Header Files\Examples</Filter>
+    </None>
+    <None Include="data\furnace.tin">
+      <Filter>Header Files\Examples</Filter>
+    </None>
+    <None Include="data\glass.tin">
+      <Filter>Header Files\Examples</Filter>
+    </None>
+    <None Include="data\transmission.tin">
+      <Filter>Header Files\Examples</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="LICENSE.txt" />

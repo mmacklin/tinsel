@@ -37,16 +37,36 @@ void TestMaterials(Scene* scene, Camera* camera, Options* options)
         sphere.sphere.radius = r;
         sphere.startTransform = Transform(Vec3(-x + i*dx, y, 0.0f));
         sphere.endTransform = Transform(Vec3(-x + i*dx, y, 0.0f));
-        sphere.material.color= SrgbToLinear(Color(.05f, .57f, .36f));
+        sphere.material.color = SrgbToLinear(Color(.05f, .57f, .36f));
         sphere.material.metallic = 0.0f;
-		sphere.material.specular = 0.75f;//float(i)/(rowSize-1);
-		sphere.material.roughness = Max(0.01f, Sqr(1.0f-float(i)/(rowSize-1)));
 
+        float shiny = Max(0.0f, Sqr(1.0f-float(i)/(rowSize-1)));
+		sphere.material.specular = 0.75f;
+		sphere.material.roughness = shiny;
+        
         scene->AddPrimitive(sphere);
     }
 
 	y += r*2.2f;
 
+	for (int i=0; i < rowSize; ++i)
+    {
+        Primitive sphere;
+        sphere.type = eSphere;
+        sphere.sphere.radius = r;
+        sphere.startTransform = Transform(Vec3(-x + i*dx, y, 0.0f));
+        sphere.endTransform = Transform(Vec3(-x + i*dx, y, 0.0f));
+        sphere.material.color = SrgbToLinear(Color(0.9));
+        sphere.material.metallic = 0.0f;
+		sphere.material.transmission = float(i)/(rowSize-1);		
+		sphere.material.roughness = 0.01f;
+        
+        scene->AddPrimitive(sphere);
+    }
+
+	y += r*2.2f;
+
+	/*
     for (int i=0; i < rowSize; ++i)
     {
         Primitive sphere;
@@ -54,7 +74,6 @@ void TestMaterials(Scene* scene, Camera* camera, Options* options)
         sphere.sphere.radius = r;
         sphere.startTransform = Transform(Vec3(-x + i*dx, y, 0.0f));
         sphere.endTransform = Transform(Vec3(-x + i*dx, y, 0.0f));
-        //sphere.material.reflectance = Color(.82f, .67f, .16f);
         sphere.material.subsurface = float(i)/(rowSize-1);
 		sphere.material.color = SrgbToLinear(Color(0.7f));
 		sphere.material.specular = 0.0f;
@@ -63,6 +82,7 @@ void TestMaterials(Scene* scene, Camera* camera, Options* options)
     }
 
 	y += r*2.2f;
+	*/
 
 	Material gold;
 	gold.color = Color(1.0f, 0.71f, 0.29f);
@@ -115,7 +135,7 @@ void TestMaterials(Scene* scene, Camera* camera, Options* options)
     plane.plane.plane[1] = 1.0f;
     plane.plane.plane[2] = 0.0f;
     plane.plane.plane[3] = 0.0f;
-    plane.material.color = Color(0.1);
+    plane.material.color = Color(0.5);
 
     Primitive back;
     back.type = ePlane;
@@ -139,10 +159,11 @@ void TestMaterials(Scene* scene, Camera* camera, Options* options)
 	scene->AddPrimitive(back);
     scene->AddPrimitive(light);
 
-	scene->sky.horizon = Color(0.1f, 0.3f, 0.6f)*2.0f;
-    scene->sky.zenith = scene->sky.horizon;
+	//scene->sky.horizon = Color(0.1f, 0.3f, 0.6f)*2.0f;
+    //scene->sky.zenith = scene->sky.horizon;
 
     scene->sky.probe = ProbeLoadFromFile("data/probes/vankleef.hdr");
+
 
     // set up camera
     camera->position = Vec3(0.0f, 2.0f, 20.0f);

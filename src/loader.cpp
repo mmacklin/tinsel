@@ -182,6 +182,9 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 
 			Material material;
 
+			Vec3 transmissionColor;
+			float atDistance = 0.0f;
+
 			while (fgets(line, kMaxLineLength, file))
 			{
 				// end group
@@ -189,8 +192,10 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 					break;
 
 				sscanf(line, " name %s", name);
+
 				sscanf(line, " emission %f %f %f", &material.emission.x, &material.emission.y, &material.emission.z);
 				sscanf(line, " color %f %f %f", &material.color.x, &material.color.y, &material.color.z);
+				sscanf(line, " absorption %f %f %f", &material.absorption.x, &material.absorption.y, &material.absorption.z);
 				
 				sscanf(line, " metallic %f", &material.metallic);
 				sscanf(line, " subsurface %f", &material.subsurface);
@@ -202,7 +207,20 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 				sscanf(line, " sheenTint %f", &material.sheenTint);
 				sscanf(line, " clearcoat %f", &material.clearcoat);
 				sscanf(line, " clearcoatGloss %f", &material.clearcoatGloss);
+				sscanf(line, " transmission %f", &material.transmission);
+				sscanf(line, " eta %f", &material.eta);
+
+				sscanf(line, " transmissionColor %f %f %f", &transmissionColor.x, &transmissionColor.y, &transmissionColor.z);
+				sscanf(line, " atDistance %f", &atDistance);
+
 			}
+
+			// if atDistance set then infer absorption from transmissionColor
+			if (atDistance > 0.0f)
+			{
+				material.absorption = Color(-Log(transmissionColor)/atDistance, 0.0f);
+			}
+
 
 			// add material to map
 			materials[name] = material;

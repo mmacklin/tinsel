@@ -66,8 +66,12 @@ CUDA_CALLABLE inline bool IntersectRaySphere(const Vec3& sphereOrigin, float sph
 
 	bool r = SolveQuadratic(a, b, c, minT, maxT);
 
-	if (minT < 0.0)
-		minT = 0.0f;
+	if (minT < 0.0f && maxT < 0.0f)
+		return false;
+	
+	if (minT < 0.0f && maxT > 0.0f)
+		minT = maxT;
+		
 
 	// calculate the normal of the closest hit
 	if (hitNormal && r)

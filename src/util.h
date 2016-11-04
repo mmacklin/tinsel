@@ -21,7 +21,6 @@ inline MeshGeometry GeometryFromMesh(const Mesh* mesh)
 
     return geo;
 }
-
 	
 CUDA_CALLABLE inline Color ToneMap(const Color& c, float limit)
 {

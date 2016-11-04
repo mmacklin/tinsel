@@ -18,7 +18,7 @@ struct GPUScene
 
 #define kBrdfSamples 1.0f
 #define kProbeSamples 1.0f
-#define kRayEpsilon 0.001f
+#define kRayEpsilon 0.0001f
 
 // create a texture object from memory and store it in a 64-bit pointer
 void CreateIntTexture(int** deviceBuffer, const int* hostBuffer, int sizeInBytes)
@@ -231,14 +231,14 @@ __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& 
 	}
 	
 	outT = minT;		
-	outNormal = closestNormal;
+	outNormal = FaceForward(closestNormal, -ray.dir);
 	*outPrimitive = closestPrimitive;
 
 	return closestPrimitive != NULL;
 }
 
 
-__device__ inline Color SampleLights(const GPUScene& scene, const Primitive& surfacePrimitive, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
+__device__ inline Color SampleLights(const GPUScene& scene, const Primitive& surfacePrimitive, float etaI, float etaO, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Color sum(0.0f);
 
@@ -269,8 +269,8 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 			const Primitive* hit;
 			if (Trace(scene, Ray(surfacePos, wi, time), t, n, &hit) == false)
 			{
-				float brdfPdf = BRDFPdf(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
-				Color f = BRDFEval(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+				float brdfPdf = BRDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+				Color f = BRDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
 				
 				int N = kProbeSamples+kBrdfSamples;
 				float cbrdf = kBrdfSamples/N;
@@ -343,8 +343,8 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 					float lightPdf = ((1.0f/lightArea)*tSq)/nl;
 
 					// brdf pdf for light's direction
-					float brdfPdf = BRDFPdf(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
-					Color f = BRDFEval(surfacePrimitive.material, surfacePos, surfaceNormal, wo, wi);
+					float brdfPdf = BRDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+					Color f = BRDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
 
 					// calculate relative weighting of the light and brdf sampling
 					int N = lightPrimitive.lightSamples+kBrdfSamples;
@@ -375,9 +375,11 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 	Vec3 rayOrigin = origin;
 	Vec3 rayDir = dir;
 	float rayTime = time;
+	float rayEta = 1.0f;
+	Vec3 rayAbsorption = 0.0f;
 
-    float t = 0.0f;
-    Vec3 n(rayDir);
+    float t;
+    Vec3 n;
     const Primitive* hit;
 
 	float brdfPdf = 1.0f;
@@ -387,6 +389,25 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
         // find closest hit
         if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
         {	
+			float outEta;
+			Vec3 outAbsorption;
+
+        	// index of refraction for transmission, 1.0 corresponds to air
+			if (rayEta == 1.0f)
+			{
+        		outEta = hit->material.GetIndexOfRefraction();
+				outAbsorption = Vec3(hit->material.absorption);
+			}
+			else
+			{
+				// returning to free space
+				outEta = 1.0f;
+				outAbsorption = 0.0f;
+			}
+
+			// update throughput based on absorption through the medium
+			pathThroughput *= Color(Exp(-rayAbsorption*t), 1.0f);
+
 #if 1
 			
 			if (i == 0)
@@ -421,10 +442,10 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
             Vec3 u, v;
             BasisFromVector(n, &u, &v);
 
-            const Vec3 p = rayOrigin + rayDir*t + n*kRayEpsilon;
+            const Vec3 p = rayOrigin + rayDir*t;
 
 			// integrate direct light over hemisphere
-			totalRadiance += pathThroughput*SampleLights(scene, *hit, p, n, -rayDir, rayTime, rand);
+			totalRadiance += pathThroughput*SampleLights(scene, *hit, rayEta, outEta, p + n*kRayEpsilon, n, -rayDir, rayTime, rand);
 #else
 			
 			// calculate a basis for this hit point
@@ -440,29 +461,31 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 			// integrate indirect light by sampling BRDF
 			Mat33 localFrame(u, v, n);
 
-            Vec3 brdfDir = BRDFSample(hit->material, p, Mat33(u, v, n), -rayDir, rand);
-			brdfPdf = BRDFPdf(hit->material, p, n, -rayDir, brdfDir);
+			Vec3 brdfDir;
+			BRDFSample(hit->material, rayEta, outEta, p, Mat33(u,v,n), -rayDir, brdfDir, brdfPdf, rand);
 
 			
-            //if (brdfPdf <= 0.0f)
-            	//break;
-
-            //if (Dot(brdfDir, n) <= 0.0f)
-            	//break;
-				
+            if (brdfPdf <= 0.0f)
+            	break;
 
 			Validate(brdfPdf);
 
-
             // reflectance
-            Color f = BRDFEval(hit->material, p, n, -rayDir, brdfDir);
+            Color f = BRDFEval(hit->material, rayEta, outEta, p, n, -rayDir, brdfDir);
+
+            // update ray medium if we are transmitting through the material
+            if (Dot(brdfDir, n) <= 0.0f)
+			{
+            	rayEta = outEta;
+				rayAbsorption = outAbsorption;
+			}
 
             // update throughput with primitive reflectance
-            pathThroughput *= f * Clamp(Dot(n, brdfDir), 0.0f, 1.0f)/brdfPdf;
+            pathThroughput *= f * Abs(Dot(n, brdfDir))/brdfPdf;
 
             // update path direction
             rayDir = brdfDir;
-            rayOrigin = p;
+            rayOrigin = p + FaceForward(n, brdfDir)*kRayEpsilon;
         }
         else
         {

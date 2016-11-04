@@ -1,0 +1,257 @@
+# .tin file format
+
+options
+{
+	width 1000
+	height 250
+
+	maxDepth 16
+	#clamp 100
+}	
+
+sky
+{
+	probe probes/vankleef2.hdr
+	
+}
+
+camera
+{
+
+	position 1.0 0.5 10.0
+
+	fov 20
+}
+
+
+material glass1
+{
+	color 0.0 0.0 0.0
+	specular 0.1
+	roughness 0.001
+	metallic 0.0
+	transmission 0.95
+	eta 1.3
+
+	transmissionColor 1.0 0.7 0.1
+	atDistance 16
+
+}
+
+material glass2
+{
+	color 0.0 0.0 0.0
+	specular 0.1
+	roughness 0.001
+	metallic 0.0
+	transmission 0.95
+	eta 1.3
+
+	transmissionColor 1.0 0.7 0.1
+	atDistance 8
+
+}
+
+material glass3
+{
+	color 0.0 0.0 0.0
+	specular 0.1
+	roughness 0.001
+	metallic 0.0
+	transmission 0.95
+	eta 1.3
+
+	transmissionColor 1.0 0.7 0.1
+	atDistance 4
+
+}
+material glass4
+{
+	color 0.0 0.0 0.0
+	specular 0.1
+	roughness 0.001
+	metallic 0.0
+	transmission 0.95
+	eta 1.3
+
+	transmissionColor 1.0 0.7 0.1
+	atDistance 2
+
+}
+material glass5
+{
+	color 0.0 0.0 0.0
+	specular 0.1
+	roughness 0.01
+	metallic 0.0
+	transmission 0.95
+	eta 1.3
+
+	transmissionColor 1.0 0.7 0.1
+	atDistance 1
+
+}
+
+
+material ground
+{
+	color 0.5 0.5 0.5
+	roughness 0.2
+	specular 0.1
+}
+
+material light
+{
+	emission 100.0 100.0 100.0
+	color 0.0 0.0 0.0
+}
+
+mesh prism
+{
+	verts 6
+	-0.5 0.0 0.5
+	-0.5 1.0 0.0
+	-0.5 0.0 -0.5
+	0.5 0.0 0.5
+	0.5 1.0 0.0
+	0.5 0.0 -0.5
+
+	tris 8
+	0 1 2
+	0 3 4
+	0 4 1
+	0 5 3
+	0 2 5
+	3 5 4
+	2 1 5
+	5 1 4
+	}
+
+
+primitive
+{
+	type mesh
+	mesh meshes/prism.obj
+	material glass1
+
+	position -2.0 0.001 0.0
+	rotation 0 0 0 1
+	scale 1.0
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/prism.obj
+	material glass2
+
+	position -1.0 0.001 0.0
+	rotation 0 0 0 1
+	scale 1.0
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/prism.obj
+	material glass3
+
+	position 0.0 0.001 0.0
+	rotation 0 0 0 1
+	scale 1.0
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/prism.obj
+	material glass4
+
+	position 1.0 0.001 0.0
+	rotation 0 0 0 1
+	scale 1.0
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/prism.obj
+	material glass5
+
+	position 2.0 0.001 0.0
+	rotation 0 0 0 1
+	scale 1.0
+}
+
+#primitive
+{
+	type sphere
+	radius 1.0
+
+	position -10 10 0
+	
+	lightSamples 5
+
+	material light
+
+}
+
+### background objects
+
+material object
+{
+	color 0.7 0.7 0.5
+	specular 0.2
+	roughness 0.1
+}
+
+primitive
+{
+	type sphere
+	radius 0.5
+
+	position -2 0.5 -2.0
+	
+	material object
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/torus.obj
+
+	position -1.5 0.0 -2.5
+	scale 2.0
+	
+	material object
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/teapot.obj
+
+	position 1.0 0.0 -2.0	
+	scale 2.0
+
+	material object
+}
+
+
+## infinite planes
+
+primitive
+{
+	type plane 
+	plane 0 1 0 0 
+
+	material ground
+}
+
+#primitive
+{
+	type plane 
+	plane 0 0 1 10 
+
+	material ground
+}

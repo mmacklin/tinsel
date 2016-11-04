@@ -37,6 +37,8 @@ struct Material
 	{	
 		color = SrgbToLinear(Color(0.82f, 0.67f, 0.16f));
 		emission = Color(0.0f);
+		absorption = Color(0.0);
+
 		metallic = 0.0;
 		subsurface = 0.0f;
 		specular = 0.5f;
@@ -44,13 +46,27 @@ struct Material
 		specularTint = 0.0f;
 		anisotropic = 0.0f;
 		sheen = 0.0f;
-		sheenTint = 0.5f;
+		sheenTint = 0.0f;
 		clearcoat = 0.0f;
 		clearcoatGloss = 1.0f;
+		transmission = 0.0f;
+		
+		// when eta is zero the index of refraction will be inferred from the specular component
+		eta = 0.0f;	 
+	}
+
+	CUDA_CALLABLE inline float GetIndexOfRefraction() const
+	{
+		if (eta == 0.0f)
+			return 2.0f/(1.0f-sqrtf(0.08*specular)) - 1.0f;
+		else
+			return eta;
 	}
 
 	Color emission;
 	Color color;
+	Color absorption;
+
 	float metallic;
 	float subsurface;
 	float specular;
@@ -61,6 +77,8 @@ struct Material
 	float sheenTint;
 	float clearcoat;
 	float clearcoatGloss;
+	float transmission;	
+	float eta;
 };
 
 enum GeometryType
@@ -151,8 +169,8 @@ struct Scene
 	PrimitiveArray primitives;
 	
 	Sky sky;
-	Camera camera;
-	
+	Camera camera;	
+
 	void AddPrimitive(const Primitive& p)
 	{
 		primitives.push_back(p);

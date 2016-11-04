@@ -128,11 +128,15 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <None Include="data\ajaxenv.tin" />
     <None Include="data\conservation.tin" />
     <None Include="data\cornell.tin" />
     <None Include="data\example.tin" />
+    <None Include="data\furnace.tin" />
+    <None Include="data\glass.tin" />
     <None Include="data\gloss.tin" />
     <None Include="data\simple.tin" />
+    <None Include="data\transmission.tin" />
     <None Include="data\veach.tin" />
     <None Include="README.md" />
   </ItemGroup>

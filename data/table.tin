@@ -1,0 +1,364 @@
+# .tin file format
+
+options
+{
+	width 640
+	height 400
+
+	exposure 1.0
+
+	maxDepth 16
+	clamp 100
+}	
+
+sky
+{
+	#probe probes/vankleef2.hdr
+	
+}
+
+camera
+{
+
+	position 0.0 5.51 8.69
+	rotation -0.257080525 0 0 0.966390014
+
+	fov 35
+}
+
+
+material metal
+{
+	color 0.5 0.5 0.5
+	specular 1.0
+	roughness 0.01
+	metallic 1.0
+	transmission 0.0
+	
+}
+
+material silver
+{
+	color 0.95 0.93 0.88
+	roughness 0.05
+	metallic 1.0
+	specular 1.0
+}
+    
+
+material glass
+{
+	color 0.0 0.0 0.0
+	specular 0.75
+	roughness 0.005
+	transmission 0.9
+	eta 1.5
+}
+
+material wood
+{
+	color 0.4174 0.2468 0.1139
+	specular 0.5
+	roughness 0.05
+}
+
+material orange
+{
+	color 0.7175 0.17 0.005
+	specular 0.6
+	roughness 0.05
+}
+
+material pingpong
+{
+	color 0.9 0.85 0.8
+	specular 0.6
+	roughness 0.2
+
+	transmission 0.2
+}
+
+material golfball
+{
+	color 0.9 0.87 0.95
+	specular 0.6
+	roughness 0.05
+
+	transmission 0.0
+}
+
+material marble1
+{
+	color 0.276 0.344 0.2233
+	specular 0.4
+	roughness 0.05
+
+	transmission 0.2
+}
+
+material marble2
+{
+	color 0.2549 0.3537 0.11926
+	specular 0.4
+	roughness 0.05
+
+	transmission 0.2
+}
+
+
+material bouncy
+{
+	color 0.99 0.114 0.047
+	specular 0.3
+	roughness 0.01
+	emission 0.008 0.006 0.001
+
+	transmission 0.1
+}
+
+material ground
+{
+	color 0.87 0.7785 0.6782
+	roughness 0.2
+	specular 0.75
+}
+
+material light
+{
+	emission 200.0 200.0 200.0
+	color 0.0 0.0 0.0
+}
+
+mesh prism
+{
+	verts 6
+	-0.5 0.0 0.5
+	-0.5 1.0 0.0
+	-0.5 0.0 -0.5
+	0.5 0.0 0.5
+	0.5 1.0 0.0
+	0.5 0.0 -0.5
+
+	tris 8
+	0 1 2
+	0 3 4
+	0 4 1
+	0 5 3
+	0 2 5
+	3 5 4
+	2 1 5
+	5 1 4
+}
+
+
+mesh cube
+{
+	verts 24
+	0.5 0.5 0.5
+	-0.5 0.5 0.5
+	0.5 -0.5 0.5
+	-0.5 -0.5 0.5
+	0.5 0.5 -0.5
+	-0.5 0.5 -0.5
+	0.5 -0.5 -0.5
+	-0.5 -0.5 -0.5
+	0.5 0.5 0.5
+	0.5 -0.5 0.5
+	0.5 0.5 0.5
+	0.5 0.5 -0.5
+	-0.5 0.5 0.5
+	-0.5 0.5 -0.5
+	0.5 -0.5 -0.5
+	0.5 0.5 -0.5
+	-0.5 -0.5 -0.5
+	0.5 -0.5 -0.5
+	-0.5 -0.5 0.5
+	0.5 -0.5 0.5
+	-0.5 -0.5 -0.5
+	-0.5 -0.5 0.5
+	-0.5 0.5 -0.5
+	-0.5 0.5 0.5
+
+	tris 12
+	0 1 2 
+	3 2 1 
+	8 9 4 
+	6 4 9 
+	10 11 12 
+	5 12 11 
+	7 13 14 
+	15 14 13 
+	16 17 18 
+	19 18 17 
+	20 21 22 
+	23 22 21 
+}
+
+## lighting
+
+primitive
+{
+	type sphere
+	radius 2.0
+
+	position -20 20 0	
+
+	lightSamples 5
+
+	material light
+
+}
+
+### background objects
+
+primitive
+{
+	type mesh
+	mesh cube
+
+	scale 10
+
+	position 0 -5.0 0.0
+	
+	material ground
+}
+
+
+primitive
+{
+	type sphere
+	radius 0.6
+
+	position 3.5 0.6 0.0	
+
+	material glass
+}
+
+primitive
+{
+	type sphere
+	radius 0.6
+
+	position -3.5 0.6 0.0	
+
+	material metal
+}
+
+primitive
+{
+	type sphere
+	radius 0.4
+
+	position -2.0 0.4 2.0	
+
+	material pingpong
+}
+
+primitive
+{
+	type sphere
+	radius 0.25
+
+	position -2.0 0.25 -2.0	
+
+	material bouncy
+}
+
+
+primitive
+{
+	type sphere
+	radius 0.5
+
+	position 2.0 0.5 -2.0	
+
+	material orange
+}
+
+
+primitive
+{
+	type sphere
+	radius 1.0
+
+	position 0.0 1.0 -3.0	
+
+	material wood
+}
+
+
+
+primitive
+{
+	type sphere
+	radius 0.6
+
+	position 2.0 0.6 2.0	
+
+	material golfball
+}
+
+primitive
+{
+	type sphere
+	radius 0.1
+
+	position -0.5 0.1 2.5	
+
+	material marble1
+}
+
+primitive
+{
+	type sphere
+	radius 0.15
+
+	position 0.5 0.15 2.5	
+
+	material marble2
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/ring.obj
+
+	position 0.0 0.0 0.0
+
+	scale 0.6
+
+	material silver
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/ring.obj
+
+	position 0.6 0.0 0.3
+
+	scale 0.6
+
+	material silver
+}
+
+primitive
+{
+	type mesh
+	mesh meshes/ring.obj
+
+	position -1.6 0.0 -0.3
+
+	scale 0.6
+
+	material silver
+}
+
+
+primitive
+{
+	type plane 
+	plane 0 1 0 0.5 
+
+	material ground
+}

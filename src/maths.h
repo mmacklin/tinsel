@@ -246,6 +246,9 @@ CUDA_CALLABLE inline Vec3& operator-=(Vec3& a, const Vec3& b) { return a = a-b; 
 CUDA_CALLABLE inline Vec3& operator*=(Vec3& a, Real s) { a.x *= s; a.y *= s;  a.z *= s; return a; }
 CUDA_CALLABLE inline Vec3& operator/=(Vec3& a, Real s) { Real rcp=1.0/s; a.x *= rcp; a.y *= rcp; a.z *= rcp; return a; }
 
+CUDA_CALLABLE inline Vec3 Exp(const Vec3& v) { return Vec3(expf(v.x), expf(v.y), expf(v.z)); }
+CUDA_CALLABLE inline Vec3 Log(const Vec3& v) { return Vec3(logf(v.x), logf(v.y), logf(v.z)); }
+
 CUDA_CALLABLE inline Vec3 Cross(const Vec3& a, const Vec3& b) { return Vec3(a.y*b.z - b.y*a.z, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x); }
 CUDA_CALLABLE inline Real Dot(const Vec3& a, const Vec3& b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 CUDA_CALLABLE inline Real LengthSq(const Vec3& a) { return Dot(a,a); }
@@ -1565,6 +1568,15 @@ CUDA_CALLABLE inline T ClampLength(const T& v, float maxLength)
 	{
 		return v;
 	}
+}
+
+// make v lie in the same hemisphere as n
+CUDA_CALLABLE inline Vec3 FaceForward(const Vec3& n, const Vec3& v)
+{
+	if (Dot(v, n) < 0.0f)
+		return -n;
+	else
+		return n;
 }
 
 

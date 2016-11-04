@@ -5,15 +5,16 @@ options
 	width 500
 	height 500
 
+	#maxSamples 64
 	maxDepth 128
-	clamp 100
+	#clamp 50
 }	
 
 sky
 {
-	probe probes/vankleef.hdr
-	#horizon 0.5 0.0 0.0
-	#zenith 0.5 0.0 0.0
+	#probe probes/vankleef.hdr
+	horizon 0.5 0.5 0.5
+	zenith 0.5 0.5 0.5
 }
 
 camera
@@ -29,17 +30,20 @@ camera
 
 material glass
 {
-	color 0.0 0.0 0.0
+	color 1.0 1.0 1.0
 	specular 1.0
-	roughness 0.001
+	roughness 0.0
 	metallic 0.0
-	transmission 0.95
+	transmission 0.0
 	clearcoat 0.0
 	clearcoatGloss 0.0
 	sheen 0.0
 	sheenTint 0.0 0.0 0.0
-	eta 1.8
 }
+
+# t*bsdf + (1-t)*brdf = (refraction + specular) + (diffuse + specular)
+#                   = t*refraction + t*specular + (1-t)*diffuse + (1-t)*specular
+#                    = t*(refraction) + (1-t)*diffuse + specular 
 
 material gold
 {
@@ -70,18 +74,6 @@ material light
 }
 
 
-
-primitive
-{
-	type mesh
-	mesh meshes/ajax.bin
-	material glass
-
-	position 0.0 0.01 0.0
-	rotation 0 0 0 1
-	scale 1.0
-}
-
 mesh plane
 {
 	verts 4
@@ -95,8 +87,19 @@ mesh plane
 	0 2 3
 }
 
-
 primitive
+{
+	type mesh
+	mesh meshes/sphere.ply
+	material glass
+
+	position 0.0 0.01 0.0
+	rotation 0 0 0 1
+	scale 1.0
+}
+
+
+#primitive
 {
 	type mesh
 	mesh plane

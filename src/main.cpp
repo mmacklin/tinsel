@@ -414,8 +414,8 @@ int main(int argc, char* argv[])
     else
     {
         // default test scene
-        TestVeach(&g_scene, &g_camera, &g_options);
-		//TestMaterials(&g_scene, &g_camera, &g_options);
+        //TestVeach(&g_scene, &g_camera, &g_options);
+		TestMaterials(&g_scene, &g_camera, &g_options);
     }
 
 	// set fly cam
