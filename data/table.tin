@@ -5,7 +5,7 @@ options
 	width 640
 	height 400
 
-	exposure 1.0
+	exposure 1.66
 
 	maxDepth 16
 	clamp 100
@@ -154,30 +154,30 @@ mesh prism
 mesh cube
 {
 	verts 24
-	0.5 0.5 0.5
-	-0.5 0.5 0.5
-	0.5 -0.5 0.5
-	-0.5 -0.5 0.5
-	0.5 0.5 -0.5
-	-0.5 0.5 -0.5
-	0.5 -0.5 -0.5
-	-0.5 -0.5 -0.5
-	0.5 0.5 0.5
-	0.5 -0.5 0.5
-	0.5 0.5 0.5
-	0.5 0.5 -0.5
-	-0.5 0.5 0.5
-	-0.5 0.5 -0.5
-	0.5 -0.5 -0.5
-	0.5 0.5 -0.5
-	-0.5 -0.5 -0.5
-	0.5 -0.5 -0.5
-	-0.5 -0.5 0.5
-	0.5 -0.5 0.5
-	-0.5 -0.5 -0.5
-	-0.5 -0.5 0.5
-	-0.5 0.5 -0.5
-	-0.5 0.5 0.5
+	0.5 0.5 0.3
+	-0.5 0.5 0.3
+	0.5 -0.5 0.3
+	-0.5 -0.5 0.3
+	0.5 0.5 -0.3
+	-0.5 0.5 -0.3
+	0.5 -0.5 -0.3
+	-0.5 -0.5 -0.3
+	0.5 0.5 0.3
+	0.5 -0.5 0.3
+	0.5 0.5 0.3
+	0.5 0.5 -0.3
+	-0.5 0.5 0.3
+	-0.5 0.5 -0.3
+	0.5 -0.5 -0.3
+	0.5 0.5 -0.3
+	-0.5 -0.5 -0.3
+	0.5 -0.5 -0.3
+	-0.5 -0.5 0.3
+	0.5 -0.5 0.3
+	-0.5 -0.5 -0.3
+	-0.5 -0.5 0.3
+	-0.5 0.5 -0.3
+	-0.5 0.5 0.3
 
 	tris 12
 	0 1 2 
@@ -218,7 +218,7 @@ primitive
 
 	scale 10
 
-	position 0 -5.0 0.0
+	position 0 -5.0 -0.25
 	
 	material ground
 }
@@ -249,7 +249,7 @@ primitive
 	type sphere
 	radius 0.4
 
-	position -2.0 0.4 2.0	
+	position -2.0 0.4 1.5	
 
 	material pingpong
 }
@@ -259,7 +259,7 @@ primitive
 	type sphere
 	radius 0.25
 
-	position -2.0 0.25 -2.0	
+	position -2.0 0.25 -1.3
 
 	material bouncy
 }
@@ -270,7 +270,7 @@ primitive
 	type sphere
 	radius 0.5
 
-	position 2.0 0.5 -2.0	
+	position 2.0 0.5 -1.3
 
 	material orange
 }
@@ -281,7 +281,7 @@ primitive
 	type sphere
 	radius 1.0
 
-	position 0.0 1.0 -3.0	
+	position 0.0 1.0 -2.0	
 
 	material wood
 }
@@ -290,10 +290,16 @@ primitive
 
 primitive
 {
-	type sphere
-	radius 0.6
+	#type sphere
+	#radius 0.6
+	#position 2.0 0.6 1.5	
 
-	position 2.0 0.6 2.0	
+	type mesh
+	mesh meshes/golfball.obj
+
+	scale 1.0
+
+	position 1.5 0.0 1.0
 
 	material golfball
 }
@@ -303,7 +309,7 @@ primitive
 	type sphere
 	radius 0.1
 
-	position -0.5 0.1 2.5	
+	position -0.5 0.1 2.0	
 
 	material marble1
 }
@@ -313,7 +319,7 @@ primitive
 	type sphere
 	radius 0.15
 
-	position 0.5 0.15 2.5	
+	position 0.5 0.15 2.0
 
 	material marble2
 }
@@ -358,7 +364,7 @@ primitive
 primitive
 {
 	type plane 
-	plane 0 1 0 0.5 
+	plane 0 1 0 0.3
 
 	material ground
 }

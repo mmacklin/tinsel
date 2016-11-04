@@ -167,6 +167,11 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 	return sum;
 }
 
+enum RayType
+{
+	eReflected,
+	eTransmitted
+};
 
 // reference, no light sampling, uniform hemisphere sampling
 Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir, float time, int maxDepth, Random& rand)
@@ -180,9 +185,10 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
     Vec3 rayDir = startDir;
 	float rayTime = time;
 	float rayEta = 1.0f;
+	bool rayType = eReflected;
 
     float t = 0.0f;
-    Vec3 n(rayDir);
+    Vec3 n;
     const Primitive* hit;
 
 	float brdfPdf = 1.0f;
@@ -218,8 +224,13 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 					float cbrdf = kBrdfSamples/N;
 					float clight = float(hit->lightSamples)/N;
 					float weight = cbrdf*brdfPdf/(cbrdf*brdfPdf+ clight*lightPdf);
-							
+					
+					// transmitted rays do not receive direct light (always blocked)
+					if (rayType == eTransmitted)
+						weight = 1.0f;
+
 					// pathThroughput already includes the brdf pdf
+					//totalRadiance += weight*pathThroughput*hit->material.emission;
 					totalRadiance += weight*pathThroughput*hit->material.emission;
 				}
 			}
@@ -260,7 +271,14 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 
             // update ray medium if we are transmitting through the material
             if (Dot(brdfDir, n) <= 0.0f)
+            {
             	rayEta = outEta;
+            	rayType = eTransmitted;
+            }
+            else
+            {
+            	rayType = eReflected;
+            }
 
             // update throughput with primitive reflectance
             //pathThroughput *= f * Clamp(Dot(n, brdfDir), 0.0f, 1.0f)/brdfPdf;
@@ -275,7 +293,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             // hit nothing, sample sky dome and terminate         
             float weight = 1.0f;
 
-        	if (scene.sky.probe.valid && i > 0)
+        	if (scene.sky.probe.valid && i > 0 && rayType == eReflected)
         	{
         		// probability that this dir was already sampled by probe sampling
         		float skyPdf = ProbePdf(scene.sky.probe, rayDir);
