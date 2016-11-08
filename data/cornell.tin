@@ -70,7 +70,7 @@ material metal
 }
 
 
-mesh plane
+mesh quad
 {
 	verts 4
 	-0.25 0 0.25
@@ -141,7 +141,7 @@ primitive
 primitive
 {
 	type mesh
-	mesh plane
+	mesh quad
 
 	position 0 1.9999 0
 

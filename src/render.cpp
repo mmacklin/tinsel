@@ -185,7 +185,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
     Vec3 rayDir = startDir;
 	float rayTime = time;
 	float rayEta = 1.0f;
-	bool rayType = eReflected;
+	RayType rayType = eReflected;
 
     float t = 0.0f;
     Vec3 n;

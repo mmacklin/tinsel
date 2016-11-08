@@ -51,6 +51,9 @@
     <ClCompile Include="src\probe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\perlin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bvh.h">
@@ -113,6 +116,9 @@
     <ClInclude Include="src\sampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\perlin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
@@ -144,6 +150,9 @@
       <Filter>Header Files\Examples</Filter>
     </None>
     <None Include="data\transmission.tin">
+      <Filter>Header Files\Examples</Filter>
+    </None>
+    <None Include="data\test.tin">
       <Filter>Header Files\Examples</Filter>
     </None>
   </ItemGroup>

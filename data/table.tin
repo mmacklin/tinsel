@@ -2,26 +2,29 @@
 
 options
 {
-	width 640
-	height 400
+	width 1280
+	height 800
 
 	exposure 1.66
 
-	maxDepth 16
-	clamp 100
+	maxDepth 8
+	clamp 2000
 }	
 
 sky
 {
-	#probe probes/vankleef2.hdr
+	#probe probes/vankleef.hdr
 	
 }
 
 camera
 {
 
-	position 0.0 5.51 8.69
-	rotation -0.257080525 0 0 0.966390014
+	#position 0.0 5.51 8.69
+	#rotation -0.257080525 0 0 0.966390014
+
+	position 0.0 6.57073498 7.83454943
+	rotation -0.347590327 0.0 0.0 0.937646508
 
 	fov 35
 }
@@ -29,37 +32,47 @@ camera
 
 material metal
 {
-	color 0.5 0.5 0.5
-	specular 1.0
-	roughness 0.01
+	color 0.3 0.3 0.3
+	specular 0.8
+	roughness 0.003
 	metallic 1.0
 	transmission 0.0
 	
+	clearcoat 0.3
+	clearcoatGloss 0.25
+
+	#bump 0.0025
+	#bumpTile 0.5 0.25 0.125	
 }
 
 material silver
 {
 	color 0.95 0.93 0.88
-	roughness 0.05
+	roughness 0.02
 	metallic 1.0
-	specular 1.0
+	specular 0.75
 }
     
 
 material glass
 {
 	color 0.0 0.0 0.0
-	specular 0.75
+	specular 0.85
 	roughness 0.005
-	transmission 0.9
+	transmission 1.0
 	eta 1.5
 }
 
 material wood
 {
-	color 0.4174 0.2468 0.1139
+	#color 0.4174 0.2468 0.1139
+	color 0.3992 0.21951971 0.10871
 	specular 0.5
-	roughness 0.05
+	roughness 0.25
+	#bump 0.01
+
+	clearcoatGloss 1.0
+	clearcoat 1.0
 }
 
 material orange
@@ -71,11 +84,12 @@ material orange
 
 material pingpong
 {
-	color 0.9 0.85 0.8
+	#color 0.92 0.87 0.82
+	#color 0.92399 0.81224148 0.7893137
+	color 0.93 0.89 0.85
 	specular 0.6
 	roughness 0.2
-
-	transmission 0.2
+	subsurface 0.4
 }
 
 material golfball
@@ -83,8 +97,6 @@ material golfball
 	color 0.9 0.87 0.95
 	specular 0.6
 	roughness 0.05
-
-	transmission 0.0
 }
 
 material marble1
@@ -92,8 +104,7 @@ material marble1
 	color 0.276 0.344 0.2233
 	specular 0.4
 	roughness 0.05
-
-	transmission 0.2
+	subsurface 0.7
 }
 
 material marble2
@@ -101,26 +112,33 @@ material marble2
 	color 0.2549 0.3537 0.11926
 	specular 0.4
 	roughness 0.05
-
-	transmission 0.2
+	subsurface 0.3
 }
 
 
 material bouncy
 {
-	color 0.99 0.114 0.047
+	color 0.9828262 0.180144 0.0780565
 	specular 0.3
-	roughness 0.01
-	emission 0.008 0.006 0.001
-
-	transmission 0.1
+	roughness 0.1
+	subsurface 0.7
 }
 
-material ground
+material ground1
 {
 	color 0.87 0.7785 0.6782
 	roughness 0.2
-	specular 0.75
+	specular 0.1
+
+	bump 0.0
+	bumpTile 1.0 1.0 1.0
+}
+
+material ground2
+{
+	color 0.75 0.6585 0.5582
+	roughness 0.2
+	specular 0.1
 }
 
 material light
@@ -150,6 +168,18 @@ mesh prism
 	5 1 4
 }
 
+mesh quad
+{
+	verts 4
+	-0.25 0 0.25
+	0.25 0 0.25
+	0.25 0 -0.25
+	-0.25 0 -0.25
+
+	tris 2
+	0 2 1 
+	0 3 2
+}
 
 mesh cube
 {
@@ -201,7 +231,12 @@ primitive
 	type sphere
 	radius 2.0
 
-	position -20 20 0	
+	#type mesh
+	#mesh quad
+	#scale 4.0
+	
+	position -20 17 0
+	#rotation -0.146447 -0.353553 0.353553 0.853553
 
 	lightSamples 5
 
@@ -220,14 +255,14 @@ primitive
 
 	position 0 -5.0 -0.25
 	
-	material ground
+	material ground1
 }
 
 
 primitive
 {
 	type sphere
-	radius 0.6
+	radius 0.55
 
 	position 3.5 0.6 0.0	
 
@@ -246,11 +281,15 @@ primitive
 
 primitive
 {
-	type sphere
-	radius 0.4
+	#type sphere
+	#radius 0.45
+	type mesh
+	mesh meshes/pingpong.obj
 
-	position -2.0 0.4 1.5	
+	scale 0.9
 
+	position -1.5 0.0 1.1	
+	rotation 0 0 0.70710678 0.70710678
 	material pingpong
 }
 
@@ -259,7 +298,7 @@ primitive
 	type sphere
 	radius 0.25
 
-	position -2.0 0.25 -1.3
+	position -2.0 0.25 -1.1
 
 	material bouncy
 }
@@ -270,7 +309,7 @@ primitive
 	type sphere
 	radius 0.5
 
-	position 2.0 0.5 -1.3
+	position 2.0 0.5 -1.1
 
 	material orange
 }
@@ -278,10 +317,27 @@ primitive
 
 primitive
 {
-	type sphere
-	radius 1.0
+	#type sphere
+	#radius 1.0
 
-	position 0.0 1.0 -2.0	
+	type mesh
+	
+	#mesh meshes/manifold.bin
+	#position -1.2 0.0 -3.4	
+	#scale 2.0
+
+	mesh meshes/lock_dist.obj
+	position -1.5 0.0 -2.3
+	rotation 0.0 0.258819045 0.0 0.965925826
+	scale 1.8
+
+
+	#mesh meshes/hexsticks.obj
+	#mesh meshes/wheel_puzzle.obj
+	#scale 2.0
+
+	#position -1.35 0.45 -3.05	
+	#rotation 0.198609 0.085406 -0.017376 0.976196
 
 	material wood
 }
@@ -290,10 +346,6 @@ primitive
 
 primitive
 {
-	#type sphere
-	#radius 0.6
-	#position 2.0 0.6 1.5	
-
 	type mesh
 	mesh meshes/golfball.obj
 
@@ -353,7 +405,7 @@ primitive
 	type mesh
 	mesh meshes/ring.obj
 
-	position -1.6 0.0 -0.3
+	position -1.3 0.0 -0.3
 
 	scale 0.6
 
@@ -364,7 +416,7 @@ primitive
 primitive
 {
 	type plane 
-	plane 0 1 0 0.3
+	plane 0 1 0 0.4
 
-	material ground
+	material ground2
 }

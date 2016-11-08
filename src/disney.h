@@ -26,6 +26,13 @@
 
 #define DISABLE_IMPORTANCE 0
 
+enum BSDFType
+{
+	eReflected,
+	eTransmitted,
+	eSpecular
+};
+
 CUDA_CALLABLE inline bool Refract(const Vec3 &wi, const Vec3 &n, float eta, Vec3& wt) {
     
     // Compute $\cos \theta_\roman{t}$ using Snell's law
@@ -96,12 +103,14 @@ CUDA_CALLABLE inline float Fr(float VDotN, float etaI, float etaT)
 }
 
 
-CUDA_CALLABLE inline float BRDFPdf(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& n, const Vec3& V, const Vec3& L)
-{
-    if (Dot(L, n) <= 0.0f)
-    {
-        // transmission
-        return 0.0f;
+CUDA_CALLABLE inline float BSDFPdf(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& n, const Vec3& V, const Vec3& L)
+{  
+	if (Dot(L, n) <= 0.0f)
+	{
+		float bsdfPdf = 0.0f;
+		float brdfPdf = kInv2Pi*mat.subsurface*0.5f;
+
+		return Lerp(brdfPdf, bsdfPdf, mat.transmission);
     }
     else
     {
@@ -111,8 +120,8 @@ CUDA_CALLABLE inline float BRDFPdf(const Material& mat, float etaI, float etaO, 
         return kInv2Pi;
 
 #else
-        float F = Fr(Dot(n,V), etaI, etaO);
-        float PTrans = (1.0f-F)*mat.transmission;
+
+		float F = Fr(Dot(n,V), etaI, etaO);
 
         const float a = Max(0.001f, mat.roughness);
 
@@ -122,61 +131,110 @@ CUDA_CALLABLE inline float BRDFPdf(const Material& mat, float etaI, float etaO, 
         const float pdfHalf = GTR2(cosThetaHalf, a)*cosThetaHalf;
 
         // calculate pdf for each method given outgoing light vector
-        float pdfSpec = pdfHalf*0.25f/Max(1.e-6f, Abs(Dot (L, half)));
+        float pdfSpec = 0.25f*pdfHalf/Max(1.e-6f, Dot (L, half));
         assert(isfinite(pdfSpec));
 
-        float pdfDiff = Abs(Dot(L, n))*kInvPi;
+		float pdfDiff = Abs(Dot(L, n))*kInvPi*(1.0f-mat.subsurface);
         assert(isfinite(pdfDiff));
 
+		float bsdfPdf = pdfSpec*F;
+		float brdfPdf = Lerp(pdfDiff, pdfSpec, 0.5f);
+
         // weight pdfs equally
-        return Lerp(pdfDiff, pdfSpec, 0.5f)*(1.0f-PTrans);
+        return Lerp(brdfPdf, bsdfPdf, mat.transmission);
 #endif
 
     }
 }
 
 
-// generate an importance sampled brdf direction
-CUDA_CALLABLE inline void BRDFSample(const Material& mat, float etaI, float etaO, const Vec3& P, const Mat33& frame, const Vec3& V, Vec3& light, float& pdf, Random& rand)
+// generate an importance sampled BSDF direction
+CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO, const Vec3& P, const Mat33& frame, const Vec3& V, Vec3& light, float& pdf, BSDFType& type, Random& rand)
 {
-    float F = Fr(Dot(frame.GetCol(2),V), etaI, etaO);
-    float PTrans = (1.0f-F)*mat.transmission;
-
-    if (rand.Randf() < PTrans)
+    if (rand.Randf() < mat.transmission)
     {
-        // sample transmission
-        Vec3 n = frame.GetCol(2);
+		// sample BSDF
+		float F = Fr(Dot(frame.GetCol(2),V), etaI, etaO);
 
-        float eta = etaI/etaO;
-        //Vec3 h = Normalize(V+light);
+		// sample reflectance or transmission based on Fresnel term
+		if (rand.Randf() < F)
+		{
+			 // sample specular
+    		float r1, r2;
+			Sample2D(rand, r1, r2);
 
-        if (Refract(V, n, eta, light))
-        {   
-            pdf = PTrans;
-            return;
-        }
-        else
-        {
-            assert(0);
+		    const float a = Max(0.001f, mat.roughness);
+			Vec3 n = frame.GetCol(2);
 
-            // shouldn't get here as the Fresnel based sampling 
-            // will ensure refraction always succeeds
-            pdf = 0.0f;
-            return;
-        }
+            const float phiHalf = r1*k2Pi;
+            
+            const float cosThetaHalf = sqrtf((1.0f-r2)/(1.0f + (Sqr(a)-1.0f)*r2));      
+            const float sinThetaHalf = sqrtf(Max(0.0f, 1.0f-Sqr(cosThetaHalf)));
+            const float sinPhiHalf = sinf(phiHalf);
+            const float cosPhiHalf = cosf(phiHalf);
+
+    		Validate(cosThetaHalf);
+    		Validate(sinThetaHalf);
+    		Validate(sinPhiHalf);
+    		Validate(cosPhiHalf);
+
+            Vec3 half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
+            
+            // ensure half angle in same hemisphere as incoming light vector
+            if (Dot(half, V) <= 0.0f)
+                half *= -1.0f;
+			
+            type = eReflected;
+			light = 2.0f*Dot(V, half)*half - V;
+
+		}
+		else
+		{
+			// sample transmission
+			Vec3 n = frame.GetCol(2);
+
+			float eta = etaI/etaO;
+			//Vec3 h = Normalize(V+light);
+
+			if (Refract(V, n, eta, light))
+			{   
+				type = eSpecular;
+				pdf = (1.0f-F)*mat.transmission;
+				return;
+			}
+			else
+			{
+				assert(0);
+				return;
+			}
+		}
     }
     else
     {
-        // sample reflection
+#if DISABLE_IMPORTANCE
+		
+        light = frame*UniformSampleHemisphere(rand);
+		pdf = kInv2Pi;
+
+#else
+
+        // sample brdf
         float r1, r2;
         Sample2D(rand, r1, r2);
 
-        const float select = rand.Randf();
-
-        if (select < 0.5f)
+        if (rand.Randf() < 0.5f)
         {
-            // sample diffuse
-            light = frame*CosineSampleHemisphere(r1, r2);
+            // sample diffuse	
+			if (rand.Randf() < mat.subsurface)
+			{
+				light = Mat33(frame.GetCol(0), frame.GetCol(1), -frame.GetCol(2))*UniformSampleHemisphere(rand);
+				type = eTransmitted;
+			}
+			else
+			{
+				light = frame*CosineSampleHemisphere(r1, r2);
+				type = eReflected;
+			}
         }
         else
         {
@@ -202,14 +260,17 @@ CUDA_CALLABLE inline void BRDFSample(const Material& mat, float etaI, float etaO
                 half *= -1.0f;
 
             light = 2.0f*Dot(V, half)*half - V;
+			type = eReflected;
         }
-
-        pdf = BRDFPdf(mat, etaI, etaO, P, frame.GetCol(2), V, light);
+#endif
     }
+
+    pdf = BSDFPdf(mat, etaI, etaO, P, frame.GetCol(2), V, light);		
+
 }
 
 
-CUDA_CALLABLE inline Color BRDFEval(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& N, const Vec3& V, const Vec3& L)
+CUDA_CALLABLE inline Color BSDFEval(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& N, const Vec3& V, const Vec3& L)
 {
     float NDotL = Dot(N,L);
     float NDotV = Dot(N,V);
@@ -218,74 +279,113 @@ CUDA_CALLABLE inline Color BRDFEval(const Material& mat, float etaI, float etaO,
 
     float NDotH = Dot(N,H);
     float LDotH = Dot(L,H);
-        
-    if (NDotL <= 0)
-    {
-        // transmission Fresnel
-        float F = Fr(NDotV, etaI, etaO);
 
-        Color T = mat.transmission*(1.0f-F)/Abs(NDotL);
-        return T;
-    }
-    else
-    {
-        Vec3 Cdlin = Vec3(mat.color);
-        float Cdlum = .3*Cdlin[0] + .6*Cdlin[1]  + .1*Cdlin[2]; // luminance approx.
+    Vec3 Cdlin = Vec3(mat.color);
+    float Cdlum = .3*Cdlin[0] + .6*Cdlin[1]  + .1*Cdlin[2]; // luminance approx.
 
-        Vec3 Ctint = Cdlum > 0.0f ? Cdlin/Cdlum : Vec3(1); // normalize lum. to isolate hue+sat
-        Vec3 Cspec0 = Lerp(mat.specular*.08*Lerp(Vec3(1), Ctint, mat.specularTint), Cdlin, mat.metallic);
-       // Vec3 Csheen = Lerp(Vec3(1), Ctint, mat.sheenTint);
+    Vec3 Ctint = Cdlum > 0.0f ? Cdlin/Cdlum : Vec3(1); // normalize lum. to isolate hue+sat
+    Vec3 Cspec0 = Lerp(mat.specular*.08*Lerp(Vec3(1), Ctint, mat.specularTint), Cdlin, mat.metallic);
+   // Vec3 Csheen = Lerp(Vec3(1), Ctint, mat.sheenTint);
 
-        // specular
-        float a = Max(0.001f, mat.roughness);
-        float Ds = GTR2(NDotH, a);
+	Color bsdf = 0.0f;
+	Color brdf = 0.0f;
 
-        // Fresnel term with the microfacet normal
-        float FH = Fr(LDotH, etaI, etaO);
+	if (mat.transmission > 0.0f)
+	{
+		// evaluate BSDF
+		if (NDotL <= 0)
+		{
+			// transmission Fresnel
+			float F = Fr(NDotV, etaI, etaO);
 
-        Vec3 Fs = Lerp(Cspec0, Vec3(1), FH);
-        float roughg = a;//Sqr(0.5 + 0.5*a);
-        float Gs = smithG_GGX(NDotV, roughg)*smithG_GGX(NDotL, roughg);
+			bsdf = mat.transmission*(1.0f-F)/Abs(NDotL);
+		}
+		else
+		{
+			// specular lobe
+		    float a = Max(0.001f, mat.roughness);
+			float Ds = GTR2(NDotH, a);
 
-/*
-        // Diffuse fresnel - go from 1 at normal incidence to .5 at grazing
-        // and mix in diffuse retro-reflection based on roughness
-        float FL = SchlickFresnel(NDotL), FV = SchlickFresnel(NDotV);
-        float Fd90 = 0.5 + 2.0f * LDotH*LDotH * mat.roughness;
-        float Fd = Lerp(1.0f, Fd90, FL) * (1.0f-FH);//Lerp(1.0f, Fd90, FV);
+			// Fresnel term with the microfacet normal
+			float FH = Fr(LDotH, etaI, etaO);
 
-        // Based on Hanrahan-Krueger brdf approximation of isotrokPic bssrdf
-        // 1.25 scale is used to (roughly) preserve albedo
-        // Fss90 used to "flatten" retroreflection based on roughness
-        float Fss90 = LDotH*LDotH*mat.roughness;
-        float Fss = Lerp(1.0f, Fss90, FL) * (1.0f-FH);//Lerp(1.0f, Fss90, FV);
-        float ss = 1.25 * (Fss * (1.0f / (NDotL + NDotV) - .5) + .5);
+			Vec3 Fs = Lerp(Cspec0, Vec3(1), FH);
+			float roughg = a;
+			float Gs = smithG_GGX(NDotV, roughg)*smithG_GGX(NDotL, roughg);
 
-        // sheen
-        Vec3 Fsheen = FH * mat.sheen * Csheen;
+			bsdf = Color(Gs*Fs*Ds, 0.0f);
+		}
+	}
 
-        // clearcoat (ior = 1.5 -> F0 = 0.04)
-        float Dr = GTR1(NDotH, Lerp(.1,.001, mat.clearcoatGloss));
-        float Fr = Lerp(.04f, 1.0f, FH);
-        float Gr = smithG_GGX(NDotL, .25) * smithG_GGX(NDotV, .25);
-       
+	if (mat.transmission < 1.0f)
+	{
+		// evaluate BRDF
+		if (NDotL <= 0)
+		{
+			if (mat.subsurface > 0.0f)
+			{
+				// take sqrt to account for entry/exit of the ray through the medium
+				// this ensures transmitted light corresponds to the diffuse model
+				Color s = Color(sqrtf(mat.color.x), sqrtf(mat.color.y), sqrtf(mat.color.z));
+			
+				float FL = SchlickFresnel(Abs(NDotL)), FV = SchlickFresnel(NDotV);
+    			float Fd = (1.0f-0.5f*FL)*(1.0f-0.5f*FV);
 
+				brdf =  kInvPi*s*mat.subsurface*Fd;
+			}						
+		}
+		else
+		{
+			// specular
+			float a = Max(0.001f, mat.roughness);
+			float Ds = GTR2(NDotH, a);
 
-        Vec3 out = ((1/kPi) * Lerp(Fd, ss, mat.subsurface)*Cdlin + Fsheen)
-            * (1-mat.metallic)*(1.0f-mat.transmission)
-            + Gs*Fs*Ds + .25*mat.clearcoat*Gr*Fr*Dr;
- */
+			// Fresnel term with the microfacet normal
+			float FH = SchlickFresnel(LDotH);
+
+			Vec3 Fs = Lerp(Cspec0, Vec3(1), FH);
+			float roughg = a;
+			float Gs = smithG_GGX(NDotV, roughg)*smithG_GGX(NDotL, roughg);
+
+			// Diffuse fresnel - go from 1 at normal incidence to .5 at grazing
+			// and mix in diffuse retro-reflection based on roughness
+			float FL = SchlickFresnel(NDotL), FV = SchlickFresnel(NDotV);
+			float Fd90 = 0.5 + 2.0f * LDotH*LDotH * mat.roughness;
+			float Fd = Lerp(1.0f, Fd90, FL) * Lerp(1.0f, Fd90, FV);		
+
+			// Based on Hanrahan-Krueger BSDF approximation of isotrokPic bssrdf
+			// 1.25 scale is used to (roughly) preserve albedo
+			// Fss90 used to "flatten" retroreflection based on roughness
+			//float Fss90 = LDotH*LDotH*mat.roughness;
+			//float Fss = Lerp(1.0f, Fss90, FL) * Lerp(1.0f, Fss90, FV);
+			//float ss = 1.25 * (Fss * (1.0f / (NDotL + NDotV) - .5) + .5);
+
+			// clearcoat (ior = 1.5 -> F0 = 0.04)
+			float Dr = GTR1(NDotH, Lerp(.1,.001, mat.clearcoatGloss));
+			float Fc = Lerp(.04f, 1.0f, FH);
+			float Gr = smithG_GGX(NDotL, .25) * smithG_GGX(NDotV, .25);
+
+			/*
+			// sheen
+			Vec3 Fsheen = FH * mat.sheen * Csheen;
+
+			Vec3 out = ((1/kPi) * Lerp(Fd, ss, mat.subsurface)*Cdlin + Fsheen)
+				* (1-mat.metallic)*(1.0f-mat.transmission)
+				+ Gs*Fs*Ds + .25*mat.clearcoat*Gr*Fr*Dr;
+			*/
     
-        Vec3 out = kInvPi*Cdlin*(Vec3(1.0f)-Fs)*(1.0-mat.metallic)*(1.0f-mat.transmission) + Gs*Fs*Ds;            
-
-        return Vec4(out, 0.0f);
+			Vec3 out = kInvPi*Fd*Cdlin*(1.0f-mat.metallic)*(1.0f-mat.subsurface) + Gs*Fs*Ds + mat.clearcoat*Gr*Fc*Dr;
+			brdf = Color(out, 0.0f);
+		}
     }
+
+	return Lerp(brdf, bsdf, mat.transmission);
 }
 #endif
 
-inline void BRDFTest(Material mat, Mat33 frame, float woTheta, const char* filename)
+inline void BSDFTest(Material mat, Mat33 frame, float woTheta, const char* filename)
 {
-    /* example code to visualize a BRDF, its PDF and sampling
+    /* example code to visualize a BSDF, its PDF and sampling
 
     Material mat;
     mat.color = Color(0.95, 0.9, 0.9);
@@ -297,7 +397,7 @@ inline void BRDFTest(Material mat, Mat33 frame, float woTheta, const char* filen
     Vec3 u, v;
     BasisFromVector(n, &u, &v);
     
-    BRDFTest(mat, Mat33(u, v, n), kPi/2.05f, "brdftest.pfm");
+    BSDFTest(mat, Mat33(u, v, n), kPi/2.05f, "BSDFtest.pfm");
     */
 
     int width = 512;
@@ -325,8 +425,8 @@ inline void BRDFTest(Material mat, Mat33 frame, float woTheta, const char* filen
 
             Vec3 wi = ProbeUVToDir(Vec2(u,v));
 
-            Color f = BRDFEval(mat, 1.0f, 1.0f, Vec3(0.0f), frame.GetCol(2), wo, wi); 
-            float pdf = BRDFPdf(mat, 1.0f, 1.0f, Vec3(0.0f), frame.GetCol(2), wo, wi);
+            Color f = BSDFEval(mat, 1.0f, 1.0f, Vec3(0.0f), frame.GetCol(2), wo, wi); 
+            float pdf = BSDFPdf(mat, 1.0f, 1.0f, Vec3(0.0f), frame.GetCol(2), wo, wi);
 
           //  f.x = u;
             //f.y = v;
@@ -343,8 +443,9 @@ inline void BRDFTest(Material mat, Mat33 frame, float woTheta, const char* filen
     {
         Vec3 wi;
         float pdf;
+		BSDFType type;
 
-        BRDFSample(mat, 1.0f, 1.0f, Vec3(0.0f), frame, wo, wi, pdf, rand);
+        BSDFSample(mat, 1.0f, 1.0f, Vec3(0.0f), frame, wo, wi, pdf, type, rand);
             
         Vec2 uv = ProbeDirToUV(wi);
 

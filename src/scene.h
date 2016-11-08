@@ -30,6 +30,17 @@ struct Camera
 };
 
 
+struct Texture
+{
+	Texture() : data(NULL), width(0), height(0), depth(0) {}
+
+	float* data;
+
+	int width;
+	int height;
+	int depth;
+};
+
 
 struct Material
 {
@@ -50,7 +61,9 @@ struct Material
 		clearcoat = 0.0f;
 		clearcoatGloss = 1.0f;
 		transmission = 0.0f;
-		
+		bump = 0.0f;
+		bumpTile = 10.0f;
+
 		// when eta is zero the index of refraction will be inferred from the specular component
 		eta = 0.0f;	 
 	}
@@ -79,6 +92,10 @@ struct Material
 	float clearcoatGloss;
 	float transmission;	
 	float eta;
+
+	Texture bumpMap;
+	float bump;
+	Vec3 bumpTile;
 };
 
 enum GeometryType

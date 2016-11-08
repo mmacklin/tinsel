@@ -85,6 +85,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mesh.cpp" />
     <ClCompile Include="src\nlm.cpp" />
+    <ClCompile Include="src\perlin.cpp" />
     <ClCompile Include="src\pfm.cpp" />
     <ClCompile Include="src\platform.cpp" />
     <ClCompile Include="src\png.cpp" />
@@ -104,6 +105,7 @@
     <ClInclude Include="src\maths.h" />
     <ClInclude Include="src\mesh.h" />
     <ClInclude Include="src\nlm.h" />
+    <ClInclude Include="src\perlin.h" />
     <ClInclude Include="src\pfm.h" />
     <ClInclude Include="src\png.h" />
     <ClInclude Include="src\probe.h" />
@@ -136,6 +138,7 @@
     <None Include="data\glass.tin" />
     <None Include="data\gloss.tin" />
     <None Include="data\simple.tin" />
+    <None Include="data\test.tin" />
     <None Include="data\transmission.tin" />
     <None Include="data\veach.tin" />
     <None Include="README.md" />
