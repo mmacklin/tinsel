@@ -6,14 +6,14 @@ LDFLAGS = -g -m64 -L"/opt/local/lib" -framework GLUT -framework OpenGL -framewor
 
 TARGET  = tinsel
 
-SOURCES = $(wildcard src/*.cpp)
+SOURCES = $(wildcard src/*.cpp src/cjson/*.c)
 HEADERS = $(wildcard src/*.h)
 TESTS = $(wildcard src/tests/*.h)
 
 OBJECTS = $(SOURCES:.cpp=.o) 
 
 all: $(TARGET)
-	./$(TARGET) data/ajaxenv.tin
+	./$(TARGET) data/spaceship/scene.json
 
 $(TARGET): $(OBJECTS) makefile $(TESTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(TARGET) 

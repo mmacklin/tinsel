@@ -40,6 +40,7 @@ struct Mesh
 Mesh* ImportMeshFromObj(const char* path);
 Mesh* ImportMeshFromPly(const char* path);
 Mesh* ImportMeshFromBin(const char* path);
+Mesh* ImportMeshFromWo3(const char* path);
 
 // just switches on filename
 Mesh* ImportMesh(const char* path);

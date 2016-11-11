@@ -112,13 +112,19 @@ Mesh* ImportMesh(const char* path)
 		mesh = ImportMeshFromPly(path);
 	else if (strcmp(ext, ".obj") == 0)
 		mesh = ImportMeshFromObj(path);
+    else if (strcmp(ext, ".wo3") == 0)
+        mesh = ImportMeshFromWo3(path);
 	else if (strcmp(ext, ".bin") == 0)
 		mesh = ImportMeshFromBin(path);
 
 	if (mesh && strcmp(ext, ".bin") != 0)
 	{
-		mesh->Normalize();
-		mesh->CalculateNormals();
+        if (strcmp(ext, ".wo3") != 0)
+        {
+		   mesh->Normalize();
+	       mesh->CalculateNormals();
+        }
+        
 		mesh->RebuildBVH();
 	}
 
@@ -1134,4 +1140,65 @@ Mesh* CreateCapsule(int slices, int segments, float radius, float halfHeight)
 	}
 
 	return mesh;
+}
+
+struct Vertex
+{
+    Vec3 pos, normal;
+    Vec2 uv;
+};
+
+struct Triangle
+{
+    int i, j, k;
+    int mat;
+};
+
+Mesh* ImportMeshFromWo3(const char* path)
+{
+    double start = GetSeconds();
+
+    FILE* f = fopen(path, "rb");
+
+
+
+    if (f)
+    {
+        uint64_t numVertices;
+        uint64_t numTris;
+
+        fread(&numVertices, sizeof(numVertices), 1, f);
+        std::vector<Vertex> verts(numVertices);
+        fread(&verts[0], numVertices*sizeof(Vertex), 1, f);
+
+        fread(&numTris, sizeof(numTris), 1, f);
+        std::vector<Triangle> tris(numTris);
+        fread(&tris[0], numTris*sizeof(Triangle), 1, f);
+
+        Mesh* m = new Mesh();
+
+        for (int i=0; i < numVertices; ++i)
+        {
+            m->positions.push_back(verts[i].pos);
+            m->normals.push_back(verts[i].normal);
+            //m->texcoords.push_back(verts[i].uv);
+        }
+
+        for (int i=0; i < numTris; ++i)
+        {
+            m->indices.push_back(tris[i].i);
+            m->indices.push_back(tris[i].j);
+            m->indices.push_back(tris[i].k);
+        }
+        
+        double end = GetSeconds();
+
+        printf("Imported mesh %s in %f ms\n", path, (end-start)*1000.0f);
+        fflush(stdout);
+
+        return m;
+    }
+
+    return NULL;
+
 }

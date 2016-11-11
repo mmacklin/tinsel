@@ -14,29 +14,6 @@
 
 static const int kMaxLineLength = 2048;
 
-void MakeRelativePath(const char* filePath, const char* fileRelativePath, char* fullPath)
-{
-	// get base path of file
-	const char* lastSlash = NULL;
-
-	if (!lastSlash)
-		lastSlash = strrchr(filePath, '\\');
-	if (!lastSlash)
-		lastSlash = strrchr(filePath, '/');
-
-	int baseLength = 0;
-
-	if (lastSlash)
-	{
-		baseLength = (lastSlash-filePath)+1;
-
-		// copy base path (including slash to relative path)
-		memcpy(fullPath, filePath, baseLength);
-	}
-
-	// append mesh filename
-	strcpy(fullPath + baseLength, fileRelativePath);
-}
 
 
 bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* options)

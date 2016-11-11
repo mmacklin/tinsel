@@ -403,8 +403,12 @@ int main(int argc, char* argv[])
 
     if (filename)
     {
-        bool success = LoadTin(filename, &g_scene, &g_camera, &g_options);
+        //bool success = LoadTin(filename, &g_scene, &g_camera, &g_options);
+
+        bool success = LoadTungsten(filename, &g_scene, &g_camera, &g_options);
         
+
+
         if (!success)
         {
             printf("Couldn't open %s for reading.\n", filename);
