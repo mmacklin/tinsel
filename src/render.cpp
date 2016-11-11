@@ -6,7 +6,7 @@
 //#include "lambert.h"
 
 
-#define kBrdfSamples 1.0f
+#define kBsdfSamples 1.0f
 #define kProbeSamples 1.0f
 #define kRayEpsilon 0.0001f
 
@@ -45,7 +45,7 @@ inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNorm
 
 
 
-inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive, float etaI, float etaO, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
+inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive, float etaI, float etaO, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& shadingNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Color sum(0.0f);
 
@@ -60,31 +60,37 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 
 			ProbeSample(scene.sky.probe, wi, skyColor, skyPdf, rand);
 			
-			/*	
+			/*
 			wi = UniformSampleSphere(rand);
 			skyColor = ProbeEval(scene.sky.probe, ProbeDirToUV(wi));
 			skyPdf = 0.5f*kInv2Pi;
-			*/
+			*/	
 			
-			if (Dot(wi, surfaceNormal) <= 0.0f)
-				continue;
+			
+			//if (Dot(wi, surfaceNormal) <= 0.0f)
+//				continue;
 
 			// check if occluded
 			float t;
 			Vec3 n;
 			const Primitive* hit;
-			if (Trace(scene, Ray(surfacePos, wi, time), t, n, &hit) == false)
+			if (Trace(scene, Ray(surfacePos + FaceForward(surfaceNormal, wi)*kRayEpsilon, wi, time), t, n, &hit) == false)
 			{
-				float brdfPdf = BRDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
-				Color f = BRDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+				float bsdfPdf = BSDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+				Color f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
 				
-				int N = kProbeSamples+kBrdfSamples;
-				float cbrdf = kBrdfSamples/N;
-				float csky = float(kProbeSamples)/N;
-				float weight = csky*skyPdf/(cbrdf*brdfPdf + csky*skyPdf);
+				if (bsdfPdf > 0.0f)
+				{
+					int N = kProbeSamples+kBsdfSamples;
+					float cbsdf = kBsdfSamples/N;
+					float csky = float(kProbeSamples)/N;
+					float weight = csky*skyPdf/(cbsdf*bsdfPdf + csky*skyPdf);
 
-				if (weight > 0.0f)
-					sum += weight*skyColor*f*Abs(Dot(wi, surfaceNormal))/skyPdf;
+					Validate(weight);
+
+					if (weight > 0.0f)
+						sum += weight*skyColor*f*Abs(Dot(wi, surfaceNormal))/skyPdf;
+				}
 			}
 		}
 
@@ -92,7 +98,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 			sum /= float(kProbeSamples);
 	}
 
-	for (int i=0; i < int(scene.primitives.size()); ++i)
+	for (int i=0; i < scene.primitives.size(); ++i)
 	{
 		// assume all lights are area lights for now
 		const Primitive& lightPrimitive = scene.primitives[i];
@@ -111,15 +117,16 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 			Vec3 lightNormal;
 
 			LightSample(lightPrimitive, time, lightPos, lightNormal, rand);
-
+			
 			Vec3 wi = lightPos-surfacePos;
 			
 			float dSq = LengthSq(wi);
 			wi /= sqrtf(dSq);
 
+
 			// light is behind surface
-			if (Dot(wi, surfaceNormal) <= 0.0f)
-				continue; 				
+			//if (Dot(wi, surfaceNormal) <= 0.0f)
+				//continue; 				
 
 			// surface is behind light
 			if (Dot(wi, lightNormal) >= 0.0f)
@@ -129,7 +136,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 			float t;
 			Vec3 n;
 			const Primitive* hit;
-			if (Trace(scene, Ray(surfacePos, wi, time), t, n, &hit))			
+			if (Trace(scene, Ray(surfacePos + FaceForward(surfaceNormal, wi)*kRayEpsilon, wi, time), t, n, &hit))			
 			{
 				float tSq = t*t;
 
@@ -140,23 +147,28 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 
 				if (fabsf(t - sqrtf(dSq)) <= kTolerance)
 				{				
-					const float nl = Dot(lightNormal, -wi);
+					const float nl = Abs(Dot(lightNormal, wi));
 
 					// light pdf with respect to area and convert to pdf with respect to solid angle
 					float lightArea = LightArea(lightPrimitive);
 					float lightPdf = ((1.0f/lightArea)*tSq)/nl;
 
-					// brdf pdf for light's direction
-					float brdfPdf = BRDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
-					Color f = BRDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+					// bsdf pdf for light's direction
+					float bsdfPdf = BSDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
+					Color f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
 
-					// calculate relative weighting of the light and brdf sampling
-					int N = lightPrimitive.lightSamples+kBrdfSamples;
-					float cbrdf = kBrdfSamples/N;
-					float clight = float(lightPrimitive.lightSamples)/N;
-					float weight = clight*lightPdf/(cbrdf*brdfPdf + clight*lightPdf);
+					// this branch is only necessary to exclude specular paths from light sampling
+					// todo: make BSDFEval alwasy return zero for pure specular paths and roll specular eval into BSDFSample()
+					if (bsdfPdf > 0.0f)
+					{
+						// calculate relative weighting of the light and bsdf sampling
+						int N = lightPrimitive.lightSamples+kBsdfSamples;
+						float cbsdf = kBsdfSamples/N;
+						float clight = float(lightPrimitive.lightSamples)/N;
+						float weight = clight*lightPdf/(cbsdf*bsdfPdf + clight*lightPdf);
 						
-					L += weight*f*hit->material.emission*(Abs(Dot(wi, surfaceNormal))/Max(1.e-3f, lightPdf));
+						L += weight*f*hit->material.emission*(Abs(Dot(wi, shadingNormal))/Max(1.e-3f, lightPdf));
+					}
 				}
 			}
 		}
@@ -166,12 +178,6 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 
 	return sum;
 }
-
-enum RayType
-{
-	eReflected,
-	eTransmitted
-};
 
 // reference, no light sampling, uniform hemisphere sampling
 Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir, float time, int maxDepth, Random& rand)
@@ -185,13 +191,14 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
     Vec3 rayDir = startDir;
 	float rayTime = time;
 	float rayEta = 1.0f;
-	RayType rayType = eReflected;
+	Vec3 rayAbsorption = 0.0f;
+	BSDFType rayType = eReflected;
 
     float t = 0.0f;
     Vec3 n;
     const Primitive* hit;
 
-	float brdfPdf = 1.0f;
+	float bsdfPdf = 1.0f;
 
 	Color pathRadiance(0.0f);
 
@@ -200,8 +207,25 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
         // find closest hit
         if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
         {	
+
+			float outEta;
+			Vec3 outAbsorption;
+
         	// index of refraction for transmission, 1.0 corresponds to air
-        	float outEta = (rayEta == 1.0f)?hit->material.GetIndexOfRefraction():1.0f;
+			if (rayEta == 1.0f)
+			{
+        		outEta = hit->material.GetIndexOfRefraction();
+				outAbsorption = Vec3(hit->material.absorption);
+			}
+			else
+			{
+				// returning to free space
+				outEta = 1.0f;
+				outAbsorption = 0.0f;
+			}
+
+			// update throughput based on absorption through the medium
+			pathThroughput *= Color(Exp(-rayAbsorption*t), 1.0f);
 
 #if 1
 			if (i == 0)
@@ -209,7 +233,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 				// first trace is our only chance to add contribution from directly visible light sources        
 				totalRadiance += hit->material.emission;
 			}			
-			else if (kBrdfSamples > 0)
+			else if (kBsdfSamples > 0)
 			{
 				// area pdf that this dir was already included by the light sampling from previous step
 				float lightArea = LightArea(*hit);
@@ -219,17 +243,17 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 					// convert to pdf with respect to solid angle
 					float lightPdf = ((1.0f/lightArea)*t*t)/Clamp(Dot(-rayDir, n), 1.e-3f, 1.0f);
 
-					// calculate weight for brdf sampling
-					int N = hit->lightSamples+kBrdfSamples;
-					float cbrdf = kBrdfSamples/N;
+					// calculate weight for bsdf sampling
+					int N = hit->lightSamples+kBsdfSamples;
+					float cbsdf = kBsdfSamples/N;
 					float clight = float(hit->lightSamples)/N;
-					float weight = cbrdf*brdfPdf/(cbrdf*brdfPdf+ clight*lightPdf);
+					float weight = cbsdf*bsdfPdf/(cbsdf*bsdfPdf+ clight*lightPdf);
 					
-					// transmitted rays do not receive direct light (always blocked)
-					if (rayType == eTransmitted)
+					// specular paths have zero chance of being included by direct light sampling (zero pdf)
+					if (rayType == eSpecular)
 						weight = 1.0f;
 
-					// pathThroughput already includes the brdf pdf
+					// pathThroughput already includes the bsdf pdf
 					//totalRadiance += weight*pathThroughput*hit->material.emission;
 					totalRadiance += weight*pathThroughput*hit->material.emission;
 				}
@@ -242,7 +266,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             const Vec3 p = rayOrigin + rayDir*t;
 
 			// integrate direct light over hemisphere
-			totalRadiance += pathThroughput*SampleLights(scene, *hit, rayEta, outEta, p + n*kRayEpsilon, n, -rayDir, rayTime, rand);			
+			totalRadiance += pathThroughput*SampleLights(scene, *hit, rayEta, outEta, p, n, n, -rayDir, rayTime, rand);			
 
 			//totalRadiance = Color(u*0.5f + 0.5f, 1.0f);
 #else
@@ -260,20 +284,22 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 			// integrate indirect light by sampling BRDF
 			Mat33 localFrame(u, v, n);
 
-			Vec3 brdfDir;
-			BRDFSample(hit->material, rayEta, outEta, p, Mat33(u,v,n), -rayDir, brdfDir, brdfPdf, rand);
+			Vec3 bsdfDir;
+			BSDFType bsdfType;
+			BSDFSample(hit->material, rayEta, outEta, p, Mat33(u,v,n), -rayDir, bsdfDir, bsdfPdf, bsdfType, rand);
 
-            if (brdfPdf <= 0.0f)
+            if (bsdfPdf <= 0.0f)
             	break;
 
             // reflectance
-            Color f = BRDFEval(hit->material, rayEta, outEta, p, n, -rayDir, brdfDir);
+            Color f = BSDFEval(hit->material, rayEta, outEta, p, n, -rayDir, bsdfDir);
 
             // update ray medium if we are transmitting through the material
-            if (Dot(brdfDir, n) <= 0.0f)
+            if (Dot(bsdfDir, n) <= 0.0f)
             {
             	rayEta = outEta;
             	rayType = eTransmitted;
+				rayAbsorption = outAbsorption;
             }
             else
             {
@@ -281,28 +307,29 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             }
 
             // update throughput with primitive reflectance
-            //pathThroughput *= f * Clamp(Dot(n, brdfDir), 0.0f, 1.0f)/brdfPdf;
-            pathThroughput *= f * Abs(Dot(n, brdfDir))/brdfPdf;
+            //pathThroughput *= f * Clamp(Dot(n, bsdfDir), 0.0f, 1.0f)/bsdfPdf;
+            pathThroughput *= f * Abs(Dot(n, bsdfDir))/bsdfPdf;
 
             // update path direction
-            rayDir = brdfDir;
-            rayOrigin = p + FaceForward(n, brdfDir)*kRayEpsilon;
+			rayType = bsdfType;
+            rayDir = bsdfDir;
+            rayOrigin = p + FaceForward(n, bsdfDir)*kRayEpsilon;
         }
         else
         {
             // hit nothing, sample sky dome and terminate         
             float weight = 1.0f;
 
-        	if (scene.sky.probe.valid && i > 0 && rayType == eReflected)
-        	{
+        	if (scene.sky.probe.valid && i > 0 && rayType != eSpecular)
+        	{ 
         		// probability that this dir was already sampled by probe sampling
         		float skyPdf = ProbePdf(scene.sky.probe, rayDir);
 
-				int N = kProbeSamples+kBrdfSamples;
-				float cbrdf = kBrdfSamples/N;
+				int N = kProbeSamples+kBsdfSamples;
+				float cbsdf = kBsdfSamples/N;
 				float csky = float(kProbeSamples)/N;
 				
-				weight = cbrdf*brdfPdf/(cbrdf*brdfPdf+ csky*skyPdf);
+				weight = cbsdf*bsdfPdf/(cbsdf*bsdfPdf+ csky*skyPdf);
 			}
 		
        		totalRadiance += weight*scene.sky.Eval(rayDir)*pathThroughput; 

@@ -204,7 +204,8 @@ CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO
 			}
 			else
 			{
-				assert(0);
+				//assert(0);
+				pdf = 0.0f;
 				return;
 			}
 		}

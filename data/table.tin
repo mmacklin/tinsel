@@ -38,8 +38,9 @@ material metal
 	metallic 1.0
 	transmission 0.0
 	
-	clearcoat 0.3
+	clearcoat 1.0
 	clearcoatGloss 0.25
+
 
 	#bump 0.0025
 	#bumpTile 0.5 0.25 0.125	
@@ -121,7 +122,7 @@ material bouncy
 	color 0.9828262 0.180144 0.0780565
 	specular 0.3
 	roughness 0.1
-	subsurface 0.7
+	subsurface 0.8
 }
 
 material ground1
@@ -238,7 +239,7 @@ primitive
 	position -20 17 0
 	#rotation -0.146447 -0.353553 0.353553 0.853553
 
-	lightSamples 5
+	lightSamples 2
 
 	material light
 

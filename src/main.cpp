@@ -193,10 +193,13 @@ void GLUTUpdate()
 
 void GLUTReshape(int width, int height)
 {
-    g_options.width = width;
-    g_options.height = height;
+	if (width != g_options.width || height != g_options.height)
+	{
+		g_options.width = width;
+		g_options.height = height;
 
-    InitFrameBuffer();
+		InitFrameBuffer();
+	}
 }
 
 void GLUTArrowKeys(int key, int x, int y)

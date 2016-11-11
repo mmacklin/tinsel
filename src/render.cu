@@ -411,7 +411,7 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 					float bsdfPdf = BSDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
 					Color f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
 
-					// this branch is only necessary to exclude specular paths from light sampling
+					// this branch is only necessary to exclude specular paths from light sampling (always have zero brdf)
 					// todo: make BSDFEval alwasy return zero for pure specular paths and roll specular eval into BSDFSample()
 					if (bsdfPdf > 0.0f)
 					{
@@ -581,7 +581,7 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
             // hit nothing, sample sky dome and terminate         
             float weight = 1.0f;
 
-        	if (scene.sky.probe.valid && i > 0 && rayType == eReflected)
+        	if (scene.sky.probe.valid && i > 0 && rayType != eSpecular)
         	{ 
         		// probability that this dir was already sampled by probe sampling
         		float skyPdf = ProbePdf(scene.sky.probe, rayDir);

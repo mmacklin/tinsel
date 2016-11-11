@@ -471,6 +471,16 @@ Mesh* ImportMeshFromObj(const char* path)
 						}
 					}
 
+					// convert relative coordinates to absolute
+					if (key.v < 0)
+						key.v = positions.size() + key.v + 1;
+					
+					if (key.vn < 0)
+						key.vn = normals.size() + key.vn + 1;
+					
+					if (key.vt < 0)
+						key.vt = texcoords.size() + key.vt + 1;
+
 					// find / add vertex, index
 					VertexMap::iterator iter = vertexLookup.find(key);
 
