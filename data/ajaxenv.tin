@@ -5,13 +5,13 @@ options
 	width 500
 	height 500
 
-	maxDepth 128
-	clamp 100
+	maxDepth 64
+	#clamp 100
 }	
 
 sky
 {
-	probe probes/vankleef.hdr
+	#probe probes/vankleef.hdr
 	#horizon 0.5 0.0 0.0
 	#zenith 0.5 0.0 0.0
 }
@@ -30,21 +30,61 @@ camera
 material glass
 {
 	color 0.0 0.0 0.0
-	specular 1.0
+	specular 0.5
 	roughness 0.001
 	metallic 0.0
-	transmission 0.95
+	transmission 1.0
 	clearcoat 0.0
 	clearcoatGloss 0.0
 	sheen 0.0
 	sheenTint 0.0 0.0 0.0
-	eta 1.8
+
+	#transmission 0.2
+	transmissionColor 0.88 0.95 0.9
+	atDistance 0.02
+
+}
+
+material jade
+{
+	color 0.3 0.5 0.3
+	
+	specular 0.5
+	roughness 0.001
+	metallic 0.0
+	clearcoat 0.0
+	clearcoatGloss 0.0
+	sheen 0.0
+	sheenTint 0.0 0.0 0.0
+
+	subsurface 1.0
+
+	transmissionColor 0.88 0.95 0.9
+	atDistance 0.02
+}
+
+material marble
+{
+	color 0.814 0.812 0.68
+	
+	specular 0.0
+	roughness 0.4
+	metallic 0.0
+	clearcoat 0.0
+	clearcoatGloss 0.0
+	sheen 0.0
+	sheenTint 0.0 0.0 0.0
+
+	subsurface 0.7
+
+	transmissionColor 0.184 0.104 0.035 
+	atDistance 0.2
 }
 
 material gold
 {
 	color 1.0 0.71 0.29
-	roughness 0.2
+	roughness 0.1
 	metallic 1.0	
 }
 
@@ -59,25 +99,35 @@ material porcelein
 
 material ground
 {
-	color 0.85 0.85 0.85
+	color 0.25 0.25 0.25
 	roughness 0.2
 }
 
 material light
 {
-	emission 10.0 10.0 10.0
+	emission 800.0 800.0 800.0
 	color 0.0 0.0 0.0
 }
 
+primitive
+{
+	type sphere
+	radius 1.0
 
+	position 10 10 0
+	lightSamples 10
+
+	material light
+
+}
 
 primitive
 {
 	type mesh
-	mesh meshes/ajax.bin
-	material glass
+	mesh meshes/xyzrgb_dragon.bin
+	material marble
 
-	position 0.0 0.01 0.0
+	position 0.0 0.001 0.0
 	rotation 0 0 0 1
 	scale 1.0
 }

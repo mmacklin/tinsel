@@ -224,7 +224,7 @@ struct Vec3
 
 	CUDA_CALLABLE inline void Validate()
 	{
-		assert(isfinite(x) && isfinite(y) && isfinite(z));
+		//assert(isfinite(x) && isfinite(y) && isfinite(z));
 	}
 
 	Real x;
@@ -295,10 +295,10 @@ struct Vec4
 
 	CUDA_CALLABLE inline void Validate()
 	{
-		assert(isfinite(x));
-		assert(isfinite(y));
-		assert(isfinite(z));
-		assert(isfinite(w));
+		//assert(isfinite(x));
+		//assert(isfinite(y));
+		//assert(isfinite(z));
+		//assert(isfinite(w));
 	}
 
 	Real x;

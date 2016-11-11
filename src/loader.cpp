@@ -6,6 +6,7 @@
 #include "render.h"
 #include "util.h"
 #include "pfm.h"
+#include "perlin.h"
 
 #include <stdio.h>
 
@@ -186,11 +187,42 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 				sscanf(line, " clearcoatGloss %f", &material.clearcoatGloss);
 				sscanf(line, " transmission %f", &material.transmission);
 				sscanf(line, " eta %f", &material.eta);
+				sscanf(line, " bump %f", &material.bump);
+				sscanf(line, " bumpTile %f %f %f", &material.bumpTile.x, &material.bumpTile.y, &material.bumpTile.z);
 
 				sscanf(line, " transmissionColor %f %f %f", &transmissionColor.x, &transmissionColor.y, &transmissionColor.z);
 				sscanf(line, " atDistance %f", &atDistance);
 
 			}
+
+			if (material.bump > 0.0f)
+			{
+				// create Perlin bump map
+				int width = 128;
+				int height = 128;
+				int depth = 128;
+				
+				float* data = new float[width*height*depth];
+
+				float freq = 0.1f;
+
+				for (int z=0; z < depth; ++z)
+				{
+					for (int y=0; y < height; ++y)
+					{
+						for (int x=0; x < width; ++x)
+						{
+							data[z*width*height + y*width + x] = Perlin3DPeriodic(x*freq, y*freq, z*freq, width, height, depth, 3, 0.5f);
+						}
+					}
+				}	
+
+				material.bumpMap.data = data;
+				material.bumpMap.width = width;
+				material.bumpMap.height = height;
+				material.bumpMap.depth = depth;
+			}
+
 
 			// if atDistance set then infer absorption from transmissionColor
 			if (atDistance > 0.0f)

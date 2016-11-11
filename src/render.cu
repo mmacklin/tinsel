@@ -16,7 +16,7 @@ struct GPUScene
 	Sky sky;
 };
 
-#define kBrdfSamples 1.0f
+#define kBsdfSamples 1.0f
 #define kProbeSamples 1.0f
 #define kRayEpsilon 0.0001f
 
@@ -173,6 +173,19 @@ void DestroyGPUMesh(const MeshGeometry& m)
 
 }
 
+
+Texture CreateGPUTexture(const Texture& tex)
+{
+	const int numTexels = tex.width*tex.height*tex.depth;
+	
+	Texture gpuTex = tex;
+
+	cudaMalloc((void**)&gpuTex.data, sizeof(float)*numTexels);
+	cudaMemcpy(gpuTex.data, tex.data, sizeof(float)*numTexels, cudaMemcpyHostToDevice);
+
+	return gpuTex;
+}
+
 Sky CreateGPUSky(const Sky& sky)
 {
 	Sky gpuSky = sky;
@@ -237,8 +250,56 @@ __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& 
 	return closestPrimitive != NULL;
 }
 
+__device__ inline float SampleTexture(const Texture& map, int i, int j, int k)
+{
+	int x = int(Abs(i))%map.width;
+	int y = int(Abs(j))%map.height;
+	int z = int(Abs(k))%map.depth;
+	
+	return map.data[z*map.width*map.height + y*map.width + x];
+}
 
-__device__ inline Color SampleLights(const GPUScene& scene, const Primitive& surfacePrimitive, float etaI, float etaO, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& wo, float time, Random& rand)
+
+__device__ inline float LinearInterp(const Texture& map, const Vec3& pos) 
+{
+	int i = floorf(pos.x*map.width);
+	int j = floorf(pos.y*map.height);
+	int k = floorf(pos.z*map.depth);
+		
+	// trilinear interpolation
+	float tx = pos.x*map.width-i;
+	float ty = pos.y*map.height-j;
+	float tz = pos.z*map.depth-k;
+		
+	float a = Lerp(SampleTexture(map, i, j, k), SampleTexture(map, i, j, k+1), tz);
+	float b = Lerp(SampleTexture(map, i+1, j, k), SampleTexture(map, i+1, j, k+1), tz);
+	float c = Lerp(SampleTexture(map, i, j+1, k), SampleTexture(map, i, j+1, k+1), tz);		
+	float d = Lerp(SampleTexture(map, i+1, j+1, k), SampleTexture(map, i+1, j+1, k+1), tz);
+		
+	float e = Lerp(a, b, tx);
+	float f = Lerp(c, d, tx);
+		
+	float g = Lerp(e, f, ty);
+		
+	return g;
+}
+
+__device__ inline Vec3 EvaluateBumpNormal(const Vec3& surfaceNormal, const Vec3& surfacePos, const Texture& bumpMap, const Vec3& bumpTile, float bumpStrength, Random& rand)
+{
+	Vec3 u, v;
+	BasisFromVector(surfaceNormal, &u, &v);
+
+	float eps = 0.01f;
+
+	Vec3 dpdu = u + bumpStrength*surfaceNormal*(LinearInterp(bumpMap, bumpTile*(surfacePos)+u*eps) - LinearInterp(bumpMap, bumpTile*surfacePos))/eps;
+	Vec3 dpdv = v + bumpStrength*surfaceNormal*(LinearInterp(bumpMap, bumpTile*(surfacePos)+v*eps) - LinearInterp(bumpMap, bumpTile*surfacePos))/eps;
+
+	return SafeNormalize(Cross(dpdu, dpdv), surfaceNormal);
+}
+
+
+
+__device__ inline Color SampleLights(const GPUScene& scene, const Primitive& surfacePrimitive, float etaI, float etaO, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& shadingNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Color sum(0.0f);
 
@@ -260,27 +321,30 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 			*/	
 			
 			
-			if (Dot(wi, surfaceNormal) <= 0.0f)
-				continue;
+			//if (Dot(wi, surfaceNormal) <= 0.0f)
+//				continue;
 
 			// check if occluded
 			float t;
 			Vec3 n;
 			const Primitive* hit;
-			if (Trace(scene, Ray(surfacePos, wi, time), t, n, &hit) == false)
+			if (Trace(scene, Ray(surfacePos + FaceForward(surfaceNormal, wi)*kRayEpsilon, wi, time), t, n, &hit) == false)
 			{
-				float brdfPdf = BRDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
-				Color f = BRDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+				float bsdfPdf = BSDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+				Color f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
 				
-				int N = kProbeSamples+kBrdfSamples;
-				float cbrdf = kBrdfSamples/N;
-				float csky = float(kProbeSamples)/N;
-				float weight = csky*skyPdf/(cbrdf*brdfPdf + csky*skyPdf);
+				if (bsdfPdf > 0.0f)
+				{
+					int N = kProbeSamples+kBsdfSamples;
+					float cbsdf = kBsdfSamples/N;
+					float csky = float(kProbeSamples)/N;
+					float weight = csky*skyPdf/(cbsdf*bsdfPdf + csky*skyPdf);
 
-				Validate(weight);
+					Validate(weight);
 
-				if (weight > 0.0f)
-					sum += weight*skyColor*f*Abs(Dot(wi, surfaceNormal))/skyPdf;
+					if (weight > 0.0f)
+						sum += weight*skyColor*f*Abs(Dot(wi, surfaceNormal))/skyPdf;
+				}
 			}
 		}
 
@@ -313,9 +377,10 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 			float dSq = LengthSq(wi);
 			wi /= sqrtf(dSq);
 
+
 			// light is behind surface
-			if (Dot(wi, surfaceNormal) <= 0.0f)
-				continue; 				
+			//if (Dot(wi, surfaceNormal) <= 0.0f)
+				//continue; 				
 
 			// surface is behind light
 			if (Dot(wi, lightNormal) >= 0.0f)
@@ -325,7 +390,7 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 			float t;
 			Vec3 n;
 			const Primitive* hit;
-			if (Trace(scene, Ray(surfacePos, wi, time), t, n, &hit))			
+			if (Trace(scene, Ray(surfacePos + FaceForward(surfaceNormal, wi)*kRayEpsilon, wi, time), t, n, &hit))			
 			{
 				float tSq = t*t;
 
@@ -336,23 +401,28 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 
 				if (fabsf(t - sqrtf(dSq)) <= kTolerance)
 				{				
-					const float nl = Dot(lightNormal, -wi);
+					const float nl = Abs(Dot(lightNormal, wi));
 
 					// light pdf with respect to area and convert to pdf with respect to solid angle
 					float lightArea = LightArea(lightPrimitive);
 					float lightPdf = ((1.0f/lightArea)*tSq)/nl;
 
-					// brdf pdf for light's direction
-					float brdfPdf = BRDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
-					Color f = BRDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+					// bsdf pdf for light's direction
+					float bsdfPdf = BSDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
+					Color f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
 
-					// calculate relative weighting of the light and brdf sampling
-					int N = lightPrimitive.lightSamples+kBrdfSamples;
-					float cbrdf = kBrdfSamples/N;
-					float clight = float(lightPrimitive.lightSamples)/N;
-					float weight = clight*lightPdf/(cbrdf*brdfPdf + clight*lightPdf);
+					// this branch is only necessary to exclude specular paths from light sampling (always have zero brdf)
+					// todo: make BSDFEval alwasy return zero for pure specular paths and roll specular eval into BSDFSample()
+					if (bsdfPdf > 0.0f)
+					{
+						// calculate relative weighting of the light and bsdf sampling
+						int N = lightPrimitive.lightSamples+kBsdfSamples;
+						float cbsdf = kBsdfSamples/N;
+						float clight = float(lightPrimitive.lightSamples)/N;
+						float weight = clight*lightPdf/(cbsdf*bsdfPdf + clight*lightPdf);
 						
-					L += weight*f*hit->material.emission*(Abs(Dot(wi, surfaceNormal))/Max(1.e-3f, lightPdf));
+						L += weight*f*hit->material.emission*(Abs(Dot(wi, shadingNormal))/Max(1.e-3f, lightPdf));
+					}
 				}
 			}
 		}
@@ -377,12 +447,13 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 	float rayTime = time;
 	float rayEta = 1.0f;
 	Vec3 rayAbsorption = 0.0f;
+	BSDFType rayType = eReflected;
 
     float t;
-    Vec3 n;
+    Vec3 n, ns;
     const Primitive* hit;
 
-	float brdfPdf = 1.0f;
+	float bsdfPdf = 1.0f;
 
     for (int i=0; i < maxDepth; ++i)
     {
@@ -415,7 +486,7 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 				// first trace is our only chance to add contribution from directly visible light sources        
 				totalRadiance += hit->material.emission;
 			}			
-			else if (kBrdfSamples > 0)
+			else if (kBsdfSamples > 0)
 			{
 				// area pdf that this dir was already included by the light sampling from previous step
 				float lightArea = LightArea(*hit);
@@ -423,17 +494,21 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 				if (lightArea > 0.0f)
 				{
 					// convert to pdf with respect to solid angle
-					float lightPdf = ((1.0f/lightArea)*t*t)/Clamp(Dot(-rayDir, n), 1.e-3f, 1.0f);
+					float lightPdf = ((1.0f/lightArea)*t*t)/Abs(Dot(rayDir, n));
 
-					// calculate weight for brdf sampling
-					int N = hit->lightSamples+kBrdfSamples;
-					float cbrdf = kBrdfSamples/N;
+					// calculate weight for bsdf sampling
+					int N = hit->lightSamples+kBsdfSamples;
+					float cbsdf = kBsdfSamples/N;
 					float clight = float(hit->lightSamples)/N;
-					float weight = cbrdf*brdfPdf/(cbrdf*brdfPdf+ clight*lightPdf);
+					float weight = cbsdf*bsdfPdf/(cbsdf*bsdfPdf+ clight*lightPdf);
 							
 					Validate(weight);
 
-					// pathThroughput already includes the brdf pdf
+					// specular paths have zero chance of being included by direct light sampling (zero pdf)
+					if (rayType == eSpecular)
+						weight = 1.0f;
+
+					// pathThroughput already includes the bsdf pdf
 					totalRadiance += weight*pathThroughput*hit->material.emission;
 				}
 			}
@@ -444,8 +519,19 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 
             const Vec3 p = rayOrigin + rayDir*t;
 
+/*
+			if (hit->material.bump > 0.0f)
+			{
+				ns = FaceForward(EvaluateBumpNormal(n, p, hit->material.bumpMap, hit->material.bumpTile, hit->material.bump, rand), n);	
+			}
+			else
+			{
+				ns = n;
+			}
+*/
+
 			// integrate direct light over hemisphere
-			totalRadiance += pathThroughput*SampleLights(scene, *hit, rayEta, outEta, p + n*kRayEpsilon, n, -rayDir, rayTime, rand);
+			totalRadiance += pathThroughput*SampleLights(scene, *hit, rayEta, outEta, p, n, n, -rayDir, rayTime, rand);
 #else
 			
 			// calculate a basis for this hit point
@@ -458,52 +544,55 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 
 #endif
 
-			// integrate indirect light by sampling BRDF
+			// integrate indirect light by sampling BSDF
 			Mat33 localFrame(u, v, n);
 
-			Vec3 brdfDir;
-			BRDFSample(hit->material, rayEta, outEta, p, Mat33(u,v,n), -rayDir, brdfDir, brdfPdf, rand);
+			Vec3 bsdfDir;
+			BSDFType bsdfType;
 
+			BSDFSample(hit->material, rayEta, outEta, p, Mat33(u,v,n), -rayDir, bsdfDir, bsdfPdf, bsdfType, rand);
 			
-            if (brdfPdf <= 0.0f)
+            if (bsdfPdf <= 0.0f)
             	break;
 
-			Validate(brdfPdf);
+			Validate(bsdfPdf);
 
             // reflectance
-            Color f = BRDFEval(hit->material, rayEta, outEta, p, n, -rayDir, brdfDir);
+            Color f = BSDFEval(hit->material, rayEta, outEta, p, n, -rayDir, bsdfDir);
 
             // update ray medium if we are transmitting through the material
-            if (Dot(brdfDir, n) <= 0.0f)
+            if (Dot(bsdfDir, n) <= 0.0f)
 			{
             	rayEta = outEta;
 				rayAbsorption = outAbsorption;
 			}
 
             // update throughput with primitive reflectance
-            pathThroughput *= f * Abs(Dot(n, brdfDir))/brdfPdf;
+            pathThroughput *= f * Abs(Dot(n, bsdfDir))/bsdfPdf;
 
-            // update path direction
-            rayDir = brdfDir;
-            rayOrigin = p + FaceForward(n, brdfDir)*kRayEpsilon;
+            // update ray direction and type
+            rayType = bsdfType;
+			rayDir = bsdfDir;            
+			rayOrigin = p + FaceForward(n, bsdfDir)*kRayEpsilon;
+			
         }
         else
         {
             // hit nothing, sample sky dome and terminate         
             float weight = 1.0f;
 
-        	if (scene.sky.probe.valid && i > 0)
+        	if (scene.sky.probe.valid && i > 0 && rayType != eSpecular)
         	{ 
         		// probability that this dir was already sampled by probe sampling
         		float skyPdf = ProbePdf(scene.sky.probe, rayDir);
 				 
-				int N = kProbeSamples+kBrdfSamples;
-				float cbrdf = kBrdfSamples/N;
+				int N = kProbeSamples+kBsdfSamples;
+				float cbsdf = kBsdfSamples/N;
 				float csky = float(kProbeSamples)/N;
 			
-				weight = cbrdf*brdfPdf/(cbrdf*brdfPdf+ csky*skyPdf);
+				weight = cbsdf*bsdfPdf/(cbsdf*bsdfPdf+ csky*skyPdf);
 
-				Validate(brdfPdf);
+				Validate(bsdfPdf);
 				Validate(skyPdf);
 
 			}
@@ -646,7 +735,12 @@ struct GpuRenderer : public Renderer
 					// replace CPU mesh with GPU copy
 					primitive.mesh = geo;
 				}
-			}	
+			}
+
+			if (primitive.material.bump > 0.0f)
+			{
+				primitive.material.bumpMap = CreateGPUTexture(primitive.material.bumpMap);
+			}
 			
 			// create explicit list of light primitives
 			if (primitive.lightSamples)
