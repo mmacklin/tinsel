@@ -188,10 +188,14 @@ struct Scene
 	Sky sky;
 	Camera camera;	
 
+	BVH bvh;
+
 	void AddPrimitive(const Primitive& p)
 	{
 		primitives.push_back(p);
-	}	
+	}
+
+	void Build();
 };
 
 

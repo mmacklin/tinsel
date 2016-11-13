@@ -745,6 +745,55 @@ CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3&
 					
 }
 
+template <typename T>
+void QueryBVH(T& callback, BVHNode* root, const Vec3& origin, const Vec3& dir)
+{
+	Vec3 rcpDir;
+	rcpDir.x = 1.0f/dir.x;
+	rcpDir.y = 1.0f/dir.y;
+	rcpDir.z = 1.0f/dir.z;
+
+	int stack[32];
+	stack[0] = 0;
+
+	int count = 1;
+
+	while(count)
+	{
+		BVHNode node = fetchNode(root, stack[--count]);
+
+		if (node.leaf)
+		{
+			callback(node.leftIndex);
+		}
+		else
+		{
+			// check children
+			BVHNode left = fetchNode(root, node.leftIndex);
+			BVHNode right = fetchNode(root, node.rightIndex);
+
+			float tLeft;
+			bool hitLeft = IntersectRayAABBFast(origin, rcpDir, left.bounds.lower, left.bounds.upper, tLeft);
+
+			float tRight;
+			bool hitRight = IntersectRayAABBFast(origin, rcpDir, right.bounds.lower, right.bounds.upper, tRight);
+
+			// traverse closest first
+			if (hitLeft && hitRight && (tLeft < tRight))
+			{
+				int tmp = node.leftIndex;
+				node.leftIndex = node.rightIndex;
+				node.rightIndex = tmp;
+			}
+
+			if (hitLeft)
+				stack[count++] = node.leftIndex;
+
+			if (hitRight)
+				stack[count++] = node.rightIndex;			
+		}
+	}		
+}
 
 
 CUDA_CALLABLE bool inline IntersectRayMeshOld(const MeshGeometry& mesh, const Vec3& origin, const Vec3& dir, float tmax, float& t, float& u, float& v, float& w, int& tri, Vec3& triNormal)
@@ -778,7 +827,7 @@ CUDA_CALLABLE bool inline IntersectRayMeshOld(const MeshGeometry& mesh, const Ve
 //-------------
 // pdf that a point and dir were sampled by the light (assuming the ray hits the shape)
 
-CUDA_CALLABLE inline float LightArea(const Primitive& p)
+CUDA_CALLABLE inline float PrimitiveArea(const Primitive& p)
 {
 	switch (p.type)
 	{
@@ -800,7 +849,7 @@ CUDA_CALLABLE inline float LightArea(const Primitive& p)
 	return 0.0f;
 }
 
-CUDA_CALLABLE inline void LightSample(const Primitive& p, float time, Vec3& pos, Vec3& normal, Random& rand)
+CUDA_CALLABLE inline void PrimitiveSample(const Primitive& p, float time, Vec3& pos, Vec3& normal, Random& rand)
 {
 	Transform transform = InterpolateTransform(p.startTransform, p.endTransform, time);
 
@@ -851,6 +900,41 @@ CUDA_CALLABLE inline void LightSample(const Primitive& p, float time, Vec3& pos,
 	}
 }
 
+CUDA_CALLABLE inline Bounds PrimitiveBounds(const Primitive& p)
+{
+	Bounds localBounds;
+
+	switch (p.type)
+	{
+		case eSphere:
+		{
+			localBounds.lower = -p.sphere.radius;
+			localBounds.upper = p.sphere.radius;
+			break;
+
+		}
+		case ePlane:
+		{
+			localBounds.lower = -1.e+8f;
+			localBounds.upper = 1.e+8f;
+			break;
+		}
+		case eMesh:
+		{
+			// read bounds from bvh root
+			localBounds = p.mesh.nodes[0].bounds;
+			break;
+		}
+	};
+
+	// transform bounds based on start/end
+	Bounds startBounds = TransformBounds(p.startTransform, localBounds);
+	Bounds endBounds = TransformBounds(p.endTransform, localBounds);
+
+	return Union(startBounds, endBounds);
+
+}
+
 struct Ray
 {
 	CUDA_CALLABLE inline Ray(const Vec3& o, const Vec3& d, float t) : origin(o), dir(d), time(t) {}
@@ -861,7 +945,7 @@ struct Ray
 	float time;
 };
 
-CUDA_CALLABLE inline bool Intersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
+CUDA_CALLABLE inline bool PrimitiveIntersect(const Primitive& p, const Ray& ray, float& outT, Vec3* outNormal)
 {
 	Transform transform = InterpolateTransform(p.startTransform, p.endTransform, ray.time);
 

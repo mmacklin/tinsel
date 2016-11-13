@@ -6,7 +6,6 @@
 #include "render.h"
 #include "util.h"
 #include "pfm.h"
-#include "perlin.h"
 
 #include <stdio.h>
 
@@ -195,6 +194,7 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 
 			}
 
+			/*
 			if (material.bump > 0.0f)
 			{
 				// create Perlin bump map
@@ -221,8 +221,10 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 				material.bumpMap.width = width;
 				material.bumpMap.height = height;
 				material.bumpMap.depth = depth;
-			}
 
+
+			}
+			*/
 
 			// if atDistance set then infer absorption from transmissionColor
 			if (atDistance > 0.0f)

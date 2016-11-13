@@ -425,6 +425,8 @@ int main(int argc, char* argv[])
 		TestMaterials(&g_scene, &g_camera, &g_options);
     }
 
+    g_scene.Build();
+
 	// set fly cam
 	g_camPos = g_camera.position;	
 

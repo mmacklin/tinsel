@@ -1010,8 +1010,8 @@ CUDA_CALLABLE inline Bounds TransformBounds(const Transform& xform, const Bounds
 
 	Vec3 center = bounds.GetCenter();
 
-	Vec3 lower = center + x + y + z;
-	Vec3 upper = center - x - y - z;
+	Vec3 lower = xform.p + center - x - y - z;
+	Vec3 upper = xform.p + center + x + y + z;
 
 	return Bounds(lower, upper);
 }

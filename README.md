@@ -108,7 +108,7 @@ Todo List
 [x] Mesh affine transformation support
 [ ] Mesh, Disc, Sphere, Plane primitives
 [x] Mesh sampling
-[ ] Multi material meshes
+[ ] Multi material meshes or .obj conversion
 [x] SAH and BVH splitting heuristics
 [ ] Clean up mesh allocations
 [ ] Command line interface
@@ -123,14 +123,14 @@ Todo List
 [x] Triangular noise dither
 [x] NLM noise filter
 [ ] Point sets
-[ ] Scene BVH
+[x] Scene BVH
 [ ] FFmpeg encoding
 [x] Reconstruction filter
 [x] Correctness checks
 [ ] Volume rendering
 [x] Environment maps
 [ ] Lens modelling
-[ ] Refraction
+[x] Refraction
 [ ] Examples
 
 Supported Platforms

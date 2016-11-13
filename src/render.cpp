@@ -10,9 +10,59 @@
 #define kProbeSamples 1.0f
 #define kRayEpsilon 0.0001f
 
+
+
 // trace a ray against the scene returning the closest intersection
 inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
+
+#if 1
+
+	struct Callback
+	{
+		float minT;
+		Vec3 closestNormal;
+		const Primitive* closestPrimitive;
+
+		Ray ray;
+		const Scene& scene;
+
+		Callback(const Scene& s, const Ray& r) : minT(REAL_MAX), closestPrimitive(NULL), ray(r), scene(s)
+		{
+
+		}
+		
+		void operator()(int index)
+		{
+			float t;
+			Vec3 n, ns;
+
+			const Primitive& primitive = scene.primitives[index];
+
+			if (PrimitiveIntersect(primitive, ray, t, &n))
+			{
+				if (t < minT && t > 0.0f)
+				{
+					minT = t;
+					closestPrimitive = &primitive;
+					closestNormal = n;
+				}
+			}			
+		}
+	};
+
+	Callback callback(scene, ray);
+	QueryBVH(callback, scene.bvh.nodes, ray.origin, ray.dir);
+
+	outT = callback.minT;		
+	outNormal = FaceForward(callback.closestNormal, -ray.dir);
+	*outPrimitive = callback.closestPrimitive;
+
+	return callback.closestPrimitive != NULL;
+	
+#else
+
+
 	// disgard hits closer than this distance to avoid self intersection artifacts
 	float minT = REAL_MAX;
 	const Primitive* closestPrimitive = NULL;
@@ -25,7 +75,7 @@ inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNorm
 
 		const Primitive& primitive = *iter;
 
-		if (Intersect(primitive, ray, t, &n))
+		if (PrimitiveIntersect(primitive, ray, t, &n))
 		{
 			if (t < minT && t > 0.0f)
 			{
@@ -41,6 +91,10 @@ inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNorm
 	*outPrimitive = closestPrimitive;
 
 	return closestPrimitive != NULL;
+
+#endif
+
+	
 }
 
 
@@ -116,7 +170,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 			Vec3 lightPos;
 			Vec3 lightNormal;
 
-			LightSample(lightPrimitive, time, lightPos, lightNormal, rand);
+			PrimitiveSample(lightPrimitive, time, lightPos, lightNormal, rand);
 			
 			Vec3 wi = lightPos-surfacePos;
 			
@@ -150,7 +204,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 					const float nl = Abs(Dot(lightNormal, wi));
 
 					// light pdf with respect to area and convert to pdf with respect to solid angle
-					float lightArea = LightArea(lightPrimitive);
+					float lightArea = PrimitiveArea(lightPrimitive);
 					float lightPdf = ((1.0f/lightArea)*tSq)/nl;
 
 					// bsdf pdf for light's direction
@@ -236,7 +290,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 			else if (kBsdfSamples > 0)
 			{
 				// area pdf that this dir was already included by the light sampling from previous step
-				float lightArea = LightArea(*hit);
+				float lightArea = PrimitiveArea(*hit);
 
 				if (lightArea > 0.0f)
 				{
@@ -307,7 +361,6 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
             }
 
             // update throughput with primitive reflectance
-            //pathThroughput *= f * Clamp(Dot(n, bsdfDir), 0.0f, 1.0f)/bsdfPdf;
             pathThroughput *= f * Abs(Dot(n, bsdfDir))/bsdfPdf;
 
             // update path direction
@@ -343,10 +396,12 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 struct CpuRenderer : public Renderer
 {
 	CpuRenderer(const Scene* s) : scene(s) 
-	{	
+	{
+
 	}
 
 	const Scene* scene;
+
 	Random rand;
 
 	void AddSample(Color* output, int width, int height, float rasterX, float rasterY, float clamp, const Filter& filter, const Color& sample)
