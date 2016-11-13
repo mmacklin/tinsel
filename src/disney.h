@@ -164,8 +164,6 @@ CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO
 			Sample2D(rand, r1, r2);
 
 		    const float a = Max(0.001f, mat.roughness);
-			Vec3 n = frame.GetCol(2);
-
             const float phiHalf = r1*k2Pi;
             
             const float cosThetaHalf = sqrtf((1.0f-r2)/(1.0f + (Sqr(a)-1.0f)*r2));      

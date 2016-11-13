@@ -100,6 +100,12 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 				if (materialType == "rough_conductor")
 					material.metallic = 1.0f;
 
+				if (materialType == "lambert")
+				{
+					material.specular = 0.0f;
+					material.roughness = 1.0f;
+				}
+
 				materials[materialName] = material;
 
 				// next mat
@@ -153,7 +159,7 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 						}
 						else
 						{
-							printf("Failed to import mesh %s", path.c_str());
+							printf("Failed to import mesh %s\n", relativePath);//.c_str());
 							fflush(stdout);
 						}
 					}
