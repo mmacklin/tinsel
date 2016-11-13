@@ -311,6 +311,7 @@ CUDA_CALLABLE inline Vec4 operator-(const Vec4& a) { return Vec4(-a.x, -a.y, -a.
 CUDA_CALLABLE inline Vec4 operator+(const Vec4& a, const Vec4& b) { return Vec4(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w); }
 CUDA_CALLABLE inline Vec4 operator-(const Vec4& a, const Vec4& b) { return Vec4(a.x-b.x, a.y-b.y, a.z-b.z, a.w-b.w); }
 CUDA_CALLABLE inline Vec4 operator*(const Vec4& a, const Vec4& b) { return Vec4(a.x*b.x, a.y*b.y, a.z*b.z, a.w*b.w); }
+CUDA_CALLABLE inline Vec4 operator/(const Vec4& a, const Vec4& b) { return Vec4(a.x/b.x, a.y/b.y, a.z/b.z, a.w/b.w); }
 CUDA_CALLABLE inline Vec4 operator*(const Vec4& a, Real s) { return Vec4(a.x*s, a.y*s, a.z*s, a.w*s); }
 CUDA_CALLABLE inline Vec4 operator*(Real s, const Vec4& a) { return a*s; }
 CUDA_CALLABLE inline Vec4 operator/(const Vec4& a, Real s) { return a*(1.0/s); }
@@ -318,6 +319,7 @@ CUDA_CALLABLE inline Vec4 operator/(const Vec4& a, Real s) { return a*(1.0/s); }
 CUDA_CALLABLE inline Vec4& operator+=(Vec4& a, const Vec4& b) { return a = a+b; }
 CUDA_CALLABLE inline Vec4& operator-=(Vec4& a, const Vec4& b) { return a = a-b; }
 CUDA_CALLABLE inline Vec4& operator*=(Vec4& a, const Vec4& s) { a.x *= s.x; a.y *= s.y;  a.z *= s.z; a.w *= s.w; return a; }
+CUDA_CALLABLE inline Vec4& operator/=(Vec4& a, const Vec4& s) { a.x /= s.x; a.y /= s.y;  a.z /= s.z; a.w /= s.w; return a; }
 CUDA_CALLABLE inline Vec4& operator*=(Vec4& a, Real s) { a.x *= s; a.y *= s;  a.z *= s; a.w *= s; return a; }
 CUDA_CALLABLE inline Vec4& operator/=(Vec4& a, Real s) { Real rcp=1.0/s; a.x *= rcp; a.y *= rcp; a.z *= rcp; a.w *= rcp; return a; }
 
@@ -327,6 +329,18 @@ CUDA_CALLABLE inline Real LengthSq(const Vec4& a) { return Dot(a,a); }
 CUDA_CALLABLE inline Real Length(const Vec4& a) { return sqrt(LengthSq(a)); }
 CUDA_CALLABLE inline Vec4 Normalize(const Vec4& a) { return a/Length(a); }
 CUDA_CALLABLE inline Vec4 SafeNormalize(const Vec4& a, const Vec4& fallback=Vec4(0.0));
+
+
+CUDA_CALLABLE inline Vec4 Max(const Vec4& a, const Vec4& b)
+{
+	return Vec4(Max(a.x, b.x), Max(a.y, b.y), Max(a.z, b.z), Max(a.w, b.w));
+}
+
+CUDA_CALLABLE inline Vec4 Min(const Vec4& a, const Vec4& b)
+{
+	return Vec4(Min(a.x, b.x), Min(a.y, b.y), Min(a.z, b.z), Min(a.w, b.w));
+}
+
 
 CUDA_CALLABLE inline Vec3::Vec3(const Vec4& v) : x(v.x), y(v.y), z(v.z) {}
 

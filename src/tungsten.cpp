@@ -92,8 +92,33 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 				ReadParam(node, "roughness", material.roughness);
 				ReadParam(node, "enable_refraction", refraction);
 
+				if (materialName == "RoughSteel")
+				{
+					material.color = 0.05f;
+					material.specular = 1.0f;
+				}
+
 				if (refraction)
 					material.transmission = 1.0f;
+
+				if (materialType == "plastic")
+				{
+					material.metallic = 0.0f;
+					material.roughness = 0.0f;
+					material.specular = 0.8f;
+				}
+
+				if (materialType == "dielectric")
+				{
+					material.roughness = 0.0f;
+				}
+
+				if (materialType == "mirror")
+				{
+					material.specular = 1.0f;
+					material.metallic = 1.0f;
+					material.roughness = 0.0f;
+				}
 
 				if (materialType == "rough_dielectric" || materialType == "rough_plastic")
 					material.metallic = 0.0f;
@@ -125,6 +150,8 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 
 				// apply emission to primitive's copy of the material
 				ReadParam(node, "emission", primitive.material.emission);
+				if (LengthSq(primitive.material.emission) > 0.0f)
+					primitive.lightSamples = 1;
 
 				if (type == "mesh")
 				{
@@ -176,10 +203,14 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 	Primitive light;
 	light.type = eSphere;
 	light.sphere.radius = 1.0f;
-	light.startTransform.p = Vec3(-10.0f, 10.0f, 0.0f);
-	light.endTransform.p = Vec3(10.0f, 10.0f, 0.0f);
-	light.lightSamples = 5;
-	light.material.emission = 100.0f;
+	light.startTransform.p = Vec3(-10.0f, 10.0f, 2.0f);
+	light.endTransform.p = Vec3(-10.0f, 10.0f, 2.0f);
+	light.lightSamples = 1;
+	light.material.emission = 200.0f;
+	light.material.color = 0.0f;
+	light.material.specular = 0.0f;
+
+	options->maxDepth = 64;
 
 	scene->primitives.push_back(light);
 
