@@ -1206,6 +1206,8 @@ Mesh* ImportMeshFromWo3(const char* path)
         printf("Imported mesh %s in %f ms\n", path, (end-start)*1000.0f);
         fflush(stdout);
 
+        fclose(f);
+        
         return m;
     }
 

@@ -17,6 +17,28 @@ void ReadParam(cJSON* object, const char* name, std::string& out)
 		out = param->valuestring;	
 }
 
+void ReadParam(cJSON* object, const char* name, int& x)
+{
+	cJSON* param = cJSON_GetObjectItem(object, name);
+	if (param)
+		x = param->valueint;
+
+}
+
+
+void ReadParam(cJSON* root, const char* name, int& x, int& y)
+{
+	cJSON* param = cJSON_GetObjectItem(root, name);
+	if (param && param->child)
+	{
+		cJSON* p = param->child;
+
+		x = p->valueint; p = p->next;
+		y = p->valueint; p = p->next;
+	}
+
+}
+
 void ReadParam(cJSON* object, const char* name, float& out)
 {
 	cJSON* param = cJSON_GetObjectItem(object, name);
@@ -71,7 +93,7 @@ void ReadParam(cJSON* object, const char* name, Color& out)
 	}
 }
 
-void ReadParam(cJSON* object, const char* name, Transform& t)
+void ReadParam(cJSON* object, const char* name, Transform& t, Vec3& scale)
 {
 	cJSON* param = cJSON_GetObjectItem(object, name);
 	if (param)
@@ -81,7 +103,12 @@ void ReadParam(cJSON* object, const char* name, Transform& t)
 		Vec3 r;
 		ReadParam(param, "rotation", r);
 		
-		t.r = Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(r.x))*Quat(Vec3(1.0f, 0.0f, 0.0f), DegToRad(r.y))*Quat(Vec3(0.0f, 0.0f, 1.0f), DegToRad(r.z));
+		ReadParam(param, "scale", scale);
+
+		//t.r = Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(r.x))*Quat(Vec3(1.0f, 0.0f, 0.0f), DegToRad(r.y))*Quat(Vec3(0.0f, 0.0f, 1.0f), DegToRad(r.z));
+		t.r = Quat(Vec3(1.0f, 0.0f, 0.0f), DegToRad(r.x))*
+			  Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(r.y))*
+			  Quat(Vec3(0.0f, 0.0f, 1.0f), DegToRad(r.z));
 	}
 }
 
@@ -124,6 +151,8 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 				ReadParam(node, "roughness", material.roughness);
 				ReadParam(node, "enable_refraction", refraction);
 
+				//material.color = SrgbToLinear(material.color);
+
 				if (materialName == "RoughSteel")
 				{
 					material.color = 0.05f;
@@ -148,6 +177,12 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 				if (materialType == "dielectric")
 				{
 					material.roughness = 0.0f;
+				}
+
+				if (materialType == "null")
+				{
+					material.color = 0.0f;
+					material.specular = 0.0f;
 				}
 
 				if (materialType == "mirror")
@@ -185,11 +220,13 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 				std::string path;
 				std::string bsdf;
 				
+				Vec3 scale;
+
 				ReadParam(node, "type", type);
 				ReadParam(node, "file", path);
 				ReadParam(node, "bsdf", bsdf);
-				ReadParam(node, "transform", primitive.startTransform);
-				ReadParam(node, "transform", primitive.endTransform);
+				ReadParam(node, "transform", primitive.startTransform, scale);
+				ReadParam(node, "transform", primitive.endTransform, scale);
 
 				primitive.material = materials[bsdf];
 
@@ -198,6 +235,26 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 				if (LengthSq(primitive.material.emission) > 0.0f)
 					primitive.lightSamples = 1;
 
+				if (type == "quad")
+				{
+					Mesh* quad = CreateQuadMesh(0.5f, 0.0f);
+					
+
+					for (int i=0; i < 4; ++i)
+					{
+						quad->positions[i].x *= scale.x;
+						quad->positions[i].y *= scale.y;
+						quad->positions[i].z *= scale.z;
+					}
+
+					quad->RebuildBVH();
+
+					primitive.type = eMesh;			
+					primitive.mesh = GeometryFromMesh(quad);
+
+					scene->primitives.push_back(primitive);
+
+				}
 				if (type == "mesh")
 				{
 					primitive.type = eMesh;
@@ -239,9 +296,43 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 		}
 		if (strcmp(root->string, "camera") == 0)
 		{
-			//ParseCamera(root->child);
+			ReadParam(root, "resolution", options->width, options->height);
+
+			options->width /= 2;
+			options->height /= 2;
+			
+			cJSON* transform = cJSON_GetObjectItem(root, "transform");
+
+			Vec3 pos, target, up;
+
+			ReadParam(transform, "position", pos);
+			ReadParam(transform, "look_at", target);
+			ReadParam(transform, "up", up);
+
+			// set up camera
+			Mat44 lookat = AffineInverse(LookAtMatrix(pos, target));
+			Mat33 m = Mat33(Vec3(lookat.GetCol(0)), Vec3(lookat.GetCol(1)), Vec3(lookat.GetCol(2)));
+			Quat q = Quat(m);
+			camera->position = pos;
+			camera->rotation = Normalize(q);
+
+			float fov = camera->fov;
+			ReadParam(root, "fov", fov);
+			camera->fov = DegToRad(fov)*(options->height/float(options->width));
+
+			printf("fov: %f\n", fov);
 		}
 
+		if (strcmp(root->string, "integrator") == 0)
+		{
+			ReadParam(root, "max_bounces", options->maxDepth);
+		}
+
+		if (strcmp(root->string, "renderer") == 0)
+		{
+			ReadParam(root, "spp", options->maxSamples);
+		}
+    
 		root = root->next;
 	}
 
@@ -259,9 +350,10 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 	scene->primitives.push_back(light);
 	*/
 	
-	scene->sky.probe = ProbeLoadFromFile("data/probes/vankleef.hdr");
+	//scene->sky.probe = ProbeLoadFromFile("data/probes/vankleef.hdr");
 
-	options->maxDepth = 8;
+	//options->maxDepth = 8;
+	options->exposure = 0.7f;
 
 	
 
