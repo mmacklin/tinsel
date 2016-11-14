@@ -10,8 +10,6 @@
 
 #include <map>
 
-
-
 void ReadParam(cJSON* object, const char* name, std::string& out)
 {
 	cJSON* param = cJSON_GetObjectItem(object, name);
@@ -33,6 +31,26 @@ void ReadParam(cJSON* object, const char* name, bool& out)
 		out = param->valueint;
 }
 
+void ReadParam(cJSON* object, const char* name, Vec3& out)
+{
+	cJSON* param = cJSON_GetObjectItem(object, name);
+	if (param)
+	{
+		if (param->child)
+		{
+			cJSON* p = param->child;
+
+			out.x = p->valuedouble; p = p->next;
+			out.y = p->valuedouble; p = p->next;
+			out.z = p->valuedouble; p = p->next;
+		}
+		else
+		{
+			out = param->valuedouble;
+		}
+	}
+}
+
 void ReadParam(cJSON* object, const char* name, Color& out)
 {
 	cJSON* param = cJSON_GetObjectItem(object, name);
@@ -50,6 +68,20 @@ void ReadParam(cJSON* object, const char* name, Color& out)
 		{
 			out = param->valuedouble;
 		}
+	}
+}
+
+void ReadParam(cJSON* object, const char* name, Transform& t)
+{
+	cJSON* param = cJSON_GetObjectItem(object, name);
+	if (param)
+	{
+		ReadParam(param, "position", t.p);
+		
+		Vec3 r;
+		ReadParam(param, "rotation", r);
+		
+		t.r = Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(r.x))*Quat(Vec3(1.0f, 0.0f, 0.0f), DegToRad(r.y))*Quat(Vec3(0.0f, 0.0f, 1.0f), DegToRad(r.z));
 	}
 }
 
@@ -108,6 +140,11 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 					material.specular = 0.8f;
 				}
 
+				if (materialType == "thinsheet")
+				{
+					material.transmission = 1.0f;
+				}
+
 				if (materialType == "dielectric")
 				{
 					material.roughness = 0.0f;
@@ -151,6 +188,8 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 				ReadParam(node, "type", type);
 				ReadParam(node, "file", path);
 				ReadParam(node, "bsdf", bsdf);
+				ReadParam(node, "transform", primitive.startTransform);
+				ReadParam(node, "transform", primitive.endTransform);
 
 				primitive.material = materials[bsdf];
 
@@ -206,6 +245,7 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 		root = root->next;
 	}
 
+	/*
 	Primitive light;
 	light.type = eSphere;
 	light.sphere.radius = 1.0f;
@@ -216,9 +256,14 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 	light.material.color = 0.0f;
 	light.material.specular = 0.0f;
 
-	options->maxDepth = 64;
-
 	scene->primitives.push_back(light);
+	*/
+	
+	scene->sky.probe = ProbeLoadFromFile("data/probes/vankleef.hdr");
+
+	options->maxDepth = 8;
+
+	
 
 
 	return true;

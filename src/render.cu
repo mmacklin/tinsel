@@ -2,6 +2,7 @@
 #include "render.h"
 #include "util.h"
 #include "disney.h"
+#include "bvh.h"
 
 #include <map>
 
@@ -14,6 +15,8 @@ struct GPUScene
 	int numLights;
 
 	Sky sky;
+
+	BVH bvh;
 };
 
 #define kBsdfSamples 1.0f
@@ -173,7 +176,6 @@ void DestroyGPUMesh(const MeshGeometry& m)
 
 }
 
-
 Texture CreateGPUTexture(const Texture& tex)
 {
 	const int numTexels = tex.width*tex.height*tex.depth;
@@ -221,6 +223,53 @@ void DestroyGPUSky(const Sky& gpuSky)
 // trace a ray against the scene returning the closest intersection
 __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
+
+#if 0
+
+	struct Callback
+	{
+		float minT;
+		Vec3 closestNormal;
+		const Primitive* closestPrimitive;
+
+		const Ray& ray;
+		const GPUScene& scene;
+
+		CUDA_CALLABLE inline Callback(const GPUScene& s, const Ray& r) : minT(REAL_MAX), closestPrimitive(NULL), ray(r), scene(s)
+		{
+
+		}
+		
+		CUDA_CALLABLE inline void operator()(int index)
+		{
+			float t;
+			Vec3 n, ns;
+
+			const Primitive& primitive = scene.primitives[index];
+
+			if (PrimitiveIntersect(primitive, ray, t, &n))
+			{
+				if (t < minT && t > 0.0f)
+				{
+					minT = t;
+					closestPrimitive = &primitive;
+					closestNormal = n;
+				}
+			}			
+		}
+	};
+
+	Callback callback(scene, ray);
+	QueryBVH(callback, scene.bvh.nodes, ray.origin, ray.dir);
+
+	outT = callback.minT;		
+	outNormal = FaceForward(callback.closestNormal, -ray.dir);
+	*outPrimitive = callback.closestPrimitive;
+
+	return callback.closestPrimitive != NULL;
+	
+#else
+
 	float minT = REAL_MAX;
 	const Primitive* closestPrimitive = NULL;
 	Vec3 closestNormal(0.0f);
@@ -232,7 +281,7 @@ __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& 
 		float t;
 		Vec3 n;
 
-		if (Intersect(primitive, ray, t, &n))
+		if (PrimitiveIntersect(primitive, ray, t, &n))
 		{
 			if (t < minT && t > 0.0f)
 			{
@@ -248,6 +297,9 @@ __device__ bool Trace(const GPUScene& scene, const Ray& ray, float& outT, Vec3& 
 	*outPrimitive = closestPrimitive;
 
 	return closestPrimitive != NULL;
+
+#endif
+
 }
 
 __device__ inline float SampleTexture(const Texture& map, int i, int j, int k)
@@ -370,7 +422,7 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 			Vec3 lightPos;
 			Vec3 lightNormal;
 
-			LightSample(lightPrimitive, time, lightPos, lightNormal, rand);
+			PrimitiveSample(lightPrimitive, time, lightPos, lightNormal, rand);
 			
 			Vec3 wi = lightPos-surfacePos;
 			
@@ -404,7 +456,7 @@ __device__ inline Color SampleLights(const GPUScene& scene, const Primitive& sur
 					const float nl = Abs(Dot(lightNormal, wi));
 
 					// light pdf with respect to area and convert to pdf with respect to solid angle
-					float lightArea = LightArea(lightPrimitive);
+					float lightArea = PrimitiveArea(lightPrimitive);
 					float lightPdf = ((1.0f/lightArea)*tSq)/nl;
 
 					// bsdf pdf for light's direction
@@ -489,7 +541,7 @@ __device__ Color PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3
 			else if (kBsdfSamples > 0)
 			{
 				// area pdf that this dir was already included by the light sampling from previous step
-				float lightArea = LightArea(*hit);
+				float lightArea = PrimitiveArea(*hit);
 
 				if (lightArea > 0.0f)
 				{
@@ -750,6 +802,10 @@ struct GpuRenderer : public Renderer
 
 			primitives.push_back(primitive);
 		}
+
+		// convert scene BVH
+		CreateVec4Texture((Vec4**)&(sceneGPU.bvh.nodes), (Vec4*)s->bvh.nodes, sizeof(BVHNode)*s->bvh.numNodes);
+		sceneGPU.bvh.numNodes = s->bvh.numNodes;
 
 		// upload to the GPU
 		sceneGPU.numPrimitives = primitives.size();

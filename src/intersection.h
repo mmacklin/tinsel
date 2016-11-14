@@ -657,7 +657,7 @@ struct MeshQuery
 		}
 	}
 	
-	const MeshGeometry mesh;
+	const MeshGeometry& mesh;
 	const Vec3 rayOrigin;
 	const Vec3 rayDir;
 	
@@ -746,7 +746,7 @@ CUDA_CALLABLE bool inline IntersectRayMesh(const MeshGeometry& mesh, const Vec3&
 }
 
 template <typename T>
-void QueryBVH(T& callback, BVHNode* root, const Vec3& origin, const Vec3& dir)
+CUDA_CALLABLE inline void QueryBVH(T& callback, BVHNode* root, const Vec3& origin, const Vec3& dir)
 {
 	Vec3 rcpDir;
 	rcpDir.x = 1.0f/dir.x;
