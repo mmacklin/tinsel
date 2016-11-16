@@ -372,10 +372,11 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 	//options->maxDepth = 8;
 	
 	options->maxSamples = 100000;
-	
-	//options->width /= 4;
-	//options->height /= 4;
 
+#ifndef _WIN32
+	options->width /= 4;
+	options->height /= 4;
+#endif
 
 	return true;
 }

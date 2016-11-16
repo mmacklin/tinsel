@@ -254,8 +254,6 @@ Vec3 PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir
 
 	float bsdfPdf = 1.0f;
 
-	Vec3 pathRadiance(0.0f);
-
     for (int i=0; i < maxDepth; ++i)
     {
         // find closest hit
@@ -325,11 +323,16 @@ Vec3 PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir
         	// calculate a basis for this hit point
 
 
-            const Vec3 p = rayOrigin + rayDir*t + n*kRayEpsilon;
+            const Vec3 p = rayOrigin + rayDir*t;
 
 			totalRadiance += pathThroughput*hit->material.emission;
 
 #endif
+
+			// terminate ray if we hit a light source
+			if (hit->lightSamples)
+				break;
+
 
 			// integrate indirect light by sampling BRDF
             Vec3 u, v;

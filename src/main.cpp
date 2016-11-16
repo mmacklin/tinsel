@@ -173,7 +173,8 @@ void Init()
     // create renderer
     g_renderer = CreateGpuRenderer(&g_scene);
 #else
-    g_renderer = CreateCpuRenderer(&g_scene);
+    //g_renderer = CreateCpuRenderer(&g_scene);
+    g_renderer = CreateCpuWavefrontRenderer(&g_scene);
 #endif
 
 	double end = GetSeconds();
