@@ -229,7 +229,7 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 			// if atDistance set then infer absorption from transmissionColor
 			if (atDistance > 0.0f)
 			{
-				material.absorption = Color(-Log(transmissionColor)/atDistance, 0.0f);
+				material.absorption = -Log(transmissionColor)/atDistance;
 			}
 
 

@@ -3,12 +3,12 @@
 void TestVeach(Scene* scene, Camera* camera, Options* options)
 {
     Material background;
-	background.color = Color(0.7f, 0.7f, 0.7f);
+	background.color = Vec3(0.7f, 0.7f, 0.7f);
 	background.roughness = 0.75;
 	background.specular = 0.1;
 
     Material gloss;
-    gloss.color = Color(0.6f, 0.6f, 0.6f);
+    gloss.color = Vec3(0.6f, 0.6f, 0.6f);
     gloss.roughness = 0.1f;
 	gloss.specular = 0.75f;
     gloss.metallic = 1.0f;
@@ -104,7 +104,7 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 		float power = 1.0f;
 
 		Material mat;
-		mat.emission = colors[i]*power/area;
+		mat.emission = Vec3(colors[i]*power/area);
 		mat.color = 0.0f;
 		
 		Primitive light;
@@ -123,7 +123,7 @@ void TestVeach(Scene* scene, Camera* camera, Options* options)
 	light.sphere.radius = 0.1f;
 	light.startTransform = Transform(Vec3(3.0f, 7.0f, 7.0f));
 	light.endTransform = light.startTransform;
-	light.material.emission = Color(10.0f, 10.0f, 10.0f)*200.0f;
+	light.material.emission = Vec3(10.0f, 10.0f, 10.0f)*200.0f;
 	light.lightSamples = 1;
 	
 	scene->AddPrimitive(light);

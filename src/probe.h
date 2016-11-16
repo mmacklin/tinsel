@@ -125,12 +125,12 @@ CUDA_CALLABLE inline Vec3 ProbeUVToDir(const Vec2& uv)
 }
 
 
-CUDA_CALLABLE inline Color ProbeEval(const Probe& image, const Vec2& uv)
+CUDA_CALLABLE inline Vec3 ProbeEval(const Probe& image, const Vec2& uv)
 {
 	int px = Clamp(int(uv.x*image.width), 0, image.width-1);
 	int py = Clamp(int(uv.y*image.height), 0, image.height-1);
 
-	return fetchVec4(image.data, py*image.width+px);
+	return Vec3(fetchVec4(image.data, py*image.width+px));
 }
 
 CUDA_CALLABLE inline float ProbePdf(const Probe& image, const Vec3& d)
@@ -202,7 +202,7 @@ CUDA_CALLABLE inline int LowerBound(const float* array, int lower, int upper, co
 	return lower;
 }
 
-CUDA_CALLABLE inline void ProbeSample(const Probe& image, Vec3& dir, Color& color, float& pdf, Random& rand)
+CUDA_CALLABLE inline void ProbeSample(const Probe& image, Vec3& dir, Vec3& color, float& pdf, Random& rand)
 {
     float r1, r2;
     Sample2D(rand, r1, r2);
@@ -219,7 +219,7 @@ CUDA_CALLABLE inline void ProbeSample(const Probe& image, Vec3& dir, Color& colo
 	//int col = colPtr - &image.cdfValuesX[row*image.width];
 	int col = LowerBound(image.cdfValuesX, row*image.width, (row+1)*image.width, r2) - row*image.width;
 
-	color = fetchVec4(image.data, row*image.width + col);
+	color = Vec3(fetchVec4(image.data, row*image.width + col));
 	pdf = fetchFloat(image.pdfValuesX, row*image.width + col)*fetchFloat(image.pdfValuesY, row);
 
 	float u = col/float(image.width);
@@ -304,7 +304,7 @@ inline Probe ProbeCreateTest()
 }
 
 
-inline void ProbeMark(Probe& p)
+inline void ProbeMark(Probe& probe)
 {
 	Random rand;
 
@@ -312,19 +312,19 @@ inline void ProbeMark(Probe& p)
 	for (int i=0; i < 500; ++i)
 	{
 		Vec3 dir;
-		Color c;
+		Vec3 color;
 		float pdf;
 
-		ProbeSample(p, dir, c, pdf, rand);
+		ProbeSample(probe, dir, color, pdf, rand);
 
 		Vec2 uv = ProbeDirToUV(dir);
 
-		int px = Clamp(int(uv.x*p.width), 0, p.width-1);
-		int py = Clamp(int(uv.y*p.height), 0, p.height-1);
+		int px = Clamp(int(uv.x*probe.width), 0, probe.width-1);
+		int py = Clamp(int(uv.y*probe.height), 0, probe.height-1);
 
 		//printf("%d %d\n", px, py);
 
-		p.data[py*p.width+px] = Color(1.0f, 0.0f, 0.0f);
+		probe.data[py*probe.width+px] = Color(1.0f, 0.0f, 0.0f);
 
 
 	}

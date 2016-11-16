@@ -106,12 +106,77 @@ void ReadParam(cJSON* object, const char* name, Transform& t, Vec3& scale)
 		ReadParam(param, "scale", scale);
 
 		//t.r = Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(r.x))*Quat(Vec3(1.0f, 0.0f, 0.0f), DegToRad(r.y))*Quat(Vec3(0.0f, 0.0f, 1.0f), DegToRad(r.z));
-		t.r = Quat(Vec3(1.0f, 0.0f, 0.0f), DegToRad(r.x))*
-			  Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(r.y))*
+		t.r = Quat(Vec3(0.0f, 1.0f, 0.0f), DegToRad(r.y))* 
+			Quat(Vec3(1.0f, 0.0f, 0.0f), DegToRad(r.x))*
+			  
 			  Quat(Vec3(0.0f, 0.0f, 1.0f), DegToRad(r.z));
 	}
 }
 
+void ReadMaterial(cJSON* node, Material& material, std::string& materialName, std::string& materialType)
+{
+	bool refraction = false;
+
+	ReadParam(node, "name", materialName);
+	ReadParam(node, "type", materialType);
+	ReadParam(node, "albedo", material.color);
+	ReadParam(node, "ior", material.eta);
+	ReadParam(node, "roughness", material.roughness);
+	ReadParam(node, "enable_refraction", refraction);
+
+	//material.color = SrgbToLinear(material.color);
+
+
+	if (materialName == "RoughSteel")
+	{
+		material.color = 0.05f;
+		material.specular = 1.0f;
+	}
+
+	if (refraction)
+		material.transmission = 1.0f;
+
+	if (materialType == "plastic")
+	{
+		material.metallic = 0.0f;
+		material.roughness = 0.0f;
+		material.specular = 1.0f;
+	}
+
+	if (materialType == "thinsheet")
+	{
+		material.transmission = 1.0f;
+	}
+
+	if (materialType == "dielectric")
+	{
+		material.roughness = 0.0f;
+	}
+
+	if (materialType == "null")
+	{
+		material.color = 0.0f;
+		material.specular = 0.0f;
+	}
+
+	if (materialType == "mirror")
+	{
+		material.specular = 1.0f;
+		material.metallic = 1.0f;
+		material.roughness = 0.0f;
+	}
+
+	if (materialType == "rough_dielectric" || materialType == "rough_plastic")
+		material.metallic = 0.0f;
+	if (materialType == "rough_conductor")
+		material.metallic = 1.0f;
+
+	if (materialType == "lambert")
+	{
+		material.specular = 0.0f;
+		material.roughness = 1.0f;
+	}
+}
 
 bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* options)
 {
@@ -142,66 +207,8 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 				Material material;
 				std::string materialName;
 				std::string materialType;
-				bool refraction = false;
-
-				ReadParam(node, "name", materialName);
-				ReadParam(node, "type", materialType);
-				ReadParam(node, "albedo", material.color);
-				ReadParam(node, "ior", material.eta);
-				ReadParam(node, "roughness", material.roughness);
-				ReadParam(node, "enable_refraction", refraction);
-
-				//material.color = SrgbToLinear(material.color);
-
-				if (materialName == "RoughSteel")
-				{
-					material.color = 0.05f;
-					material.specular = 1.0f;
-				}
-
-				if (refraction)
-					material.transmission = 1.0f;
-
-				if (materialType == "plastic")
-				{
-					material.metallic = 0.0f;
-					material.roughness = 0.0f;
-					material.specular = 0.8f;
-				}
-
-				if (materialType == "thinsheet")
-				{
-					material.transmission = 1.0f;
-				}
-
-				if (materialType == "dielectric")
-				{
-					material.roughness = 0.0f;
-				}
-
-				if (materialType == "null")
-				{
-					material.color = 0.0f;
-					material.specular = 0.0f;
-				}
-
-				if (materialType == "mirror")
-				{
-					material.specular = 1.0f;
-					material.metallic = 1.0f;
-					material.roughness = 0.0f;
-				}
-
-				if (materialType == "rough_dielectric" || materialType == "rough_plastic")
-					material.metallic = 0.0f;
-				if (materialType == "rough_conductor")
-					material.metallic = 1.0f;
-
-				if (materialType == "lambert")
-				{
-					material.specular = 0.0f;
-					material.roughness = 1.0f;
-				}
+				
+				ReadMaterial(node, material, materialName, materialType);
 
 				materials[materialName] = material;
 
@@ -234,6 +241,16 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 				ReadParam(node, "emission", primitive.material.emission);
 				if (LengthSq(primitive.material.emission) > 0.0f)
 					primitive.lightSamples = 1;
+
+				// inline bsdf
+				cJSON* bsdfNode = cJSON_GetObjectItem(node, "bsdf");
+				if (bsdf == "" && bsdfNode->child)
+				{
+					std::string name;
+					std::string type;
+
+					ReadMaterial(bsdfNode, primitive.material, name, type);
+				}
 
 				if (type == "quad")
 				{
@@ -298,8 +315,8 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 		{
 			ReadParam(root, "resolution", options->width, options->height);
 
-			options->width /= 2;
-			options->height /= 2;
+			//options->width /= 2;
+			//options->height /= 2;
 			
 			cJSON* transform = cJSON_GetObjectItem(root, "transform");
 
@@ -353,9 +370,11 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 	//scene->sky.probe = ProbeLoadFromFile("data/probes/vankleef.hdr");
 
 	//options->maxDepth = 8;
-	options->exposure = 0.7f;
-
 	
+	options->maxSamples = 100000;
+	
+	//options->width /= 4;
+	//options->height /= 4;
 
 
 	return true;

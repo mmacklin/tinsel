@@ -24,9 +24,24 @@ inline MeshGeometry GeometryFromMesh(const Mesh* mesh)
 	
 CUDA_CALLABLE inline Color ToneMap(const Color& c, float limit)
 {
-	float luminance = 0.3f*c.x + 0.6f*c.y + 0.1f*c.z;
+	// reinhard
+	//float luminance = 0.3f*c.x + 0.6f*c.y + 0.1f*c.z;
+	//return c * 1.0f/(1.0f + luminance/limit);
 
-	return c * 1.0f/(1.0f + luminance/limit);
+	// filmic
+	Vec3 texColor = Vec3(c);
+	//texColor *= 16;  // Hardcoded Exposure Adjustment
+	Vec3 x = Max(Vec3(0.0f),texColor-Vec3(0.004f));
+	Vec3 retColor = (x*(Vec3(6.2f)*x+Vec3(.5f)))/(x*(Vec3(6.2f)*x+Vec3(1.7f))+Vec3(0.06));
+	
+//	float m = Max(Max(retColor.x, retColor.y), retColor.z);
+//	if (m > 1.0f)
+	//	retColor /= m;
+	
+
+	//retColor = SrgbToLinear(retColor);
+	//return SrgbToLinear(Color(retColor,0.0f));
+	return SrgbToLinear(Color(retColor, 0.0f));
 }
 
 

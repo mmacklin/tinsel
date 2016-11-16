@@ -52,12 +52,12 @@ void TestMesh(Scene* scene, Camera* camera, Options* options)
 */
 
     Material plaster;
-	plaster.color = Color(0.94f, 0.94f, 0.94f);
+	plaster.color = Vec3(0.94f, 0.94f, 0.94f);
 	plaster.roughness = 0.75;
 	plaster.specular = 0.1;
 
     Material gold;
-    gold.color = Color(1.0f, 0.71f, 0.29f);
+    gold.color = Vec3(1.0f, 0.71f, 0.29f);
     gold.roughness = 0.1f;
 	gold.specular = 0.75f;
     gold.metallic = 1.0f;
@@ -76,15 +76,15 @@ void TestMesh(Scene* scene, Camera* camera, Options* options)
     plane.plane.plane[1] = 1.0f;
     plane.plane.plane[2] = 0.0f;
     plane.plane.plane[3] = 0.0f;
-    plane.material.color = Color(0.1);
+    plane.material.color = Vec3(0.1);
 
     Primitive light;
     light.type = eSphere;
     light.sphere.radius = 1.0f;
     light.startTransform = Transform(Vec3(0.0f, 6.0f, 0.0f));
 	light.endTransform = light.startTransform;
-    light.material.color = Vec4(0.0f);
-    light.material.emission = Vec4(10.0f);
+    light.material.color = Vec3(0.0f);
+    light.material.emission = Vec3(10.0f);
     light.lightSamples = 1;
 
     
@@ -92,8 +92,8 @@ void TestMesh(Scene* scene, Camera* camera, Options* options)
     scene->AddPrimitive(plane);
 	scene->AddPrimitive(light);
 
-	scene->sky.horizon = Color(0.1f, 0.3f, 0.6f)*2.0f;
-    scene->sky.zenith = Color(0.1f, 0.3f, 0.6f)*2.0f;
+	scene->sky.horizon = Vec3(0.1f, 0.3f, 0.6f)*2.0f;
+    scene->sky.zenith = Vec3(0.1f, 0.3f, 0.6f)*2.0f;
 
     // set up camera
     camera->position = Vec3(0.0f, 2.0f, 10.0f);

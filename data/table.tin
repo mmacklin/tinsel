@@ -2,8 +2,8 @@
 
 options
 {
-	width 1280
-	height 800
+	width 640
+	height 400
 
 	exposure 1.66
 

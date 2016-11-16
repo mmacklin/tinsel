@@ -222,7 +222,7 @@ struct Vec3
 	CUDA_CALLABLE inline Real operator[](int index) const { assert(index < 3); return (&x)[index]; }
 	CUDA_CALLABLE inline Real& operator[](int index) { assert(index < 3); return (&x)[index]; }
 
-	CUDA_CALLABLE inline void Validate()
+	CUDA_CALLABLE inline void Validate() const
 	{
 		//assert(isfinite(x) && isfinite(y) && isfinite(z));
 	}
@@ -243,6 +243,9 @@ CUDA_CALLABLE inline Vec3 operator/(const Vec3& a, const Vec3& b) { return Vec3(
 
 CUDA_CALLABLE inline Vec3& operator+=(Vec3& a, const Vec3& b) { return a = a+b; }
 CUDA_CALLABLE inline Vec3& operator-=(Vec3& a, const Vec3& b) { return a = a-b; }
+CUDA_CALLABLE inline Vec3& operator*=(Vec3& a, const Vec3& b) { return a = a*b; }
+CUDA_CALLABLE inline Vec3& operator/=(Vec3& a, const Vec3& b) { return a = a/b; }
+
 CUDA_CALLABLE inline Vec3& operator*=(Vec3& a, Real s) { a.x *= s; a.y *= s;  a.z *= s; return a; }
 CUDA_CALLABLE inline Vec3& operator/=(Vec3& a, Real s) { Real rcp=1.0/s; a.x *= rcp; a.y *= rcp; a.z *= rcp; return a; }
 
@@ -1612,7 +1615,7 @@ CUDA_CALLABLE inline void ValidateImpl(const Color& c, const char* file, int lin
 #define Validate(x)
 #endif
 
-#define USE_TEXTURES 1
+#define USE_TEXTURES 0
 
 CUDA_CALLABLE inline int fetchInt(const int* ptr, int index)
 {
@@ -1637,11 +1640,13 @@ CUDA_CALLABLE inline float fetchFloat(const float* ptr, int index)
 CUDA_CALLABLE inline Vec3 fetchVec3(const Vec3* ptr, int index)
 {
 #if __CUDA_ARCH__ && USE_TEXTURES
-	float x = tex1Dfetch<float>((cudaTextureObject_t)ptr, index*3+0);
-	float y = tex1Dfetch<float>((cudaTextureObject_t)ptr, index*3+1);
-	float z = tex1Dfetch<float>((cudaTextureObject_t)ptr, index*3+2);
+
+	//float x = tex1Dfetch<float>((cudaTextureObject_t)ptr, index*3+0);
+	//float y = tex1Dfetch<float>((cudaTextureObject_t)ptr, index*3+1);
+	//float z = tex1Dfetch<float>((cudaTextureObject_t)ptr, index*3+2);
 	
-	return Vec3(x, y, z);
+	float4 x = tex1Dfetch<float4>((cudaTextureObject_t)ptr, index);
+	return Vec3(x.x, x.y, x.z);
 #else
 	return ptr[index];
 #endif

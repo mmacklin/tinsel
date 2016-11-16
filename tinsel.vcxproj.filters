@@ -19,6 +19,9 @@
     <Filter Include="Header Files\Tests">
       <UniqueIdentifier>{b19a3e71-e3fd-4e9b-8351-e141ffdf2bdd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\cjson">
+      <UniqueIdentifier>{46ef90c0-1300-481a-83c0-98ec4a8517bd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\bvh.cpp">
@@ -52,6 +55,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\perlin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\tungsten.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cjson\cJSON.c">
+      <Filter>Source Files\cjson</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -118,6 +130,9 @@
     </ClInclude>
     <ClInclude Include="src\perlin.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cjson\cJSON.h">
+      <Filter>Source Files\cjson</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

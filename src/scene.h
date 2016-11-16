@@ -46,9 +46,12 @@ struct Material
 {
 	Material() 
 	{	
-		color = SrgbToLinear(Color(0.82f, 0.67f, 0.16f));
-		emission = Color(0.0f);
-		absorption = Color(0.0);
+		color = Vec3(0.82f, 0.67f, 0.16f);
+		emission = Vec3(0.0f);
+		absorption = Vec3(0.0);
+
+		// when eta is zero the index of refraction will be inferred from the specular component
+		eta = 0.0f;
 
 		metallic = 0.0;
 		subsurface = 0.0f;
@@ -64,8 +67,6 @@ struct Material
 		bump = 0.0f;
 		bumpTile = 10.0f;
 
-		// when eta is zero the index of refraction will be inferred from the specular component
-		eta = 0.0f;	 
 	}
 
 	CUDA_CALLABLE inline float GetIndexOfRefraction() const
@@ -76,10 +77,11 @@ struct Material
 			return eta;
 	}
 
-	Color emission;
-	Color color;
-	Color absorption;
+	Vec3 emission;
+	Vec3 color;
+	Vec3 absorption;
 
+	float eta;
 	float metallic;
 	float subsurface;
 	float specular;
@@ -90,8 +92,7 @@ struct Material
 	float sheenTint;
 	float clearcoat;
 	float clearcoatGloss;
-	float transmission;	
-	float eta;
+	float transmission;		
 
 	Texture bumpMap;
 	float bump;
@@ -159,12 +160,12 @@ struct Primitive
 
 struct Sky
 {
-	Color horizon;
-	Color zenith;
+	Vec3 horizon;
+	Vec3 zenith;
 
 	Probe probe;
 
-	CUDA_CALLABLE Color Eval(const Vec3& dir) const
+	CUDA_CALLABLE Vec3 Eval(const Vec3& dir) const
 	{
 		if (probe.valid)
 		{

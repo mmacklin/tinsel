@@ -102,6 +102,31 @@ CUDA_CALLABLE inline float Fr(float VDotN, float etaI, float etaT)
     return 0.5f*(Sqr(r1) + Sqr(r2));
 }
 
+#if 0
+
+CUDA_CALLABLE inline float BSDFPdf(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& n, const Vec3& V, const Vec3& L)
+{
+	if (Dot(L, n) <= 0.0f)
+		return 0.0f;
+	else
+		return kInv2Pi;
+}
+
+CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& U, const Vec3& V, const Vec3& N, const Vec3& view, Vec3& light, float& pdf, BSDFType& type, Random& rand)
+{
+	Vec3 d =  UniformSampleHemisphere(rand);
+
+	light = U*d.x + V*d.y + N*d.z;
+	pdf = kInv2Pi;
+	type = eReflected;
+}
+
+CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& N, const Vec3& V, const Vec3& L)
+{
+	return kInvPi*mat.color;
+}
+
+#else
 
 CUDA_CALLABLE inline float BSDFPdf(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& n, const Vec3& V, const Vec3& L)
 {  
@@ -149,12 +174,12 @@ CUDA_CALLABLE inline float BSDFPdf(const Material& mat, float etaI, float etaO, 
 
 
 // generate an importance sampled BSDF direction
-CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO, const Vec3& P, const Mat33& frame, const Vec3& V, Vec3& light, float& pdf, BSDFType& type, Random& rand)
+CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& U, const Vec3& V, const Vec3& N, const Vec3& view, Vec3& light, float& pdf, BSDFType& type, Random& rand)
 {
     if (rand.Randf() < mat.transmission)
     {
 		// sample BSDF
-		float F = Fr(Dot(frame.GetCol(2),V), etaI, etaO);
+		float F = Fr(Dot(N,view), etaI, etaO);
 
 		// sample reflectance or transmission based on Fresnel term
 		if (rand.Randf() < F)
@@ -176,25 +201,24 @@ CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO
     		Validate(sinPhiHalf);
     		Validate(cosPhiHalf);
 
-            Vec3 half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
+            Vec3 half = U*(sinThetaHalf*cosPhiHalf) + V*(sinThetaHalf*sinPhiHalf) + N*cosThetaHalf;
             
             // ensure half angle in same hemisphere as incoming light vector
-            if (Dot(half, V) <= 0.0f)
+            if (Dot(half, view) <= 0.0f)
                 half *= -1.0f;
 			
             type = eReflected;
-			light = 2.0f*Dot(V, half)*half - V;
+			light = 2.0f*Dot(view, half)*half - view;
 
 		}
 		else
 		{
 			// sample transmission
-			Vec3 n = frame.GetCol(2);
-
 			float eta = etaI/etaO;
+
 			//Vec3 h = Normalize(V+light);
 
-			if (Refract(V, n, eta, light))
+			if (Refract(view, N, eta, light))
 			{   
 				type = eSpecular;
 				pdf = (1.0f-F)*mat.transmission;
@@ -226,12 +250,16 @@ CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO
             // sample diffuse	
 			if (rand.Randf() < mat.subsurface)
 			{
-				light = Mat33(frame.GetCol(0), frame.GetCol(1), -frame.GetCol(2))*UniformSampleHemisphere(rand);
+				const Vec3 d = UniformSampleHemisphere(rand);
+				
+				light = U*d.x + V*d.y - N*d.z;
 				type = eTransmitted;
 			}
 			else
 			{
-				light = frame*CosineSampleHemisphere(r1, r2);
+				const Vec3 d = CosineSampleHemisphere(r1, r2);
+
+				light = U*d.x + V*d.y + N*d.z;
 				type = eReflected;
 			}
         }
@@ -252,24 +280,24 @@ CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO
     		Validate(sinPhiHalf);
     		Validate(cosPhiHalf);
 
-            Vec3 half = frame*Vec3(sinThetaHalf*cosPhiHalf, sinThetaHalf*sinPhiHalf, cosThetaHalf);
+            Vec3 half = U*(sinThetaHalf*cosPhiHalf) + V*(sinThetaHalf*sinPhiHalf) + N*cosThetaHalf;
             
             // ensure half angle in same hemisphere as incoming light vector
-            if (Dot(half, V) <= 0.0f)
+            if (Dot(half, view) <= 0.0f)
                 half *= -1.0f;
 
-            light = 2.0f*Dot(V, half)*half - V;
+            light = 2.0f*Dot(view, half)*half - view;
 			type = eReflected;
         }
 #endif
     }
 
-    pdf = BSDFPdf(mat, etaI, etaO, P, frame.GetCol(2), V, light);		
+    pdf = BSDFPdf(mat, etaI, etaO, P, N, view, light);		
 
 }
 
 
-CUDA_CALLABLE inline Color BSDFEval(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& N, const Vec3& V, const Vec3& L)
+CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& N, const Vec3& V, const Vec3& L)
 {
     float NDotL = Dot(N,L);
     float NDotV = Dot(N,V);
@@ -282,12 +310,12 @@ CUDA_CALLABLE inline Color BSDFEval(const Material& mat, float etaI, float etaO,
     Vec3 Cdlin = Vec3(mat.color);
     float Cdlum = .3*Cdlin[0] + .6*Cdlin[1]  + .1*Cdlin[2]; // luminance approx.
 
-    Vec3 Ctint = Cdlum > 0.0f ? Cdlin/Cdlum : Vec3(1); // normalize lum. to isolate hue+sat
-    Vec3 Cspec0 = Lerp(mat.specular*.08*Lerp(Vec3(1), Ctint, mat.specularTint), Cdlin, mat.metallic);
+    Vec3 Ctint = Cdlum > 0.0f ? Cdlin/Cdlum : Vec3(1.0f); // normalize lum. to isolate hue+sat
+    Vec3 Cspec0 = Lerp(mat.specular*.08*Lerp(Vec3(1.0f), Ctint, mat.specularTint), Cdlin, mat.metallic);
    // Vec3 Csheen = Lerp(Vec3(1), Ctint, mat.sheenTint);
 
-	Color bsdf = 0.0f;
-	Color brdf = 0.0f;
+	Vec3 bsdf = 0.0f;
+	Vec3 brdf = 0.0f;
 
 	if (mat.transmission > 0.0f)
 	{
@@ -308,11 +336,11 @@ CUDA_CALLABLE inline Color BSDFEval(const Material& mat, float etaI, float etaO,
 			// Fresnel term with the microfacet normal
 			float FH = Fr(LDotH, etaI, etaO);
 
-			Vec3 Fs = Lerp(Cspec0, Vec3(1), FH);
+			Vec3 Fs = Lerp(Cspec0, Vec3(1.0f), FH);
 			float roughg = a;
 			float Gs = smithG_GGX(NDotV, roughg)*smithG_GGX(NDotL, roughg);
 
-			bsdf = Color(Gs*Fs*Ds, 0.0f);
+			bsdf = Gs*Fs*Ds;
 		}
 	}
 
@@ -325,12 +353,12 @@ CUDA_CALLABLE inline Color BSDFEval(const Material& mat, float etaI, float etaO,
 			{
 				// take sqrt to account for entry/exit of the ray through the medium
 				// this ensures transmitted light corresponds to the diffuse model
-				Color s = Color(sqrtf(mat.color.x), sqrtf(mat.color.y), sqrtf(mat.color.z));
+				Vec3 s = Vec3(sqrtf(mat.color.x), sqrtf(mat.color.y), sqrtf(mat.color.z));
 			
 				float FL = SchlickFresnel(Abs(NDotL)), FV = SchlickFresnel(NDotV);
     			float Fd = (1.0f-0.5f*FL)*(1.0f-0.5f*FV);
 
-				brdf =  kInvPi*s*mat.subsurface*Fd;
+				brdf = kInvPi*s*mat.subsurface*Fd;
 			}						
 		}
 		else
@@ -372,9 +400,8 @@ CUDA_CALLABLE inline Color BSDFEval(const Material& mat, float etaI, float etaO,
 				* (1-mat.metallic)*(1.0f-mat.transmission)
 				+ Gs*Fs*Ds + .25*mat.clearcoat*Gr*Fr*Dr;
 			*/
-    
-			Vec3 out = kInvPi*Fd*Cdlin*(1.0f-mat.metallic)*(1.0f-mat.subsurface) + Gs*Fs*Ds + mat.clearcoat*Gr*Fc*Dr;
-			brdf = Color(out, 0.0f);
+	
+			brdf = kInvPi*Fd*Cdlin*(1.0f-mat.metallic)*(1.0f-mat.subsurface) + Gs*Fs*Ds + mat.clearcoat*Gr*Fc*Dr;
 		}
     }
 
@@ -382,12 +409,14 @@ CUDA_CALLABLE inline Color BSDFEval(const Material& mat, float etaI, float etaO,
 }
 #endif
 
+#endif
+
 inline void BSDFTest(Material mat, Mat33 frame, float woTheta, const char* filename)
 {
     /* example code to visualize a BSDF, its PDF and sampling
 
     Material mat;
-    mat.color = Color(0.95, 0.9, 0.9);
+    mat.color = Vec(0.95, 0.9, 0.9);
     mat.specular = 1.0;
     mat.roughness = 0.025;
     mat.metallic = 0.0;
@@ -424,7 +453,7 @@ inline void BSDFTest(Material mat, Mat33 frame, float woTheta, const char* filen
 
             Vec3 wi = ProbeUVToDir(Vec2(u,v));
 
-            Color f = BSDFEval(mat, 1.0f, 1.0f, Vec3(0.0f), frame.GetCol(2), wo, wi); 
+            Vec3 f = BSDFEval(mat, 1.0f, 1.0f, Vec3(0.0f), frame.GetCol(2), wo, wi); 
             float pdf = BSDFPdf(mat, 1.0f, 1.0f, Vec3(0.0f), frame.GetCol(2), wo, wi);
 
           //  f.x = u;
@@ -444,7 +473,7 @@ inline void BSDFTest(Material mat, Mat33 frame, float woTheta, const char* filen
         float pdf;
 		BSDFType type;
 
-        BSDFSample(mat, 1.0f, 1.0f, Vec3(0.0f), frame, wo, wi, pdf, type, rand);
+        BSDFSample(mat, 1.0f, 1.0f, Vec3(0.0f), frame.GetCol(0), frame.GetCol(1), frame.GetCol(2), wo, wi, pdf, type, rand);
             
         Vec2 uv = ProbeDirToUV(wi);
 

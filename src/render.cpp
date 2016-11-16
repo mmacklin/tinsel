@@ -99,16 +99,16 @@ inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNorm
 
 
 
-inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive, float etaI, float etaO, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& shadingNormal, const Vec3& wo, float time, Random& rand)
+inline Vec3 SampleLights(const Scene& scene, const Primitive& surfacePrimitive, float etaI, float etaO, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& shadingNormal, const Vec3& wo, float time, Random& rand)
 {	
-	Color sum(0.0f);
+	Vec3 sum(0.0f);
 
 	if (scene.sky.probe.valid)
 	{
 		for (int i=0; i < kProbeSamples; ++i)
 		{
 
-			Color skyColor;
+			Vec3 skyColor;
 			float skyPdf;
 			Vec3 wi;
 
@@ -131,7 +131,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 			if (Trace(scene, Ray(surfacePos + FaceForward(surfaceNormal, wi)*kRayEpsilon, wi, time), t, n, &hit) == false)
 			{
 				float bsdfPdf = BSDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
-				Color f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
+				Vec3 f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
 				
 				if (bsdfPdf > 0.0f)
 				{
@@ -157,7 +157,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 		// assume all lights are area lights for now
 		const Primitive& lightPrimitive = scene.primitives[i];
 
-		Color L(0.0f);
+		Vec3 L(0.0f);
 
 		int numSamples = lightPrimitive.lightSamples;
 
@@ -209,7 +209,7 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 
 					// bsdf pdf for light's direction
 					float bsdfPdf = BSDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
-					Color f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
+					Vec3 f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
 
 					// this branch is only necessary to exclude specular paths from light sampling
 					// todo: make BSDFEval alwasy return zero for pure specular paths and roll specular eval into BSDFSample()
@@ -234,12 +234,12 @@ inline Color SampleLights(const Scene& scene, const Primitive& surfacePrimitive,
 }
 
 // reference, no light sampling, uniform hemisphere sampling
-Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir, float time, int maxDepth, Random& rand)
+Vec3 PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir, float time, int maxDepth, Random& rand)
 {	
     // path throughput
-    Color pathThroughput(1.0f, 1.0f, 1.0f, 1.0f);
+    Vec3 pathThroughput(1.0f, 1.0f, 1.0f);
     // accumulated radiance
-    Color totalRadiance(0.0f, 0.0f, 0.0f, 0.0f);
+    Vec3 totalRadiance(0.0f, 0.0f, 0.0f);
 
     Vec3 rayOrigin = startOrigin;
     Vec3 rayDir = startDir;
@@ -254,7 +254,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 
 	float bsdfPdf = 1.0f;
 
-	Color pathRadiance(0.0f);
+	Vec3 pathRadiance(0.0f);
 
     for (int i=0; i < maxDepth; ++i)
     {
@@ -279,7 +279,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 			}
 
 			// update throughput based on absorption through the medium
-			pathThroughput *= Color(Exp(-rayAbsorption*t), 1.0f);
+			pathThroughput *= Exp(-rayAbsorption*t);
 
 #if 1
 			if (i == 0)
@@ -314,9 +314,6 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 			}
 
         	// calculate a basis for this hit point
-            Vec3 u, v;
-            BasisFromVector(n, &u, &v);
-
             const Vec3 p = rayOrigin + rayDir*t;
 
 			// integrate direct light over hemisphere
@@ -326,8 +323,7 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 #else
 
         	// calculate a basis for this hit point
-            Vec3 u, v;
-            BasisFromVector(n, &u, &v);
+
 
             const Vec3 p = rayOrigin + rayDir*t + n*kRayEpsilon;
 
@@ -336,17 +332,18 @@ Color PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDi
 #endif
 
 			// integrate indirect light by sampling BRDF
-			Mat33 localFrame(u, v, n);
+            Vec3 u, v;
+            BasisFromVector(n, &u, &v);
 
 			Vec3 bsdfDir;
 			BSDFType bsdfType;
-			BSDFSample(hit->material, rayEta, outEta, p, Mat33(u,v,n), -rayDir, bsdfDir, bsdfPdf, bsdfType, rand);
+			BSDFSample(hit->material, rayEta, outEta, p, u, v, n, -rayDir, bsdfDir, bsdfPdf, bsdfType, rand);
 
             if (bsdfPdf <= 0.0f)
             	break;
 
             // reflectance
-            Color f = BSDFEval(hit->material, rayEta, outEta, p, n, -rayDir, bsdfDir);
+            Vec3 f = BSDFEval(hit->material, rayEta, outEta, p, n, -rayDir, bsdfDir);
 
             // update ray medium if we are transmitting through the material
             if (Dot(bsdfDir, n) <= 0.0f)
@@ -404,7 +401,7 @@ struct CpuRenderer : public Renderer
 
 	Random rand;
 
-	void AddSample(Color* output, int width, int height, float rasterX, float rasterY, float clamp, const Filter& filter, const Color& sample)
+	void AddSample(Color* output, int width, int height, float rasterX, float rasterY, float clamp, const Filter& filter, const Vec3& sample)
 	{
 		switch (filter.type)		
 		{
@@ -415,16 +412,13 @@ struct CpuRenderer : public Renderer
 				int endX = Min(int(rasterX + filter.width), width-1);
 				int endY = Min(int(rasterY + filter.width), height-1);
 
-				Color c =  ClampLength(sample, clamp);
-				c.w = 1.0f;
+				Vec3 c =  ClampLength(sample, clamp);
 
 				for (int x=startX; x <= endX; ++x)
 				{
 					for (int y=startY; y <= endY; ++y)
 					{
-						float w = 1.0f;
-
-						output[y*width+x] += c*w;
+						output[y*width+x] += Color(c, 1.0f);
 					}
 				}
 
@@ -437,8 +431,7 @@ struct CpuRenderer : public Renderer
 				int endX = Min(int(rasterX + filter.width), width-1);
 				int endY = Min(int(rasterY + filter.width), height-1);
 
-				Color c =  ClampLength(sample, clamp);
-				c.w = 1.0f;
+				Vec3 c =  ClampLength(sample, clamp);
 
 				for (int x=startX; x <= endX; ++x)
 				{
@@ -446,7 +439,7 @@ struct CpuRenderer : public Renderer
 					{
 						float w = filter.Eval(x-rasterX, y-rasterY);
 
-						output[y*width+x] += c*w;
+						output[y*width+x] += Color(c*w, w);
 					}
 				}
 				break;
@@ -493,7 +486,7 @@ struct CpuRenderer : public Renderer
 
 							sampler.GenerateRay(x, y, origin, dir);
 
-							Color sample = PathTrace(*scene, origin, dir, time, options.maxDepth, rand);
+							Vec3 sample = PathTrace(*scene, origin, dir, time, options.maxDepth, rand);
 
 							Validate(sample);
 
