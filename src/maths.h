@@ -1006,13 +1006,13 @@ CUDA_CALLABLE inline Bounds TransformBounds(const Transform& xform, const Bounds
 	// take the sum of the +/- abs value along each cartesian axis
 	Mat33 m = Mat33(xform.r);
 
-	Vec3 halfEdgeWidth = xform.s*bounds.GetEdges()*0.5;
+	Vec3 halfEdgeWidth = xform.s*bounds.GetEdges()*0.5f;
 
 	Vec3 x = Abs(m.GetCol(0))*halfEdgeWidth.x;
 	Vec3 y = Abs(m.GetCol(1))*halfEdgeWidth.y;
 	Vec3 z = Abs(m.GetCol(2))*halfEdgeWidth.z;
 
-	Vec3 center = bounds.GetCenter();
+	Vec3 center = xform.s*bounds.GetCenter();
 
 	Vec3 lower = xform.p + center - x - y - z;
 	Vec3 upper = xform.p + center + x + y + z;
