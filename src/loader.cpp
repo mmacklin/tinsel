@@ -346,7 +346,7 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 						}
 						else
 						{
-							printf("Failed to import mesh %s", path);
+							printf("Failed to import mesh %s\n", path);
 							fflush(stdout);
 
 							valid = false;
