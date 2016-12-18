@@ -130,8 +130,15 @@ CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, 
 
 CUDA_CALLABLE inline float BSDFPdf(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& n, const Vec3& V, const Vec3& L)
 {  
+#if DISABLE_IMPORTANCE
+	
+	return kInv2Pi*0.5f;
+
+#endif
+
 	if (Dot(L, n) <= 0.0f)
 	{
+
 		float bsdfPdf = 0.0f;
 		float brdfPdf = kInv2Pi*mat.subsurface*0.5f;
 
@@ -139,13 +146,6 @@ CUDA_CALLABLE inline float BSDFPdf(const Material& mat, float etaI, float etaO, 
     }
     else
     {
-
-#if DISABLE_IMPORTANCE
-
-        return kInv2Pi;
-
-#else
-
 		float F = Fr(Dot(n,V), etaI, etaO);
 
         const float a = Max(0.001f, mat.roughness);
@@ -167,7 +167,6 @@ CUDA_CALLABLE inline float BSDFPdf(const Material& mat, float etaI, float etaO, 
 
         // weight pdfs equally
         return Lerp(brdfPdf, bsdfPdf, mat.transmission);
-#endif
 
     }
 }
@@ -236,9 +235,10 @@ CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO
     {
 #if DISABLE_IMPORTANCE
 		
-        light = frame*UniformSampleHemisphere(rand);
-		pdf = kInv2Pi;
+		light = UniformSampleSphere(rand.Randf(), rand.Randf());
+		pdf = kInv2Pi*0.5f;
 
+		return;
 #else
 
         // sample brdf
@@ -325,7 +325,7 @@ CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, 
 			// transmission Fresnel
 			float F = Fr(NDotV, etaI, etaO);
 
-			bsdf = mat.transmission*(1.0f-F)/Abs(NDotL);
+			bsdf = mat.transmission*(1.0f-F)/Abs(NDotL)*(1.0f-mat.metallic);
 		}
 		else
 		{
@@ -358,7 +358,7 @@ CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, 
 				float FL = SchlickFresnel(Abs(NDotL)), FV = SchlickFresnel(NDotV);
     			float Fd = (1.0f-0.5f*FL)*(1.0f-0.5f*FV);
 
-				brdf = kInvPi*s*mat.subsurface*Fd;
+				brdf = kInvPi*s*mat.subsurface*Fd*(1.0f-mat.metallic);
 			}						
 		}
 		else

@@ -36,6 +36,11 @@ void ReadParam(cJSON* root, const char* name, int& x, int& y)
 		x = p->valueint; p = p->next;
 		y = p->valueint; p = p->next;
 	}
+	else if (param)
+	{
+		x = param->valueint;
+		y = param->valueint;
+	}
 
 }
 
@@ -134,7 +139,9 @@ void ReadMaterial(cJSON* node, Material& material, std::string& materialName, st
 	}
 
 	if (refraction)
+	{
 		material.transmission = 1.0f;
+	}
 
 	if (materialType == "plastic")
 	{
@@ -181,6 +188,9 @@ void ReadMaterial(cJSON* node, Material& material, std::string& materialName, st
 bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* options)
 {
 	FILE* f = fopen(filename, "r");
+
+	if (!f)
+		return false;
 
 	fseek(f, 0, SEEK_END);
 	int length = ftell(f);
@@ -244,12 +254,21 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 
 				// inline bsdf
 				cJSON* bsdfNode = cJSON_GetObjectItem(node, "bsdf");
-				if (bsdf == "" && bsdfNode->child)
+				if (bsdf == "" && bsdfNode && bsdfNode->child)
 				{
 					std::string name;
 					std::string type;
 
 					ReadMaterial(bsdfNode, primitive.material, name, type);
+				}
+
+				if (type == "infinite_sphere")
+				{
+					Vec3 emission;
+					ReadParam(node, "emission", emission);
+
+					scene->sky.horizon = emission;
+					scene->sky.zenith = emission;
 				}
 
 				if (type == "quad")
@@ -293,6 +312,12 @@ bool LoadTungsten(const char* filename, Scene* scene, Camera* camera, Options* o
 
 						if (mesh)
 						{
+							bool recomputeNormals = false;
+							ReadParam(node, "recompute_normals", recomputeNormals);
+
+							if (recomputeNormals)
+								mesh->CalculateNormals();
+
 							primitive.mesh = GeometryFromMesh(mesh);							
 
 							meshes[path] = mesh;

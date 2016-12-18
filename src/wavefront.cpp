@@ -235,10 +235,6 @@ inline Vec3 SampleLights(const Scene& scene, const Primitive& surfacePrimitive, 
 }
 
 
-} // anonymous namespace
-
-
-
 struct Tile
 {
 	int x;
@@ -597,6 +593,8 @@ void GeneratePaths(Camera camera, CameraSampler sampler, Tile tile, int seed, Pa
 		}
 	}
 }
+
+} // anonymous namespace
 
 struct CpuWaveFrontRenderer : public Renderer
 {

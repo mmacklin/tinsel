@@ -1012,10 +1012,10 @@ CUDA_CALLABLE inline Bounds TransformBounds(const Transform& xform, const Bounds
 	Vec3 y = Abs(m.GetCol(1))*halfEdgeWidth.y;
 	Vec3 z = Abs(m.GetCol(2))*halfEdgeWidth.z;
 
-	Vec3 center = xform.s*bounds.GetCenter();
+	Vec3 center = TransformPoint(xform, bounds.GetCenter());
 
-	Vec3 lower = xform.p + center - x - y - z;
-	Vec3 upper = xform.p + center + x + y + z;
+	Vec3 lower = center - x - y - z;
+	Vec3 upper = center + x + y + z;
 
 	return Bounds(lower, upper);
 }
@@ -1601,6 +1601,12 @@ CUDA_CALLABLE inline Vec3 FaceForward(const Vec3& n, const Vec3& v)
 CUDA_CALLABLE inline void ValidateImpl(float x, const char* file, int line)
 {
 	if (!isfinite(x))
+		printf("Fail: %s, %d (%f)\n", file, line, x);
+}
+
+CUDA_CALLABLE inline void ValidateImpl(const Vec3& x, const char* file, int line)
+{
+	if (!isfinite(x.x) || !isfinite(x.y) || !isfinite(x.z))
 		printf("Fail: %s, %d (%f)\n", file, line, x);
 }
 

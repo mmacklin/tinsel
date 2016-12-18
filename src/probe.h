@@ -241,29 +241,34 @@ inline Probe ProbeLoadFromFile(const char* path)
 
 	PfmImage image;
 	//PfmLoad(path, image);
-	HdrLoad(path, image);
+	if (HdrLoad(path, image))
+	{
+		Probe probe;
+		probe.width = image.width;
+		probe.height = image.height;
 
-	Probe probe;
-	probe.width = image.width;
-	probe.height = image.height;
+		int numPixels = image.width*image.height;
 
-	int numPixels = image.width*image.height;
+		// convert image data to color data, apply pre-exposure etc
+		probe.data = new Color[numPixels];
 
-	// convert image data to color data, apply pre-exposure etc
-	probe.data = new Color[numPixels];
-
-	for (int i=0; i < numPixels; ++i)
-		probe.data[i] = Color(image.data[i*3+0], image.data[i*3+1], image.data[i*3+2]);
+		for (int i=0; i < numPixels; ++i)
+			probe.data[i] = Color(image.data[i*3+0], image.data[i*3+1], image.data[i*3+2]);
 	
-	probe.BuildCDF();
+		probe.BuildCDF();
 
-	delete[] image.data;
+		delete[] image.data;
 
-	double end = GetSeconds();
+		double end = GetSeconds();
 
-	printf("Imported probe %s in %fms\n", path, (end-start)*1000.0f);
+		printf("Imported probe %s in %fms\n", path, (end-start)*1000.0f);
 
-	return probe;
+		return probe;
+	}
+	else
+	{
+		return Probe();
+	}
 }
 
 inline Probe ProbeCreateTest()

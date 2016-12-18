@@ -343,17 +343,25 @@ void WritePng(const Color* pixels, int width, int height, const char* filename)
 
 	FILE *fout = fopen(filename, "wb");
 	
-	struct TinyPngOut pngout;
-	if (fout == NULL || TinyPngOut_init(&pngout, fout, width, height) != TINYPNGOUT_OK)
-		goto error;
+	if (fout)
+	{
+
+		struct TinyPngOut pngout;
+		if (fout == NULL || TinyPngOut_init(&pngout, fout, width, height) != TINYPNGOUT_OK)
+			goto error;
 	
-	// Write image data
-	if (TinyPngOut_write(&pngout, buffer, width * height) != TINYPNGOUT_OK)
-		goto error;
+		// Write image data
+		if (TinyPngOut_write(&pngout, buffer, width * height) != TINYPNGOUT_OK)
+			goto error;
 	
-	// Check for proper completion
-	if (TinyPngOut_write(&pngout, NULL, 0) != TINYPNGOUT_DONE)
-		goto error;
+		// Check for proper completion
+		if (TinyPngOut_write(&pngout, NULL, 0) != TINYPNGOUT_DONE)
+			goto error;
+	}
+	else
+	{
+		printf("Failed to open %s for PNG write\n", filename);
+	}
 
 error:
 

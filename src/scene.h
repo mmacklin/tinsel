@@ -186,10 +186,25 @@ struct Scene
 	typedef std::vector<Primitive> PrimitiveArray;
 	PrimitiveArray primitives;
 	
+	typedef std::vector<Mesh*> MeshArray;
+	MeshArray meshes;
+
 	Sky sky;
 	Camera camera;	
 
 	BVH bvh;
+
+	void Clear()
+	{
+		for (int i=0; i < meshes.size(); ++i)
+			delete meshes[i];
+
+		meshes.resize(0);
+		primitives.resize(0);
+
+		delete bvh.nodes;
+		bvh.nodes = NULL;
+	}
 
 	void AddPrimitive(const Primitive& p)
 	{

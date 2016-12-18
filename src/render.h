@@ -72,6 +72,8 @@ struct Renderer
 
 };
 
+Renderer* CreateNullRenderer(const Scene* s);
 Renderer* CreateCpuRenderer(const Scene* s);
 Renderer* CreateCpuWavefrontRenderer(const Scene* s);
+Renderer* CreateGpuWavefrontRenderer(const Scene* s);
 Renderer* CreateGpuRenderer(const Scene* s);

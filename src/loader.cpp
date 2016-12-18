@@ -43,10 +43,13 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 		//--------------------------------------------
 		// Include files
 
-		if (sscanf(line, " include %s", name) == 1)
+		if (sscanf(line, "include %s", name) == 1)
 		{
-			assert(0);
+			char path[kMaxLineLength];
+			MakeRelativePath(filename, name, path);
 
+			// recursive file processing
+			LoadTin(path, scene, camera, options);
 		}
 
 		//--------------------------------------------
@@ -416,6 +419,12 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 			meshes[name] = mesh;
 		}
 	}
+
+	// keep list of meshes
+	for (auto iter=meshes.begin(); iter != meshes.end(); ++iter)
+		scene->meshes.push_back(iter->second);
+
+	fclose(file);
 
 	return true;
 }

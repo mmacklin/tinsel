@@ -6,16 +6,6 @@
 
 #include <map>
 
-
-#define kBsdfSamples 1.0f
-#define kProbeSamples 1.0f
-#define kRayEpsilon 0.001f
-
-#define USE_LIGHT_SAMPLING 1
-
-namespace
-{
-	
 struct GPUScene
 {
 	Primitive* primitives;
@@ -28,6 +18,19 @@ struct GPUScene
 
 	BVH bvh;
 };
+
+#define kBsdfSamples 1.0f
+#define kProbeSamples 1.0f
+#define kRayEpsilon 0.0001f
+
+#define LAUNCH_BOUNDS __launch_bounds__(256, 4)
+
+__device__ inline int getGlobalIndex()
+{
+	int blockId = blockIdx.x + blockIdx.y * gridDim.x; 
+	int threadId = blockId * (blockDim.x * blockDim.y) + (threadIdx.y * blockDim.x) + threadIdx.x;
+	return threadId;
+}
 
 // create a texture object from memory and store it in a 64-bit pointer
 void CreateIntTexture(int** deviceBuffer, const int* hostBuffer, int sizeInBytes)
@@ -119,7 +122,7 @@ void CreateVec4Texture(Vec4** deviceBuffer, const Vec4* hostBuffer, int sizeInBy
 	resDesc.res.linear.desc.w = 32; // bits per channel
 	resDesc.res.linear.sizeInBytes = sizeInBytes;
 
-	cudaTextureDesc texDesc;	
+	cudaTextureDesc texDesc;
 	memset(&texDesc, 0, sizeof(texDesc));
 	texDesc.readMode = cudaReadModeElementType;
 
@@ -137,15 +140,6 @@ void CreateVec4Texture(Vec4** deviceBuffer, const Vec4* hostBuffer, int sizeInBy
 
 }
 
-void DestroyTexture(const void* texture)
-{
-	cudaFree((void*)texture);
-
-#if USE_TEXTURES
-#error todo
-#endif
-
-}
 
 MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 {
@@ -178,6 +172,21 @@ MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 #endif
 
 	CreateIntTexture((int**)&gpuMesh.indices, (int*)&hostMesh.indices[0], sizeof(int)*numIndices);
+	
+
+	/*
+	cudaMalloc((Vec3**)&gpuMesh.positions, sizeof(Vec3)*numVertices);
+	cudaMemcpy((Vec3*)gpuMesh.positions, &hostMesh.positions[0], sizeof(Vec3)*numVertices, cudaMemcpyHostToDevice);
+
+	cudaMalloc((Vec3**)&gpuMesh.normals, sizeof(Vec3)*numVertices);
+	cudaMemcpy((Vec3*)gpuMesh.normals, &hostMesh.normals[0], sizeof(Vec3)*numVertices, cudaMemcpyHostToDevice);
+
+	cudaMalloc((int**)&gpuMesh.indices, sizeof(int)*numIndices);
+	cudaMemcpy((int*)gpuMesh.indices, &hostMesh.indices[0], sizeof(int)*numIndices, cudaMemcpyHostToDevice);
+	*/
+	//cudaMalloc((BVHNode**)&gpuMesh.nodes, sizeof(BVHNode)*numNodes);
+	//cudaMemcpy((BVHNode*)gpuMesh.nodes, &hostMesh.nodes[0], sizeof(BVHNode)*numNodes, cudaMemcpyHostToDevice);
+
 	CreateVec4Texture((Vec4**)&gpuMesh.nodes, (Vec4*)&hostMesh.nodes[0], sizeof(BVHNode)*numNodes);
 	
 	cudaMalloc((float**)&gpuMesh.cdf, sizeof(float)*numIndices/3);
@@ -192,14 +201,9 @@ MeshGeometry CreateGPUMesh(const MeshGeometry& hostMesh)
 
 }
 
-void DestroyGPUMesh(const MeshGeometry& gpuMesh)
+void DestroyGPUMesh(const MeshGeometry& m)
 {
-	DestroyTexture(gpuMesh.positions);
-	DestroyTexture(gpuMesh.normals);
-	DestroyTexture(gpuMesh.indices);
-	DestroyTexture(gpuMesh.nodes);
-	
-	cudaFree((void*)gpuMesh.cdf);
+
 }
 
 Texture CreateGPUTexture(const Texture& tex)
@@ -245,14 +249,13 @@ void DestroyGPUSky(const Sky& gpuSky)
 	}
 }
 
-} // anonymous
 
 #if 1
 
-// a combined intersection routine that shares the traversal stack for the scene BVH and triangle mesh BVH
-inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const Vec3& rayDir, float rayTime, float& outT, Vec3& outNormal, int& outPrimitive)
+
+inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const Vec3& rayDir, float rayTime, float& outT, Vec3& outNormal, const Primitive** RESTRICT outPrimitive)
 {
-	int stack[32];
+	int stack[64];
 	stack[0] = 0;
 
 	unsigned int count = 1;
@@ -405,15 +408,15 @@ inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const
 			BVHNode right = fetchNode(root, rightIndex);
 
 			float tLeft;
-			bool hitLeft = IntersectRayAABBFast(origin, rcpDir, left.bounds.lower, left.bounds.upper, tLeft) && tLeft < closestT;
+			bool hitLeft = IntersectRayAABBFast(origin, rcpDir, left.bounds.lower, left.bounds.upper, tLeft);// && tLeft < closestT;
 
 			float tRight;
-			bool hitRight = IntersectRayAABBFast(origin, rcpDir, right.bounds.lower, right.bounds.upper, tRight) && tRight < closestT;
+			bool hitRight = IntersectRayAABBFast(origin, rcpDir, right.bounds.lower, right.bounds.upper, tRight);// && tRight < closestT;
 
 			// traverse closest first
 			if (hitLeft && hitRight && (tLeft < tRight))
 			{
-				Swap(leftIndex, rightIndex);
+				//Swap(leftIndex, rightIndex);
 			}
 
 			if (hitLeft)
@@ -439,7 +442,7 @@ inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const
 			int i2 = fetchInt(p.mesh.indices, closestTri*3+2);
 
 			const Vec3 n1 = fetchVec3(p.mesh.normals, i0);
-			const Vec3 n2  = fetchVec3(p.mesh.normals, i1);
+			const Vec3 n2 = fetchVec3(p.mesh.normals, i1);
 			const Vec3 n3 = fetchVec3(p.mesh.normals, i2);
 
 			Vec3 smoothNormal = (1.0f-closestV-closestW)*n1 + closestV*n2 + closestW*n3;
@@ -453,7 +456,9 @@ inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const
 
 		outT = closestT;
 		outNormal = FaceForward(closestNormal, -rayDir);
-		outPrimitive = &p-scene.primitives;
+		
+		if (outPrimitive)
+			*outPrimitive = &p;
 
 		return true;
 	}
@@ -467,8 +472,10 @@ inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const
 #else
 
 // trace a ray against the scene returning the closest intersection
-inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const Vec3& rayDir, float rayTime, float& outT, Vec3& outNormal, int& outPrimitive)
+inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const Vec3& rayDir, float rayTime, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
+
+#if 0
 
 	struct Callback
 	{
@@ -508,13 +515,13 @@ inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const
 
 	outT = callback.minT;		
 	outNormal = FaceForward(callback.closestNormal, -ray.dir);
-	outPrimitive = callback.closestPrimitive-scene.primitives;
+	
+	if (outPrimitive)
+		*outPrimitive = callback.closestPrimitive;
 
 	return callback.closestPrimitive != NULL;
 	
-	/*
-	
-	// reference trace method, no scene BVH
+#else
 
 	float minT = REAL_MAX;
 	const Primitive* closestPrimitive = NULL;
@@ -540,11 +547,13 @@ inline __device__ bool Trace(const GPUScene& scene, const Vec3& rayOrigin, const
 	
 	outT = minT;		
 	outNormal = FaceForward(closestNormal, -rayDir);
-	outPrimitive = closestPrimitive-scene.primitives;;
+	
+	if (outPrimitive)
+		*outPrimitive = closestPrimitive;
 
 	return closestPrimitive != NULL;
 
-	*/
+#endif
 
 }
 
@@ -603,7 +612,7 @@ __device__ inline Vec3 EvaluateBumpNormal(const Vec3& surfaceNormal, const Vec3&
 __device__ inline Vec3 SampleLights(const GPUScene& scene, const Primitive& surfacePrimitive, float etaI, float etaO, const Vec3& surfacePos, const Vec3& surfaceNormal, const Vec3& shadingNormal, const Vec3& wo, float time, Random& rand)
 {	
 	Vec3 sum(0.0f);
-
+	
 	if (scene.sky.probe.valid)
 	{
 		for (int i=0; i < kProbeSamples; ++i)
@@ -615,12 +624,11 @@ __device__ inline Vec3 SampleLights(const GPUScene& scene, const Primitive& surf
 
 			ProbeSample(scene.sky.probe, wi, skyColor, skyPdf, rand);
 			
-			/*
-			wi = UniformSampleSphere(rand);
-			skyColor = ProbeEval(scene.sky.probe, ProbeDirToUV(wi));
-			skyPdf = 0.5f*kInv2Pi;
-			*/	
 			
+			//wi = UniformSampleSphere(rand);
+			//skyColor = ProbeEval(scene.sky.probe, ProbeDirToUV(wi));
+			//skyPdf = 0.5f*kInv2Pi;
+						
 			
 			//if (Dot(wi, surfaceNormal) <= 0.0f)
 //				continue;
@@ -628,8 +636,8 @@ __device__ inline Vec3 SampleLights(const GPUScene& scene, const Primitive& surf
 			// check if occluded
 			float t;
 			Vec3 n;
-			int hit;
-			if (Trace(scene, surfacePos + FaceForward(surfaceNormal, wi)*kRayEpsilon, wi, time, t, n, hit) == false)
+			
+			if (Trace(scene, surfacePos + FaceForward(surfaceNormal, wi)*kRayEpsilon, wi, time, t, n, NULL) == false)
 			{
 				float bsdfPdf = BSDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
 				Vec3 f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, surfaceNormal, wo, wi);
@@ -678,11 +686,19 @@ __device__ inline Vec3 SampleLights(const GPUScene& scene, const Primitive& surf
 			float dSq = LengthSq(wi);
 			wi /= sqrtf(dSq);
 
+
+			// light is behind surface
+			//if (Dot(wi, surfaceNormal) <= 0.0f)
+				//continue; 				
+
+			// surface is behind light
+			if (Dot(wi, lightNormal) >= 0.0f)
+				continue;
+
 			// check visibility
 			float t;
-			Vec3 n;
-			int hit;
-			if (Trace(scene, surfacePos + FaceForward(surfaceNormal, wi)*kRayEpsilon, wi, time, t, n, hit))			
+			Vec3 n;			
+			if (Trace(scene, surfacePos + FaceForward(surfaceNormal, wi)*kRayEpsilon, wi, time, t, n, NULL))			
 			{
 				float tSq = t*t;
 
@@ -726,288 +742,474 @@ __device__ inline Vec3 SampleLights(const GPUScene& scene, const Primitive& surf
 }
 
 
-// reference, no light sampling, uniform hemisphere sampling
-inline __device__ Vec3 PathTrace(const GPUScene& scene, const Vec3& origin, const Vec3& dir, float time, int maxDepth, Random& rand)
-{	
-    // path throughput
-    Vec3 pathThroughput(1.0f, 1.0f, 1.0f);
-    // accumulated radiance
-    Vec3 totalRadiance(0.0f);
+struct Tile
+{
+	int x;
+	int y;
+	int width;
+	int height;
+};
 
-	Vec3 rayOrigin = origin;
-	Vec3 rayDir = dir;
-	float rayTime = time;
-	float rayEta = 1.0f;
-	Vec3 rayAbsorption = 0.0f;
-	BSDFType rayType = eReflected;
+enum PathMode
+{
+	ePathGenerate,
+	ePathAdvance,
+	ePathProbeSample,
+	ePathLightSample,
+	ePathBsdfSample,
+	ePathTerminate,
+	ePathDisabled,
+};
 
 
-	float bsdfPdf = 1.0f;
+struct PathState
+{		
+	Vec3* __restrict__ rayOrigin;
+	Vec3* __restrict__ rayDir;
+	float* __restrict__ rayTime;
 
-    for (int i=0; i < maxDepth; ++i)
-    {
-        // find closest hit
-		float t;
-		Vec3 n, ns;
-	    int hit;
+	Vec3* __restrict__ pos;
+	Vec3* __restrict__ normal;
 
-        if (Trace(scene, rayOrigin, rayDir, rayTime, t, n, hit))
-        {	
-			const Primitive prim = scene.primitives[hit];
+	int* __restrict__ depth;
 
-			float outEta;
-			Vec3 outAbsorption;
-	
-        	// index of refraction for transmission, 1.0 corresponds to air
-			if (rayEta == 1.0f)
+	Vec3* __restrict__ pathThroughput;
+	Vec3* __restrict__ absorption;
+	const Primitive** __restrict__ primitive;
+
+	Vec3* __restrict__ totalRadiance;
+
+	float* __restrict__ etaI;
+	float* __restrict__ etaO;
+
+	PathMode* __restrict__ mode;
+
+	// pdf from last brdf sampling
+	float* __restrict__ bsdfPdf;
+	BSDFType* __restrict__ bsdfType;
+
+	// sample coordinate
+	float* __restrict__ rasterX;
+	float* __restrict__ rasterY;
+
+	Random* __restrict__ rand;
+};
+
+template <typename T>
+void Alloc(T** ptr, int num)
+{
+	cudaMalloc(ptr, sizeof(T)*num);
+	cudaMemset(*ptr, 0, sizeof(T)*num);
+}
+
+PathState AllocatePaths(int num)
+{
+	PathState state;
+
+	Alloc(&state.rayOrigin, num);
+	Alloc(&state.rayDir, num);
+	Alloc(&state.rayTime, num);
+
+	Alloc(&state.pos, num);
+	Alloc(&state.normal, num);
+
+	Alloc(&state.depth, num);
+
+	Alloc(&state.pathThroughput, num);
+	Alloc(&state.absorption, num);
+	Alloc(&state.primitive, num);
+	Alloc(&state.totalRadiance, num);
+
+	Alloc(&state.etaI, num);
+	Alloc(&state.etaO, num);
+
+	Alloc(&state.mode, num);
+
+	Alloc(&state.bsdfPdf, num);
+	Alloc(&state.bsdfType, num);
+
+	Alloc(&state.rasterX, num);
+	Alloc(&state.rasterY, num);
+
+	Alloc(&state.rand, num);
+
+	return state;
+}
+
+void FreePaths(PathState state)
+{
+	// todo:
+}
+
+
+
+
+LAUNCH_BOUNDS
+__global__ void TerminatePaths(Color* output, Options options, PathState paths, int numPaths)
+{
+	const int i = getGlobalIndex();
+
+	{
+		if (paths.mode[i] != ePathDisabled)
+		{
+			float rasterX = paths.rasterX[i];
+			float rasterY = paths.rasterY[i];
+
+			Vec3 sample = paths.totalRadiance[i];
+
+			// sample = paths[i].normal*0.5f + 0.5f;
+
+			int width = options.width;
+			int height = options.height;
+
+			Filter filter = options.filter;
+
+			switch (filter.type)
 			{
-        		outEta = prim.material.GetIndexOfRefraction();
-				outAbsorption = prim.material.absorption;
-			}
-			else
-			{
-				// returning to free space
-				outEta = 1.0f;
-				outAbsorption = 0.0f;
-			}
-
-			// update throughput based on absorption through the medium
-			pathThroughput *= Exp(-rayAbsorption*t);
-
-#if USE_LIGHT_SAMPLING
-			
-			if (i == 0)
-			{
-				// first trace is our only chance to add contribution from directly visible light sources        
-				totalRadiance += prim.material.emission;
-			}			
-			else if (kBsdfSamples > 0)
-			{
-				// area pdf that this dir was already included by the light sampling from previous step
-				float lightArea = PrimitiveArea(prim);
-
-				if (lightArea > 0.0f)
+				case eFilterBox:
 				{
-					// convert to pdf with respect to solid angle
-					float lightPdf = ((1.0f/lightArea)*t*t)/Abs(Dot(rayDir, n));
+					int x = Clamp(int(rasterX), 0, width-1);
+					int y = Clamp(int(rasterY), 0, height-1);
 
-					// calculate weight for bsdf sampling
-					int N = prim.lightSamples+kBsdfSamples;
-					float cbsdf = kBsdfSamples/N;
-					float clight = float(prim.lightSamples)/N;
-					float weight = cbsdf*bsdfPdf/(cbsdf*bsdfPdf+ clight*lightPdf);
-							
-					Validate(weight);
-
-					// specular paths have zero chance of being included by direct light sampling (zero pdf)
-					if (rayType == eSpecular)
-						weight = 1.0f;
-
-					// pathThroughput already includes the bsdf pdf
-					totalRadiance += weight*pathThroughput*prim.material.emission;
+					output[y*width+x] += Color(sample.x, sample.y, sample.z, 1.0f);
+					break;
 				}
-			}
+				case eFilterGaussian:
+				{
+					int startX = Max(0, int(rasterX - filter.width));
+					int startY = Max(0, int(rasterY - filter.width));
+					int endX = Min(int(rasterX + filter.width), width-1);
+					int endY = Min(int(rasterY + filter.width), height-1);
 
-			// terminate ray if we hit a light source
-			if (prim.lightSamples)
-				break;
+					Vec3 c =  ClampLength(sample, options.clamp);
 
+					for (int x=startX; x <= endX; ++x)
+					{
+						for (int y=startY; y <= endY; ++y)
+						{
+							float w = filter.Eval(x-rasterX, y-rasterY);
 
-            // calculate a basis for this hit point
-            const Vec3 p = rayOrigin + rayDir*t;
+							//output[(height-1-y)*width+x] += Vec3(Min(sample.x, clamp), Min(sample.y, clamp), Min(sample.z, clamp), 1.0f)*w;
 
-/*
-			// experimental bump mapping
-			if (hit->material.bump > 0.0f)
-			{
-				ns = FaceForward(EvaluateBumpNormal(n, p, hit->material.bumpMap, hit->material.bumpTile, hit->material.bump, rand), n);	
-			}
-			else
-			{
-				ns = n;
-			}
-*/
+							const int index = y*width+x;
+
+							atomicAdd(&output[index].x, c.x*w);
+							atomicAdd(&output[index].y, c.y*w);
+							atomicAdd(&output[index].z, c.z*w);
+							atomicAdd(&output[index].w, w);
+						}
+					}
+		
+					break;
+				}
+			};
+		}
+
+		paths.mode[i] = ePathGenerate;
+	}
+}
+
+LAUNCH_BOUNDS
+__global__ void SampleLights(GPUScene scene, PathState paths, int numPaths)
+{
+	const int i = getGlobalIndex();
+
+	{
+		if (paths.mode[i] == ePathLightSample)
+		{
+        	// calculate a basis for this hit point
+        	const Primitive* hit = paths.primitive[i];        	
+        	
+        	float etaI = paths.etaI[i];
+        	float etaO = paths.etaO[i];
+
+			const Vec3 rayDir = paths.rayDir[i];
+            float rayTime = paths.rayTime[i];
+
+            const Vec3 p = paths.pos[i];
+            const Vec3 n = paths.normal[i];
 
 			// integrate direct light over hemisphere
-			totalRadiance += pathThroughput*SampleLights(scene, prim, rayEta, outEta, p, n, n, -rayDir, rayTime, rand);
-#else
-			
-			// calculate a basis for this hit point
-            const Vec3 p = rayOrigin + rayDir*t;
+			paths.totalRadiance[i] += paths.pathThroughput[i]*SampleLights(scene, *hit, etaI, etaO, p, n, n, -rayDir, rayTime, paths.rand[i]);			
 
-			totalRadiance += pathThroughput*prim.material.emission;
-
-#endif
-
-			// integrate indirect light by sampling BSDF
-            Vec3 u, v;
-			BasisFromVector(n, &u, &v);
-
-			Vec3 bsdfDir;
-			BSDFType bsdfType;
-
-			BSDFSample(prim.material, rayEta, outEta, p, u, v, n, -rayDir, bsdfDir, bsdfPdf, bsdfType, rand);
-			
-            if (bsdfPdf <= 0.0f)
-            	break;
-
-			Validate(bsdfPdf);
-
-            // reflectance
-            Vec3 f = BSDFEval(prim.material, rayEta, outEta, p, n, -rayDir, bsdfDir);
-
-            // update ray medium if we are transmitting through the material
-            if (Dot(bsdfDir, n) <= 0.0f)
-			{
-            	rayEta = outEta;
-				rayAbsorption = outAbsorption;
-			}			
-
-            // update throughput with primitive reflectance
-            pathThroughput *= f * Abs(Dot(n, bsdfDir))/bsdfPdf;
-
-            // update ray direction and type
-            rayType = bsdfType;
-			rayDir = bsdfDir;            
-			rayOrigin = p + FaceForward(n, bsdfDir)*kRayEpsilon;
-			
-        }
-        else
-        {
-            // hit nothing, sample sky dome and terminate         
-            float weight = 1.0f;
-
-        	if (scene.sky.probe.valid && i > 0 && rayType != eSpecular)
-        	{ 
-        		// probability that this dir was already sampled by probe sampling
-        		float skyPdf = ProbePdf(scene.sky.probe, rayDir);
-				 
-				int N = kProbeSamples+kBsdfSamples;
-				float cbsdf = kBsdfSamples/N;
-				float csky = float(kProbeSamples)/N;
-			
-				weight = cbsdf*bsdfPdf/(cbsdf*bsdfPdf+ csky*skyPdf);
-
-				Validate(bsdfPdf);
-				Validate(skyPdf);
-
-			}
-
-			Validate(weight);
-		
-       		totalRadiance += weight*scene.sky.Eval(rayDir)*pathThroughput; 
-			break;
-        }
-    }
-
-    return totalRadiance;
-}
-
-__device__ void AddSample(Color* output, int width, int height, float rasterX, float rasterY, float clamp, Filter filter, const Vec3& sample)
-{
-	switch (filter.type)
-	{
-		case eFilterBox:
-		{
-			int x = int(rasterX);
-			int y = int(rasterY);
-
-			output[y*width+x] += Color(sample.x, sample.y, sample.z, 1.0f);
-			break;
-		}
-		case eFilterGaussian:
-		{
-			int startX = Max(0, int(rasterX - filter.width));
-			int startY = Max(0, int(rasterY - filter.width));
-			int endX = Min(int(rasterX + filter.width), width-1);
-			int endY = Min(int(rasterY + filter.width), height-1);
-
-			Vec3 c =  ClampLength(sample, clamp);
-
-			for (int x=startX; x <= endX; ++x)
-			{
-				for (int y=startY; y <= endY; ++y)
-				{
-					float w = filter.Eval(x-rasterX, y-rasterY);
-
-					//output[(height-1-y)*width+x] += Vec3(Min(sample.x, clamp), Min(sample.y, clamp), Min(sample.z, clamp), 1.0f)*w;
-
-					const int index = y*width+x;
-
-					atomicAdd(&output[index].x, c.x*w);
-					atomicAdd(&output[index].y, c.y*w);
-					atomicAdd(&output[index].z, c.z*w);
-					atomicAdd(&output[index].w, w);
-				}
-			}
-		
-			break;
-		}
-	};
-}
-
-__launch_bounds__(256, 4)
-__global__ void RenderGpu(GPUScene scene, Camera camera, CameraSampler sampler, Options options, int seed, Color* output)
-{
-	const int tx = blockIdx.x*blockDim.x;
-	const int ty = blockIdx.y*blockDim.y;
-
-	const int i = tx + threadIdx.x;
-	const int j = ty + threadIdx.y;
-
-	if (i < options.width && j < options.height)
-	{
-		// initialize a per-thread PRNG
-		Random rand(i + j*options.width + seed);
-
-		if (options.mode == eNormals)
-		{
-			Vec3 origin, dir;
-			sampler.GenerateRay(i, j, origin, dir);
-
-			int p;
-			float t;
-			Vec3 n;
-
-			if (Trace(scene, origin, dir, 1.0f, t, n, p))
-			{
-				n = n*0.5f+0.5f;
-				output[j*options.width+i] = Color(n.x, n.y, n.z, 1.0f);
-			}
-			else
-			{
-				output[j*options.width+i] = Color(0.5f);
-			}
-		}
-		else if (options.mode == ePathTrace)
-		{
-			const float time = rand.Randf(camera.shutterStart, camera.shutterEnd);
-			const float fx = i + rand.Randf(-0.5f, 0.5f) + 0.5f;
-			const float fy = j + rand.Randf(-0.5f, 0.5f) + 0.5f;
-
-			Vec3 origin, dir;
-			sampler.GenerateRay(fx, fy, origin, dir);
-
-			//output[(height-1-j)*width+i] += PathTrace(*scene, origin, dir);
-			Vec3 sample = PathTrace(scene, origin, dir, time, options.maxDepth, rand);
-
-			AddSample(output, options.width, options.height, fx, fy, options.clamp, options.filter, sample);
+			paths.mode[i] = ePathBsdfSample;		
 		}
 	}
 }
 
-struct GpuRenderer : public Renderer
+LAUNCH_BOUNDS
+__global__ void SampleBsdfs(PathState paths, int numPaths)
+{
+	const int i = getGlobalIndex();
+
+	{
+		if (paths.mode[i] == ePathBsdfSample)
+		{	
+			const Vec3 p = paths.pos[i];
+			const Vec3 n = paths.normal[i];
+
+			const Vec3 rayDir = paths.rayDir[i];
+
+			const Primitive* hit = paths.primitive[i];
+
+			Random& rand = paths.rand[i];
+
+			float etaI = paths.etaI[i];
+			float etaO = paths.etaO[i];
+
+			// integrate indirect light by sampling BRDF
+            Vec3 u, v;
+            BasisFromVector(n, &u, &v);
+
+			Vec3 bsdfDir;
+			BSDFType bsdfType;
+			float bsdfPdf;
+
+			BSDFSample(hit->material, etaI, etaO, p, u, v, n, -rayDir, bsdfDir, bsdfPdf, bsdfType, rand);
+
+            if (bsdfPdf <= 0.0f)
+           	{
+           		paths.mode[i] = ePathTerminate;
+           	}
+           	else
+           	{
+	            // reflectance
+	            Vec3 f = BSDFEval(hit->material, etaI, etaO, p, n, -rayDir, bsdfDir);
+
+	            // update ray medium if we are transmitting through the material
+	            if (Dot(bsdfDir, n) <= 0.0f)
+	            {
+	            	paths.etaI[i] = etaO;
+	            	paths.bsdfType[i] = eTransmitted;
+					
+	            	if (etaI != 1.0f)
+	            	{
+	            		// entering a medium, update the aborption (assume zero in air)
+						paths.absorption[i] = hit->material.absorption;
+					}
+	            }
+	            else
+	            {
+	            	paths.bsdfType[i] = eReflected;
+	            }
+
+	            // update throughput with primitive reflectance
+	            paths.pathThroughput[i] *= f * Abs(Dot(n, bsdfDir))/bsdfPdf;
+	            paths.bsdfPdf[i] = bsdfPdf;
+	            paths.bsdfType[i] = bsdfType;
+	            paths.rayDir[i] = bsdfDir;
+	            paths.rayOrigin[i] = p + FaceForward(n, bsdfDir)*kRayEpsilon;
+	            paths.mode[i] = ePathAdvance;
+
+	        }
+        }
+    }
+}
+
+LAUNCH_BOUNDS
+__global__ void SampleProbes(PathState paths, int numPaths)
+{
+
+}
+
+LAUNCH_BOUNDS
+__global__ void AdvancePaths(GPUScene scene, PathState paths, int numPaths)
+{
+	const int i = getGlobalIndex();
+
+	{
+		if (paths.mode[i] == ePathAdvance)
+		{
+			Vec3 rayOrigin = paths.rayOrigin[i];
+			Vec3 rayDir = paths.rayDir[i];
+			float rayTime = paths.rayTime[i];
+			float etaI = paths.etaI[i];
+
+			Vec3 pathThroughput = paths.pathThroughput[i];
+
+			Vec3 n;
+			float t;
+			const Primitive* hit;
+
+	        // find closest hit
+	        if (Trace(scene, rayOrigin, rayDir, rayTime, t, n, &hit))
+	        {	
+				float etaO;
+
+	        	// index of refraction for transmission, 1.0 corresponds to air
+				if (etaI == 1.0f)
+				{
+	        		etaO = hit->material.GetIndexOfRefraction();
+				}
+				else
+				{
+					// returning to free space
+					etaO = 1.0f;
+				}
+
+				pathThroughput *= Exp(-paths.absorption[i]*t);
+
+				if (paths.depth[i] == 0)
+				{
+					// first trace is our only chance to add contribution from directly visible light sources        
+					paths.totalRadiance[i] += hit->material.emission;
+				}			
+				else if (kBsdfSamples > 0)
+				{
+					// area pdf that this dir was already included by the light sampling from previous step
+					float lightArea = PrimitiveArea(*hit);
+
+					if (lightArea > 0.0f)
+					{
+						// convert to pdf with respect to solid angle
+						float lightPdf = ((1.0f/lightArea)*t*t)/Clamp(Dot(-rayDir, n), 1.e-3f, 1.0f);
+
+						// calculate weight for bsdf sampling
+						int N = hit->lightSamples+kBsdfSamples;
+						float cbsdf = kBsdfSamples/N;
+						float clight = float(hit->lightSamples)/N;
+						float weight = cbsdf*paths.bsdfPdf[i]/(cbsdf*paths.bsdfPdf[i] + clight*lightPdf);
+						
+						// specular paths have zero chance of being included by direct light sampling (zero pdf)
+						if (paths.bsdfType[i] == eSpecular)
+							weight = 1.0f;
+
+						// pathThroughput already includes the bsdf pdf
+						paths.totalRadiance[i] += weight*pathThroughput*hit->material.emission;
+					}
+				}
+
+				// terminate ray if we hit a light source
+				if (hit->lightSamples)
+				{
+					paths.mode[i] = ePathTerminate;
+				}
+				else
+				{
+					// update throughput based on absorption through the medium
+					paths.pos[i] = rayOrigin + rayDir*t;
+					paths.normal[i] = n;
+					paths.primitive[i] = hit;
+					paths.etaO[i] = etaO;
+					paths.pathThroughput[i] = pathThroughput;
+					paths.depth[i] += 1;
+
+					paths.mode[i] = ePathLightSample;
+				}
+			}
+			else
+			{
+				// todo: sky 
+
+				// no hit, terminate path
+				paths.mode[i] = ePathTerminate;
+			}
+		}
+	}
+}
+
+LAUNCH_BOUNDS
+__global__ void GeneratePaths(Camera camera, CameraSampler sampler, Tile tile, int seed, PathState paths, int numPaths)
+{
+	const int tx = blockIdx.x*blockDim.x;
+	const int ty = blockIdx.y*blockDim.y;
+
+	const int x = tx + threadIdx.x + tile.x;
+	const int y = ty + threadIdx.y + tile.y;
+
+	const int i = getGlobalIndex();
+
+	{
+		if (paths.mode[i] == ePathGenerate || paths.mode[i] == ePathDisabled || paths.mode[i] == ePathTerminate)
+		{
+			// if we're inside the tile
+			if (threadIdx.x < tile.width && threadIdx.y < tile.height)
+			{
+				Random rand(i + tile.y*tile.width + tile.x + seed);
+
+				// offset
+				//float x, y, t;
+				//StratifiedSample2D(i, tile.width, tile.height, rand, x, y);
+
+				float t;
+				StratifiedSample1D(i, 64, rand, t);
+
+				// shutter time
+				float time = Lerp(camera.shutterStart, camera.shutterEnd, t);
+				
+				//float px = tile.x + x*tile.width;
+				//float py = tile.y + y*tile.height;
+				float px = x + rand.Randf(-0.5f, 0.5f);
+				float py = y + rand.Randf(-0.5f, 0.5f);
+
+				Vec3 origin, dir;
+				sampler.GenerateRay(px, py, origin, dir);
+
+				// advance paths
+				paths.depth[i] = 0;
+				paths.rayOrigin[i] = origin;
+				paths.rayDir[i] = dir;
+				paths.rayTime[i] = time;
+				paths.mode[i] = ePathAdvance;
+				paths.rand[i] = rand;
+				paths.totalRadiance[i] = 0.0f;
+				paths.pathThroughput[i] = 1.0f;
+				paths.etaI[i] = 1.0f;
+				paths.bsdfType[i] = eReflected;
+				paths.bsdfPdf[i] = 1.0f;
+				paths.rasterX[i] = px;
+				paths.rasterY[i] = py;
+
+			}
+			else
+			{
+				paths.mode[i] = ePathDisabled;
+			}
+		}
+	}
+}
+
+//LAUNCH_BOUNDS
+__global__ void VisualizeNormals(GPUScene scene, PathState paths, int numPaths)
+{
+	const int i = getGlobalIndex();
+
+	if (i < numPaths)
+	{
+		Vec3 rayOrigin = paths.rayOrigin[i];
+		Vec3 rayDir = paths.rayDir[i];
+
+		Vec3 n;
+		float t;
+		
+	    // find closest hit
+	    if (Trace(scene, rayOrigin, rayDir, 0.0f, t, n, NULL))
+	    {	
+			paths.totalRadiance[i] = n;
+		}
+
+		paths.mode[i] = ePathTerminate;
+	}
+}
+
+
+struct GpuWaveFrontRenderer : public Renderer
 {
 	Color* output = NULL;
 	
 	GPUScene sceneGPU;
 	
-	Random seed;
+	Random rand;
+
+	int tileWidth;
+	int tileHeight;
+
+	PathState paths;
 
 	// map id to geometry struct
 	std::map<int, MeshGeometry> gpuMeshes;
 
-	GpuRenderer(const Scene* s)
+	GpuWaveFrontRenderer(const Scene* s)
 	{
 		// build GPU primitive and light lists
 		std::vector<Primitive> primitives;		
@@ -1068,24 +1270,25 @@ struct GpuRenderer : public Renderer
 		// copy sky and probe texture
 		sceneGPU.sky = CreateGPUSky(s->sky);
 
-		static int frame;
-		++frame;
-		seed = Random(frame);
+		tileWidth = 1024;
+		tileHeight = 1024;
+
+		const int numPaths = tileWidth*tileHeight;
+
+		// allocate paths
+		//cudaMalloc(&paths, sizeof(PathState)*numPaths);
+		//cudaMemset(paths, 0, sizeof(PathState)*numPaths);
+
+		paths = AllocatePaths(numPaths);
 	}
 
-	virtual ~GpuRenderer()
+	virtual ~GpuWaveFrontRenderer()
 	{
 		cudaFree(output);
 		cudaFree(sceneGPU.primitives);
 		cudaFree(sceneGPU.lights);
 		
-		DestroyTexture(sceneGPU.bvh.nodes);
-
-		// free meshes
-		for (auto iter=gpuMeshes.begin(); iter != gpuMeshes.end(); ++iter)
-		{
-			DestroyGPUMesh(iter->second);
-		}
+		FreePaths(paths);
 	}
 	
 	void Init(int width, int height)
@@ -1097,6 +1300,28 @@ struct GpuRenderer : public Renderer
 
 	void Render(const Camera& camera, const Options& options, Color* outputHost)
 	{
+		std::vector<Tile> tiles;
+
+		const int tilesx = (options.width + tileWidth - 1)/tileWidth;
+		const int tilesy = (options.height + tileHeight - 1)/tileHeight;
+
+		for (int y=0; y < tilesy; ++y)
+		{
+			for (int x=0; x < tilesx; ++x)
+			{
+				Tile tile;
+				tile.x = x*tileWidth;
+				tile.y = y*tileHeight;
+
+				tile.width = Min(tileWidth, options.width-tile.x);
+				tile.height = Min(tileHeight, options.height-tile.y);
+
+				tiles.push_back(tile);
+			}
+		}
+
+		const int numPaths = tileWidth*tileHeight;
+
 		// create a sampler for the camera
 		CameraSampler sampler(
 			Transform(camera.position, camera.rotation),
@@ -1106,18 +1331,49 @@ struct GpuRenderer : public Renderer
 			options.width,
 			options.height);
 
+		
+		for (int tileIndex=0; tileIndex < tiles.size(); ++tileIndex)
+		{
+			Tile tile = tiles[tileIndex];
 
-		// assign threads in non-square tiles to match warp width
-		const int blockWidth = 16;
-		const int blockHeight = 16;
+			// a tile consists of many thread blocks
+			const int blockWidth = 16;
+			const int blockHeight = 16;
 
-		const int gridWidth = (options.width + blockWidth - 1)/blockWidth;
-		const int gridHeight = (options.height + blockHeight - 1)/blockHeight;
+			const int gridWidth = (tile.width + blockWidth - 1)/blockWidth;
+			const int gridHeight = (tile.height + blockHeight - 1)/blockHeight;
 
-		dim3 blockDim(blockWidth, blockHeight);
-		dim3 gridDim(gridWidth, gridHeight);
+			dim3 blockDim(blockWidth, blockHeight);
+			dim3 gridDim(gridWidth, gridHeight);
 
-		RenderGpu<<<gridDim, blockDim>>>(sceneGPU, camera, sampler, options, seed.Rand(), output);
+			/*
+			const int kNumThreadsPerBlock = 256;
+			const int kNumBlocks = (numPaths + kNumThreadsPerBlock - 1)/kNumThreadsPerBlock;
+			
+			dim3 gridDim(kNumBlocks);
+			dim3 blockDim(kNumThreadsPerBlock);
+			*/
+
+			GeneratePaths<<<gridDim, blockDim>>>(camera, sampler, tile, rand.Rand(), paths, numPaths);
+	
+			if (options.mode == eNormals)
+			{
+				VisualizeNormals<<<gridDim, blockDim>>>(sceneGPU, paths, numPaths);
+			}
+			else
+			{
+				for (int i=0; i < options.maxDepth; ++i)
+				{
+					AdvancePaths<<<gridDim, blockDim>>>(sceneGPU, paths, numPaths);
+					SampleLights<<<gridDim, blockDim>>>(sceneGPU, paths, numPaths);
+					//SampleProbes();
+					SampleBsdfs<<<gridDim, blockDim>>>(paths, numPaths);
+				}
+			}
+			
+
+			TerminatePaths<<<gridDim, blockDim>>>(output, options, paths, numPaths);
+		}
 
 		// copy back to output
 		cudaMemcpy(outputHost, output, sizeof(Color)*options.width*options.height, cudaMemcpyDeviceToHost);
@@ -1125,7 +1381,7 @@ struct GpuRenderer : public Renderer
 };
 
 
-Renderer* CreateGpuRenderer(const Scene* s)
+Renderer* CreateGpuWavefrontRenderer(const Scene* s)
 {
-	return new GpuRenderer(s);
+	return new GpuWaveFrontRenderer(s);
 }
