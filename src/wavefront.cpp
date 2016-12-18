@@ -18,7 +18,7 @@ namespace
 inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
 
-#if 1
+#if 0
 
 	struct Callback
 	{
