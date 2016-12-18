@@ -157,7 +157,7 @@ void TestMaterials(Scene* scene, Camera* camera, Options* options)
     
     scene->AddPrimitive(plane);
 	scene->AddPrimitive(back);
-	scene->AddPrimitive(light);
+	//scene->AddPrimitive(light);
 
 	//scene->sky.horizon = Color(0.1f, 0.3f, 0.6f)*2.0f;
     //scene->sky.zenith = scene->sky.horizon;

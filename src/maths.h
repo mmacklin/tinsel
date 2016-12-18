@@ -213,7 +213,8 @@ struct Vec4;
 
 struct Vec3
 {
-	CUDA_CALLABLE inline Vec3() : x(0.0), y(0.0), z(0.0) { Validate(); }
+	CUDA_CALLABLE inline Vec3() : x(0.0), y(0.0), z(0.0) {}
+	//CUDA_CALLABLE inline Vec3() {}
 	CUDA_CALLABLE inline Vec3(Real x) : x(x), y(x), z(x) { Validate(); }
 	CUDA_CALLABLE inline Vec3(Real x, Real y, Real z) : x(x), y(y), z(z) { Validate(); }
 	CUDA_CALLABLE inline Vec3(const Vec2& v, Real z) : x(v.x), y(v.y), z(z) { Validate(); }
@@ -1011,10 +1012,10 @@ CUDA_CALLABLE inline Bounds TransformBounds(const Transform& xform, const Bounds
 	Vec3 y = Abs(m.GetCol(1))*halfEdgeWidth.y;
 	Vec3 z = Abs(m.GetCol(2))*halfEdgeWidth.z;
 
-	Vec3 center = xform.s*bounds.GetCenter();
+	Vec3 center = TransformPoint(xform, bounds.GetCenter());
 
-	Vec3 lower = xform.p + center - x - y - z;
-	Vec3 upper = xform.p + center + x + y + z;
+	Vec3 lower = center - x - y - z;
+	Vec3 upper = center + x + y + z;
 
 	return Bounds(lower, upper);
 }
@@ -1603,6 +1604,12 @@ CUDA_CALLABLE inline void ValidateImpl(float x, const char* file, int line)
 		printf("Fail: %s, %d (%f)\n", file, line, x);
 }
 
+CUDA_CALLABLE inline void ValidateImpl(const Vec3& x, const char* file, int line)
+{
+	if (!isfinite(x.x) || !isfinite(x.y) || !isfinite(x.z))
+		printf("Fail: %s, %d (%f)\n", file, line, x);
+}
+
 CUDA_CALLABLE inline void ValidateImpl(const Color& c, const char* file, int line)
 {
 	if (!isfinite(c.x) || !isfinite(c.y) || !isfinite(c.z))
@@ -1617,7 +1624,13 @@ CUDA_CALLABLE inline void ValidateImpl(const Color& c, const char* file, int lin
 
 #define USE_TEXTURES 0
 
-CUDA_CALLABLE inline int fetchInt(const int* ptr, int index)
+#if __CUDA_ARCH__
+#define RESTRICT __restrict__
+#else
+#define RESTRICT 
+#endif
+
+CUDA_CALLABLE inline int fetchInt(const int* RESTRICT ptr, int index)
 {
 #if __CUDA_ARCH__ && USE_TEXTURES
 	return tex1Dfetch<int>((cudaTextureObject_t)ptr, index);
@@ -1627,7 +1640,8 @@ CUDA_CALLABLE inline int fetchInt(const int* ptr, int index)
 
 }
 
-CUDA_CALLABLE inline float fetchFloat(const float* ptr, int index)
+
+CUDA_CALLABLE inline float fetchFloat(const float* RESTRICT ptr, int index)
 {
 #if __CUDA_ARCH__ && USE_TEXTURES
 	return tex1Dfetch<float>((cudaTextureObject_t)ptr, index);
@@ -1637,7 +1651,7 @@ CUDA_CALLABLE inline float fetchFloat(const float* ptr, int index)
 
 }
 
-CUDA_CALLABLE inline Vec3 fetchVec3(const Vec3* ptr, int index)
+CUDA_CALLABLE inline Vec3 fetchVec3(const Vec3* RESTRICT ptr, int index)
 {
 #if __CUDA_ARCH__ && USE_TEXTURES
 
@@ -1653,7 +1667,7 @@ CUDA_CALLABLE inline Vec3 fetchVec3(const Vec3* ptr, int index)
 
 }
 
-CUDA_CALLABLE inline Vec4 fetchVec4(const Vec4* ptr, int index)
+CUDA_CALLABLE inline Vec4 fetchVec4(const Vec4* RESTRICT ptr, int index)
 {
 #if __CUDA_ARCH__ && USE_TEXTURES
 	float4 x = tex1Dfetch<float4>((cudaTextureObject_t)ptr, index);

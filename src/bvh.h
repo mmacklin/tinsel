@@ -21,6 +21,8 @@ static_assert(sizeof(BVHNode) == 32, "Error BVHNode size larger than expected");
 
 struct BVH
 {
+	BVH() : nodes(NULL), numNodes(0) {}
+
 	BVHNode* nodes;
 	int numNodes;
 };

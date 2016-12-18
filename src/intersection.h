@@ -580,6 +580,9 @@ CUDA_CALLABLE inline BVHNode fetchNode(const BVHNode* ptr, int index)
 #endif
 }
 
+
+
+
 template <typename Func>
 CUDA_CALLABLE void QueryRay(const BVHNode* root, Func& f, const Vec3& start, const Vec3& dir)
 {

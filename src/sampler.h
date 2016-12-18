@@ -3,7 +3,7 @@
 #include "maths.h"
 
 // sample [0,1] with x strata
-inline void StratifiedSample1D(int c, int dx, Random& rand, float& r1)
+CUDA_CALLABLE inline void StratifiedSample1D(int c, int dx, Random& rand, float& r1)
 {
 	// map c onto stratum
 	int x = c%dx;
@@ -13,7 +13,7 @@ inline void StratifiedSample1D(int c, int dx, Random& rand, float& r1)
 
 
 // sample [0,1]*[0,1] with x,y strata
-inline void StratifiedSample2D(int c, int dx, int dy, Random& rand, float& r1, float& r2)
+CUDA_CALLABLE inline void StratifiedSample2D(int c, int dx, int dy, Random& rand, float& r1, float& r2)
 {	
 	// map c onto stratum
 	int x = c%dx;
@@ -24,7 +24,7 @@ inline void StratifiedSample2D(int c, int dx, int dy, Random& rand, float& r1, f
 }
 
 // sample [0,1] with x strata
-inline void UniformSample1D(int c, int dx, float& r1)
+CUDA_CALLABLE inline void UniformSample1D(int c, int dx, float& r1)
 {
 	// map c onto stratum
 	int x = c%dx;
@@ -34,7 +34,7 @@ inline void UniformSample1D(int c, int dx, float& r1)
 
 
 // sample [0,1]*[0,1] with x,y strata
-inline void UniformSample2D(int c, int dx, int dy, float& r1, float& r2)
+CUDA_CALLABLE inline void UniformSample2D(int c, int dx, int dy, float& r1, float& r2)
 {	
 	// map c onto stratum
 	int x = c%dx;

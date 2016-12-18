@@ -535,3 +535,22 @@ Renderer* CreateCpuRenderer(const Scene* s)
 {
 	return new CpuRenderer(s);
 }
+
+
+struct NullRenderer : public Renderer
+{
+	virtual ~NullRenderer() {}
+
+	virtual void Init(int width, int height) {}
+	virtual void Render(const Camera& c, const Options& options, Color* output)
+	{
+		memset(output, 0, options.width*options.height*sizeof(Color));
+	};
+
+};
+
+
+Renderer* CreateNullRenderer(const Scene* s) 
+{ 
+	return new NullRenderer();
+}
