@@ -21,10 +21,8 @@
 #include "maths.h"
 #include "pfm.h"
 
-//#include "blinn.h"
-#if 1
-
-#define DISABLE_IMPORTANCE 0
+#define USE_UNIFORM_SAMPLING 0
+#define USE_SIMPLE_BSDF 0
 
 enum BSDFType
 {
@@ -33,15 +31,15 @@ enum BSDFType
 	eSpecular
 };
 
-CUDA_CALLABLE inline bool Refract(const Vec3 &wi, const Vec3 &n, float eta, Vec3& wt) {
-    
-    // Compute $\cos \theta_\roman{t}$ using Snell's law
+CUDA_CALLABLE inline bool Refract(const Vec3 &wi, const Vec3 &n, float eta, Vec3& wt) 
+{
     float cosThetaI = Dot(n, wi);
     float sin2ThetaI = Max(0.0f, float(1.0f - cosThetaI * cosThetaI));
     float sin2ThetaT = eta * eta * sin2ThetaI;
 
-    // Handle total internal reflection for transmission
-    if (sin2ThetaT >= 1) return false;
+    // total internal reflection
+    if (sin2ThetaT >= 1) 
+        return false;
 
     float cosThetaT = sqrtf(1.0f - sin2ThetaT);
     wt = eta * -wi + (eta * cosThetaI - cosThetaT) * Vec3(n);
@@ -70,12 +68,7 @@ CUDA_CALLABLE inline float GTR2(float NDotH, float a)
     return a2 / (kPi * t*t);
 }
 
-CUDA_CALLABLE inline float GTR2_aniso(float NDotH, float HDotX, float HDotY, float ax, float ay)
-{
-    return 1 / ( kPi * ax*ay * Sqr( Sqr(HDotX/ax) + Sqr(HDotY/ay) + NDotH*NDotH ));
-}
-
-CUDA_CALLABLE inline float smithG_GGX(float NDotv, float alphaG)
+CUDA_CALLABLE inline float SmithGGX(float NDotv, float alphaG)
 {
     float a = alphaG*alphaG;
     float b = NDotv*NDotv;
@@ -102,7 +95,8 @@ CUDA_CALLABLE inline float Fr(float VDotN, float etaI, float etaT)
     return 0.5f*(Sqr(r1) + Sqr(r2));
 }
 
-#if 0
+// lambert
+#if USE_SIMPLE_BSDF
 
 CUDA_CALLABLE inline float BSDFPdf(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& n, const Vec3& V, const Vec3& L)
 {
@@ -130,7 +124,7 @@ CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, 
 
 CUDA_CALLABLE inline float BSDFPdf(const Material& mat, float etaI, float etaO, const Vec3& P, const Vec3& n, const Vec3& V, const Vec3& L)
 {  
-#if DISABLE_IMPORTANCE
+#if USE_UNIFORM_SAMPLING
 	
 	return kInv2Pi*0.5f;
 
@@ -233,7 +227,8 @@ CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO
     }
     else
     {
-#if DISABLE_IMPORTANCE
+
+#if USE_UNIFORM_SAMPLING
 		
 		light = UniformSampleSphere(rand.Randf(), rand.Randf());
 		pdf = kInv2Pi*0.5f;
@@ -252,6 +247,7 @@ CUDA_CALLABLE inline void BSDFSample(const Material& mat, float etaI, float etaO
 			{
 				const Vec3 d = UniformSampleHemisphere(rand);
 				
+                // negate z coordinate to sample inside the surface
 				light = U*d.x + V*d.y - N*d.z;
 				type = eTransmitted;
 			}
@@ -338,7 +334,7 @@ CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, 
 
 			Vec3 Fs = Lerp(Cspec0, Vec3(1.0f), FH);
 			float roughg = a;
-			float Gs = smithG_GGX(NDotV, roughg)*smithG_GGX(NDotL, roughg);
+			float Gs = SmithGGX(NDotV, roughg)*SmithGGX(NDotL, roughg);
 
 			bsdf = Gs*Fs*Ds;
 		}
@@ -372,7 +368,7 @@ CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, 
 
 			Vec3 Fs = Lerp(Cspec0, Vec3(1), FH);
 			float roughg = a;
-			float Gs = smithG_GGX(NDotV, roughg)*smithG_GGX(NDotL, roughg);
+			float Gs = SmithGGX(NDotV, roughg)*SmithGGX(NDotL, roughg);
 
 			// Diffuse fresnel - go from 1 at normal incidence to .5 at grazing
 			// and mix in diffuse retro-reflection based on roughness
@@ -390,7 +386,7 @@ CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, 
 			// clearcoat (ior = 1.5 -> F0 = 0.04)
 			float Dr = GTR1(NDotH, Lerp(.1,.001, mat.clearcoatGloss));
 			float Fc = Lerp(.04f, 1.0f, FH);
-			float Gr = smithG_GGX(NDotL, .25) * smithG_GGX(NDotV, .25);
+			float Gr = SmithGGX(NDotL, .25) * SmithGGX(NDotV, .25);
 
 			/*
 			// sheen
@@ -409,11 +405,10 @@ CUDA_CALLABLE inline Vec3 BSDFEval(const Material& mat, float etaI, float etaO, 
 }
 #endif
 
-#endif
 
 inline void BSDFTest(Material mat, Mat33 frame, float woTheta, const char* filename)
 {
-    /* example code to visualize a BSDF, its PDF and sampling
+    /* example code to visualize a BSDF, its PDF, and sampling
 
     Material mat;
     mat.color = Vec(0.95, 0.9, 0.9);

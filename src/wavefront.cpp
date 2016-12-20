@@ -446,11 +446,6 @@ void SampleBsdfs(PathState* paths, int numPaths)
     }
 }
 
-void SampleProbes(PathState* paths, int numPaths)
-{
-
-}
-
 void AdvancePaths(const Scene& scene, PathState* paths, int numPaths)
 {
 	for (int i=0; i < numPaths; ++i)
@@ -668,7 +663,6 @@ struct CpuWaveFrontRenderer : public Renderer
 			{
 				AdvancePaths(*scene, paths, numPaths);
 				SampleLights(*scene, paths, numPaths);
-				//SampleProbes();
 				SampleBsdfs(paths, numPaths);
 			}
 			

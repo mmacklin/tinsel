@@ -614,16 +614,6 @@ __device__ inline Vec3 SampleLights(const GPUScene& scene, const Primitive& surf
 			Vec3 wi;
 
 			ProbeSample(scene.sky.probe, wi, skyColor, skyPdf, rand);
-			
-			/*
-			wi = UniformSampleSphere(rand);
-			skyColor = ProbeEval(scene.sky.probe, ProbeDirToUV(wi));
-			skyPdf = 0.5f*kInv2Pi;
-			*/	
-			
-			
-			//if (Dot(wi, surfaceNormal) <= 0.0f)
-//				continue;
 
 			// check if occluded
 			float t;
@@ -695,6 +685,11 @@ __device__ inline Vec3 SampleLights(const GPUScene& scene, const Primitive& surf
 				{				
 					const float nl = Abs(Dot(lightNormal, wi));
 
+					// for glancing rays, note we use abs to include cases
+					// where light surface is backfacing, e.g.: inside the weak furnace
+					if (Abs(nl) < 1.e-6f)
+						continue;					
+
 					// light pdf with respect to area and convert to pdf with respect to solid angle
 					float lightArea = PrimitiveArea(lightPrimitive);
 					float lightPdf = ((1.0f/lightArea)*tSq)/nl;
@@ -704,7 +699,7 @@ __device__ inline Vec3 SampleLights(const GPUScene& scene, const Primitive& surf
 					Vec3 f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
 
 					// this branch is only necessary to exclude specular paths from light sampling (always have zero brdf)
-					// todo: make BSDFEval alwasy return zero for pure specular paths and roll specular eval into BSDFSample()
+					// todo: make BSDFEval always return zero for pure specular paths and roll specular eval into BSDFSample()
 					if (bsdfPdf > 0.0f)
 					{
 						// calculate relative weighting of the light and bsdf sampling
@@ -774,6 +769,9 @@ inline __device__ Vec3 PathTrace(const GPUScene& scene, const Vec3& origin, cons
 			// update throughput based on absorption through the medium
 			pathThroughput *= Exp(-rayAbsorption*t);
 
+			// calculate a basis for this hit point
+            const Vec3 p = rayOrigin + rayDir*t;
+
 #if USE_LIGHT_SAMPLING
 			
 			if (i == 0)
@@ -812,29 +810,10 @@ inline __device__ Vec3 PathTrace(const GPUScene& scene, const Vec3& origin, cons
 			if (prim.lightSamples)
 				break;
 
-
-            // calculate a basis for this hit point
-            const Vec3 p = rayOrigin + rayDir*t;
-
-/*
-			// experimental bump mapping
-			if (hit->material.bump > 0.0f)
-			{
-				ns = FaceForward(EvaluateBumpNormal(n, p, hit->material.bumpMap, hit->material.bumpTile, hit->material.bump, rand), n);	
-			}
-			else
-			{
-				ns = n;
-			}
-*/
-
 			// integrate direct light over hemisphere
 			totalRadiance += pathThroughput*SampleLights(scene, prim, rayEta, outEta, p, n, n, -rayDir, rayTime, rand);
 #else
 			
-			// calculate a basis for this hit point
-            const Vec3 p = rayOrigin + rayDir*t;
-
 			totalRadiance += pathThroughput*prim.material.emission;
 
 #endif
@@ -1107,7 +1086,7 @@ struct GpuRenderer : public Renderer
 			options.height);
 
 
-		// assign threads in non-square tiles to match warp width
+		// assign threads in 2d tile layout
 		const int blockWidth = 16;
 		const int blockHeight = 16;
 

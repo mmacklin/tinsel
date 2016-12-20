@@ -13,7 +13,7 @@ TESTS = $(wildcard src/tests/*.h)
 OBJECTS = $(SOURCES:.cpp=.o) 
 
 all: $(TARGET)
-	./$(TARGET) data/sportscar.tin
+	./$(TARGET) data/transmission.tin 
 
 $(TARGET): $(OBJECTS) makefile $(TESTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $(TARGET) 

@@ -10,13 +10,14 @@
 #define kProbeSamples 1.0f
 #define kRayEpsilon 0.0001f
 
-
+#define USE_LIGHT_SAMPLING 1
+#define USE_SCENE_BVH 1
 
 // trace a ray against the scene returning the closest intersection
 inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
 
-#if 1
+#if USE_SCENE_BVH
 
 	struct Callback
 	{
@@ -113,16 +114,6 @@ inline Vec3 SampleLights(const Scene& scene, const Primitive& surfacePrimitive, 
 			Vec3 wi;
 
 			ProbeSample(scene.sky.probe, wi, skyColor, skyPdf, rand);
-			
-			/*
-			wi = UniformSampleSphere(rand);
-			skyColor = ProbeEval(scene.sky.probe, ProbeDirToUV(wi));
-			skyPdf = 0.5f*kInv2Pi;
-			*/	
-			
-			
-			//if (Dot(wi, surfaceNormal) <= 0.0f)
-//				continue;
 
 			// check if occluded
 			float t;
@@ -177,15 +168,6 @@ inline Vec3 SampleLights(const Scene& scene, const Primitive& surfacePrimitive, 
 			float dSq = LengthSq(wi);
 			wi /= sqrtf(dSq);
 
-
-			// light is behind surface
-			//if (Dot(wi, surfaceNormal) <= 0.0f)
-				//continue; 				
-
-			// surface is behind light
-			if (Dot(wi, lightNormal) >= 0.0f)
-				continue;
-
 			// check visibility
 			float t;
 			Vec3 n;
@@ -203,6 +185,11 @@ inline Vec3 SampleLights(const Scene& scene, const Primitive& surfacePrimitive, 
 				{				
 					const float nl = Abs(Dot(lightNormal, wi));
 
+					// for glancing rays, note we use abs to include cases
+					// where light surface is backfacing, e.g.: inside the weak furnace
+					if (Abs(nl) < 1.e-6f)
+						continue;
+
 					// light pdf with respect to area and convert to pdf with respect to solid angle
 					float lightArea = PrimitiveArea(lightPrimitive);
 					float lightPdf = ((1.0f/lightArea)*tSq)/nl;
@@ -211,8 +198,11 @@ inline Vec3 SampleLights(const Scene& scene, const Primitive& surfacePrimitive, 
 					float bsdfPdf = BSDFPdf(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
 					Vec3 f = BSDFEval(surfacePrimitive.material, etaI, etaO, surfacePos, shadingNormal, wo, wi);
 
+		            Validate(bsdfPdf);
+		            Validate(f);
+
 					// this branch is only necessary to exclude specular paths from light sampling
-					// todo: make BSDFEval alwasy return zero for pure specular paths and roll specular eval into BSDFSample()
+					// todo: make BSDFEval always return zero for pure specular paths and roll specular eval into BSDFSample()
 					if (bsdfPdf > 0.0f)
 					{
 						// calculate relative weighting of the light and bsdf sampling
@@ -220,6 +210,9 @@ inline Vec3 SampleLights(const Scene& scene, const Primitive& surfacePrimitive, 
 						float cbsdf = kBsdfSamples/N;
 						float clight = float(lightPrimitive.lightSamples)/N;
 						float weight = clight*lightPdf/(cbsdf*bsdfPdf + clight*lightPdf);
+
+						Validate(lightPdf);
+						Validate(weight);
 						
 						L += weight*f*hit->material.emission*(Abs(Dot(wi, shadingNormal))/Max(1.e-3f, lightPdf));
 					}
@@ -259,7 +252,6 @@ Vec3 PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir
         // find closest hit
         if (Trace(scene, Ray(rayOrigin, rayDir, rayTime), t, n, &hit))
         {	
-
 			float outEta;
 			Vec3 outAbsorption;
 
@@ -279,7 +271,12 @@ Vec3 PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir
 			// update throughput based on absorption through the medium
 			pathThroughput *= Exp(-rayAbsorption*t);
 
-#if 1
+        	// calculate new ray position
+            const Vec3 p = rayOrigin + rayDir*t;
+
+
+#if USE_LIGHT_SAMPLING
+
 			if (i == 0)
 			{
 				// first trace is our only chance to add contribution from directly visible light sources        
@@ -305,26 +302,19 @@ Vec3 PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir
 					if (rayType == eSpecular)
 						weight = 1.0f;
 
+					Validate(weight);
+
 					// pathThroughput already includes the bsdf pdf
-					//totalRadiance += weight*pathThroughput*hit->material.emission;
 					totalRadiance += weight*pathThroughput*hit->material.emission;
 				}
 			}
 
-        	// calculate a basis for this hit point
-            const Vec3 p = rayOrigin + rayDir*t;
 
 			// integrate direct light over hemisphere
-			totalRadiance += pathThroughput*SampleLights(scene, *hit, rayEta, outEta, p, n, n, -rayDir, rayTime, rand);			
-
-			//totalRadiance = Color(u*0.5f + 0.5f, 1.0f);
+			totalRadiance += pathThroughput*SampleLights(scene, *hit, rayEta, outEta, p, n, n, -rayDir, rayTime, rand);	
 #else
 
-        	// calculate a basis for this hit point
-
-
-            const Vec3 p = rayOrigin + rayDir*t;
-
+			// include emission from the new primitive
 			totalRadiance += pathThroughput*hit->material.emission;
 
 #endif
@@ -332,7 +322,6 @@ Vec3 PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir
 			// terminate ray if we hit a light source
 			if (hit->lightSamples)
 				break;
-
 
 			// integrate indirect light by sampling BRDF
             Vec3 u, v;
@@ -345,8 +334,13 @@ Vec3 PathTrace(const Scene& scene, const Vec3& startOrigin, const Vec3& startDir
             if (bsdfPdf <= 0.0f)
             	break;
 
+            Validate(bsdfDir);
+            Validate(bsdfPdf);
+
             // reflectance
             Vec3 f = BSDFEval(hit->material, rayEta, outEta, p, n, -rayDir, bsdfDir);
+
+            Validate(f);
 
             // update ray medium if we are transmitting through the material
             if (Dot(bsdfDir, n) <= 0.0f)

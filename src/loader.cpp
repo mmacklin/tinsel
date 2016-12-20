@@ -14,8 +14,6 @@
 
 static const int kMaxLineLength = 2048;
 
-
-
 bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* options)
 {
 	FILE* file = fopen(filename, "r");
@@ -421,7 +419,7 @@ bool LoadTin(const char* filename, Scene* scene, Camera* camera, Options* option
 	}
 
 	// keep list of meshes
-	for (auto iter=meshes.begin(); iter != meshes.end(); ++iter)
+	for (std::map<std::string, Mesh*>::iterator iter=meshes.begin(); iter != meshes.end(); ++iter)
 		scene->meshes.push_back(iter->second);
 
 	fclose(file);

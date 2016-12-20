@@ -1607,7 +1607,7 @@ CUDA_CALLABLE inline void ValidateImpl(float x, const char* file, int line)
 CUDA_CALLABLE inline void ValidateImpl(const Vec3& x, const char* file, int line)
 {
 	if (!isfinite(x.x) || !isfinite(x.y) || !isfinite(x.z))
-		printf("Fail: %s, %d (%f)\n", file, line, x);
+		printf("Fail: %s, %d (%f, %f, %f)\n", file, line, x.x, x.y, x.z);
 }
 
 CUDA_CALLABLE inline void ValidateImpl(const Color& c, const char* file, int line)

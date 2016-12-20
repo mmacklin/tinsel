@@ -11,7 +11,7 @@ options
 
 sky
 {
-	probe probes/vankleef2.hdr
+	probe probes/vankleef.hdr
 	
 }
 
@@ -234,7 +234,7 @@ primitive
 	position 1.0 0.0 -2.0	
 	scale 2.0
 
-	material object
+	material glass1
 }
 
 
