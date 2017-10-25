@@ -156,7 +156,7 @@ void Init(int argc, char* argv[])
 
 	// if filename contains a % character treat as a printf string
 	char batchFile[2048];
-	if (strchr(filename, '%'))
+	if (filename && strchr(filename, '%'))
 	{
 		sprintf(batchFile, filename, g_batchIndex);
 		filename = batchFile;
@@ -480,7 +480,7 @@ int main(int argc, char* argv[])
 
 #if _WIN32 
 
-	const int device = 0;
+	const int device = 1;
 	cudaSetDevice(device);
 	
 	cudaDeviceProp props;

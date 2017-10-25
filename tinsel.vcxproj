@@ -98,6 +98,7 @@
     </ClCompile>
     <ClCompile Include="src\scene.cpp" />
     <ClCompile Include="src\tungsten.cpp" />
+    <ClCompile Include="src\wavefront.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\blinn.h" />

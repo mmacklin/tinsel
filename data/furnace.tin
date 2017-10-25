@@ -20,8 +20,10 @@ sky
 camera
 {
 
-	position -1.46373057 1.23615110 3.53553891 
-	rotation -0.0431064218 -0.285662651 -0.0128635028 0.957273841
+	#position -1.46373057 1.23615110 3.53553891 
+	#rotation -0.0431064218 -0.285662651 -0.0128635028 0.957273841
+
+	position 0.0 0.0 3.5
 
 	#position -1.48325872 0.563038588 4.02174854
 	#rotation 0.00470542070 -0.338192463 0.00169099902 0.941063643
@@ -32,13 +34,14 @@ material glass
 {
 	color 1.0 1.0 1.0
 	specular 1.0
-	roughness 0.01
-	metallic 1.0
+	roughness 0.5
+	metallic 0.0
 	transmission 0.0
 	clearcoat 0.0
 	clearcoatGloss 0.0
 	sheen 0.0
 	sheenTint 0.0 0.0 0.0
+	subsurface 0.5
 }
 
 # t*bsdf + (1-t)*brdf = (refraction + specular) + (diffuse + specular)
@@ -89,11 +92,11 @@ mesh plane
 
 primitive
 {
-	type mesh
-	mesh meshes/sphere.ply
+	type sphere
+	radius 0.5
 	material glass
 
-	position 0.0 0.01 0.0
+	position 0.0 0.0 0.0
 	rotation 0 0 0 1
 	scale 1.0
 }
