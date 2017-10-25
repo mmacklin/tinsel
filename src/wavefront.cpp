@@ -18,7 +18,7 @@ namespace
 inline bool Trace(const Scene& scene, const Ray& ray, float& outT, Vec3& outNormal, const Primitive** outPrimitive)
 {
 
-#if 1
+#if 0
 
 	struct Callback
 	{
@@ -446,11 +446,6 @@ void SampleBsdfs(PathState* paths, int numPaths)
     }
 }
 
-void SampleProbes(PathState* paths, int numPaths)
-{
-
-}
-
 void AdvancePaths(const Scene& scene, PathState* paths, int numPaths)
 {
 	for (int i=0; i < numPaths; ++i)
@@ -668,7 +663,6 @@ struct CpuWaveFrontRenderer : public Renderer
 			{
 				AdvancePaths(*scene, paths, numPaths);
 				SampleLights(*scene, paths, numPaths);
-				//SampleProbes();
 				SampleBsdfs(paths, numPaths);
 			}
 			

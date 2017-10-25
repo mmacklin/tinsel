@@ -93,7 +93,52 @@ void InitFrameBuffer()
 #include "tests/testMotionBlur.h"
 
 void ProcessCommandLine(int argc, char* argv[])
-{
+{  
+   // the last argument should be the input file
+    const char* filename = NULL;
+
+    if (argc > 1)
+        filename = argv[argc-1];
+
+    if (filename)
+    {
+        // if filename contains a % character treat as a printf string
+        char batchFile[2048];
+        if (strchr(filename, '%'))
+        {
+            sprintf(batchFile, filename, g_batchIndex);
+            filename = batchFile;
+
+            // set output file as input + .png extension
+            static char output[2048];
+            sprintf(output, "%s.png", filename);        
+            g_outputFile = output;
+
+            g_batchMode = true;
+        }
+
+        bool success = false;
+
+        if (strcmp(strrchr(filename, '.'), ".tin") == 0)
+            success = LoadTin(filename, &g_scene, &g_camera, &g_options);
+        
+        if (strcmp(strrchr(filename, '.'), ".json") == 0)
+            success = LoadTungsten(filename, &g_scene, &g_camera, &g_options);        
+
+        if (!success)
+        {
+            printf("Couldn't open %s for reading.\n", filename);
+            exit(-1);
+        }
+    }
+    else
+    {
+        // default test scene
+        //TestVeach(&g_scene, &g_camera, &g_options);
+        TestMaterials(&g_scene, &g_camera, &g_options);
+    }
+
+    // cmdline option overrides
 	for (int i=1; i < argc; ++i)
 	{
 		sscanf(argv[i], "-spp=%d", &g_options.maxSamples);
@@ -101,6 +146,27 @@ void ProcessCommandLine(int argc, char* argv[])
 		sscanf(argv[i], "-height=%d", &g_options.height);
 		sscanf(argv[i], "-exposure=%f", &g_options.exposure);
 		sscanf(argv[i], "-maxdepth=%d", &g_options.maxDepth);
+
+        // convert a mesh to flat binary format
+        if (strstr(argv[i], "-convert") && filename)
+        {
+            Mesh* m = ImportMesh(filename);
+            if (m)
+            {
+                const char* extension = strrchr(filename, '.');
+
+                std::string s(filename, extension);
+                s += ".bin";
+
+                ExportMeshToBin(s.c_str(), m);
+                exit(0);
+            }
+            else
+            {
+                printf("Could open mesh %s for conversion\n", filename);
+                exit(-1);
+            }
+        }              
 	}
 }
 
@@ -125,83 +191,17 @@ void Init(int argc, char* argv[])
     g_camera.rotation = Quat();
     g_camera.fov = DegToRad(35.0f);
 
-    // the last argument should be the input file
-    const char* filename = NULL;
-
-	if (argc > 1)
-		filename = argv[argc-1];
-
-    for (int i=1; i < argc; ++i)
-    {
-		if (strstr(argv[i], "-convert") && filename)
-		{
-			Mesh* m = ImportMesh(filename);
-			if (m)
-			{
-				const char* extension = strrchr(filename, '.');
-
-				std::string s(filename, extension);
-				s += ".bin";
-
-				ExportMeshToBin(s.c_str(), m);
-				exit(0);
-			}
-			else
-			{
-				printf("Could open mesh %s for conversion\n", filename);
-				exit(-1);
-			}
-		}        
-    }
-
-	// if filename contains a % character treat as a printf string
-	char batchFile[2048];
-	if (filename && strchr(filename, '%'))
-	{
-		sprintf(batchFile, filename, g_batchIndex);
-		filename = batchFile;
-
-		// set output file as input + .png extension
-		static char output[2048];
-		sprintf(output, "%s.png", filename);		
-		g_outputFile = output;
-
-		g_batchMode = true;
-	}
-
-    if (filename)
-    {
-		bool success = false;
-
-		if (strcmp(strrchr(filename, '.'), ".tin") == 0)
-			success = LoadTin(filename, &g_scene, &g_camera, &g_options);
-		
-		if (strcmp(strrchr(filename, '.'), ".json") == 0)
-			success = LoadTungsten(filename, &g_scene, &g_camera, &g_options);        
-
-        if (!success)
-        {
-            printf("Couldn't open %s for reading.\n", filename);
-            exit(-1);
-        }
-    }
-    else
-    {
-        // default test scene
-        TestVeach(&g_scene, &g_camera, &g_options);
-		//TestMaterials(&g_scene, &g_camera, &g_options);
-    }
-
-    g_scene.Build();
-
-	// set fly cam
-	g_camPos = g_camera.position;	
-
     // allow command line to override options
     ProcessCommandLine(argc, argv);
 
+    // initialize scene
+    g_scene.Build();
 
-#if 1//_WIN32
+	// set fly cam to scene cam
+	g_camPos = g_camera.position;	
+
+
+#if _WIN32
     // create renderer
     g_renderer = CreateGpuRenderer(&g_scene);
 	//g_renderer = CreateNullRenderer(&g_scene);
@@ -238,7 +238,7 @@ void Render()
     
 	double startTime = GetSeconds();
 
-	const int numSamples = 64;
+	const int numSamples = 16;
 
 	if (g_sampleCount < g_options.maxSamples)
 	{
@@ -480,7 +480,7 @@ int main(int argc, char* argv[])
 
 #if _WIN32 
 
-	const int device = 1;
+	const int device = 0;
 	cudaSetDevice(device);
 	
 	cudaDeviceProp props;

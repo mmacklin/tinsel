@@ -1203,7 +1203,7 @@ Mesh* ImportMeshFromWo3(const char* path)
         
         double end = GetSeconds();
 
-        printf("Imported mesh %s in %f ms (%d verts, %d tris)\n", path, (end-start)*1000.0f, numVertices, numTris);
+        printf("Imported mesh %s in %f ms (%d verts, %d tris)\n", path, (end-start)*1000.0f, int(numVertices), int(numTris));
         fflush(stdout);
 
         fclose(f);

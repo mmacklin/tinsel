@@ -1,23 +1,22 @@
 Tinsel
 ======
 
-A lightweight CPU/GPU path tracer focusing on speed and simplicity. Tinsel was
-originally designed for rendering out physics based animations where turn around
-time is more important than generality. It is designed to be easy to set up
-animation sequences.
+A lightweight CPU/GPU path tracer focusing on speed and simplicity. It offers a single flexible BSDF model based on Disney's physically principled BRDF extended to specular transmission / subsurface scattering. Tinsel was originally designed for rendering out physics based animations and supports batch rendering directly to movie files.
 
 Features
 --------
 
-- Unbiased uni-directional path tracer
-- Disney's principled BRDF with importance sampling of diffuse and specular lobes
-- CPU or GPU tracing and shading with a persistent CUDA threads model
+- Uni-directional forward path tracer
+- BSDF based on Disney's BRDF with specular transmission / thin-shell subsurface scattering
+- HDR environment light probes
+- Multiple importance sampling of BSDF /  probes / area lights
+- CPU or GPU tracing and shading
 - Interactive OpenGL progressive mode
-- Explicit area light sampling
 - Affine and deformable motion blur
 - Gaussian reconstruction filter
-- Instanced triangle mesh primitives with affine transformations
+- Instanced triangle mesh primitives
 - AABB tree with SAH and splitting
+- Batch mode for animation rendering
 - Simple scene description format
 - Windows / macOS / Linux support
 
@@ -95,12 +94,6 @@ Animation (must have ffmpeg in path):
 tinsel -spp 100 frame%d.tin output.mp4
 ```
 
-Interactive:
-
-```
-tinsel -interactive scene.tin
-```
-
 Todo List
 ---------
 
@@ -110,11 +103,11 @@ Todo List
 [x] Mesh sampling
 [ ] Multi material meshes or .obj conversion
 [x] SAH and BVH splitting heuristics
-[ ] Clean up mesh allocations
-[ ] Command line interface
+[x] Clean up mesh allocations
+[x] Command line interface
 [x] Scene sky parameters
 [x] Scene camera parameters
-[ ] Scene include files
+[x] Scene include files
 [x] Scene camera definition
 [x] Tone mapping
 [ ] Bloom filter
@@ -122,7 +115,7 @@ Todo List
 [x] Output formats
 [x] Triangular noise dither
 [x] NLM noise filter
-[ ] Point sets
+[ ] Point sets primitive
 [x] Scene BVH
 [ ] FFmpeg encoding
 [x] Reconstruction filter
@@ -136,7 +129,7 @@ Todo List
 Supported Platforms
 -------------------
 
-Tinsel ships with makefiles and Visual Studio projects for OSX and Windows respectively. Although not explicitly supported it should be relatively simple to build for Linux.
+Tinsel includes makefiles and Visual Studio projects for OSX and Windows respectively. Although not explicitly supported it should be relatively simple to build for Linux.
 
 License
 -------
