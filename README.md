@@ -26,30 +26,29 @@ Features
 Images
 ------
 
+Instancing test (palette courtesy of https://twitter.com/paniq)
+
+![Example Image](images/paniq_brain.png)
+
 Ajax bust in gold (courtesy http://forum.jotero.com)
 
-![Image 1](images/ajax.png)
+![Example Image](images/ajax.png)
 
 Ajax bust in plaster (courtesy http://forum.jotero.com)
 
-![Image 2](images/ajax_ss.png )
+![Example Image](images/ajax_ss.png)
 
 Glass Buddha with specular transmission (courtesy Stanford 3D Scanning Respository http://graphics.stanford.edu/data/3Dscanrep/)
 
-![Image 3](images/glass_buddha.png)
+![Example Image](images/glass_buddha.png)
 
 Jade Buddha with sub-surface scattering (courtesy Stanford 3D Scanning Respository http://graphics.stanford.edu/data/3Dscanrep/)
 
-![Image 4](images/jade_buddha.png)
+![Example Image](images/jade_buddha.png)
 
 Recreation of the Disney Hyperion test scene, https://www.disneyanimation.com/technology/innovations/hyperion.
 
-![Image 5](images/hyper_small.png)
-
-Instancing test (palette courtesy of https://twitter.com/paniq)
-
-![Image 5](images/paniq_brain_small.png)
-
+![Example Image](images/hyper_small.png)
 
 Example Scene
 -------------
