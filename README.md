@@ -46,6 +46,10 @@ Recreation of the Disney Hyperion test scene, https://www.disneyanimation.com/te
 
 ![Image 5](images/hyper_small.png)
 
+Instancing test (palette courtesy of https://twitter.com/paniq)
+
+![Image 5](images/paniq_brain_small.png)
+
 
 Example Scene
 -------------
@@ -109,17 +113,18 @@ primitive
 Command Line
 ------------
 
-Image:
+Single Image:
 
 ```
-tinsel -spp 100 scene.tin output.pfm
+tinsel -spp 100 scene.tin output.png
 ```
 
-Animation (must have ffmpeg in path):
+To convert an animation sequence, e.g.: frame_1.tin, frame_2.tin, ... use the following syntax:
 
 ```
-tinsel -spp 100 frame%d.tin output.mp4
+tinsel -spp 100 frame_%d.tin
 ```
+
 
 Todo List
 ---------
