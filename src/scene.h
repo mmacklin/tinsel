@@ -53,7 +53,7 @@ struct Material
 		// when eta is zero the index of refraction will be inferred from the specular component
 		eta = 0.0f;
 
-		metallic = 0.0;
+		metallic = 0.0f;
 		subsurface = 0.0f;
 		specular = 0.5f;
 		roughness = 0.5f;

@@ -135,7 +135,8 @@ void ProcessCommandLine(int argc, char* argv[])
     {
         // default test scene
         //TestVeach(&g_scene, &g_camera, &g_options);
-        TestMaterials(&g_scene, &g_camera, &g_options);
+        //TestMaterials(&g_scene, &g_camera, &g_options);
+		TestPaniq(&g_scene, &g_camera, &g_options);
     }
 
     // cmdline option overrides

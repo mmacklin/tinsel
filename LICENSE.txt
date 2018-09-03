@@ -1,4 +1,4 @@
-Copyright (c) 2016 Miles Macklin
+Copyright (c) 2018 Miles Macklin
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages

@@ -13,7 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{850139DE-1ED9-421A-AF5C-CF79EB2CFE5F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <ProjectName>Tinsel</ProjectName>
+    <ProjectName>tinsel</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -41,28 +41,28 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>bin\</OutDir>
     <IntDir>intermediate\$(Platform)\$(Configuration)\</IntDir>
-    <TargetName>$(ProjectName)$(Configuration)</TargetName>
+    <TargetName>$(ProjectName)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>bin\</OutDir>
     <IntDir>intermediate\$(Platform)\$(Configuration)\</IntDir>
-    <TargetName>$(ProjectName)$(Configuration)</TargetName>
+    <TargetName>$(ProjectName)_debug</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
-      <AdditionalLibraryDirectories>src\freeglut\lib\x64;$(CUDA_PATH_V7_5)\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>src\freeglut\lib\x64;$(CUDA_PATH)\lib\x64</AdditionalLibraryDirectories>
       <AdditionalDependencies>cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <ClCompile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PreprocessorDefinitions>_ITERATOR_DEBUG_LEVEL=0</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(CUDA_PATH_V7_5)\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CUDA_PATH)\include</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
-      <AdditionalLibraryDirectories>src\freeglut\lib\x64;F:\sw\devrel\libdev\external\CUDA\8.0.44\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>src\freeglut\lib\x64;$(CUDA_PATH)\lib\x64</AdditionalLibraryDirectories>
       <AdditionalDependencies>cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -97,6 +97,7 @@
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">_ITERATOR_DEBUG_LEVEL=0;NDEBUG</PreprocessorDefinitions>
     </ClCompile>
     <ClCompile Include="src\scene.cpp" />
+    <ClCompile Include="src\tga.cpp" />
     <ClCompile Include="src\tungsten.cpp" />
     <ClCompile Include="src\wavefront.cpp" />
   </ItemGroup>
@@ -123,13 +124,14 @@
     <ClInclude Include="src\tests\testMesh.h" />
     <ClInclude Include="src\tests\testMotionBlur.h" />
     <ClInclude Include="src\tests\testVeach.h" />
+    <ClInclude Include="src\tga.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\render.cu">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(CUDA_PATH_V7_5)\bin\nvcc.exe" -O0 -g -G --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MTd,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(CUDA_PATH)\bin\nvcc.exe" -O0 -g -G --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MTd,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">intermediate\$(Configuration)\rendercuda.obj</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"F:\sw\devrel\libdev\external\CUDA\8.0.44\bin\nvcc.exe" -O3  -Xptxas –dlcm=cg --resource-usage -lineinfo -m64 --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DNDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(CUDA_PATH)\bin\nvcc.exe" -O3  -Xptxas –dlcm=cg --resource-usage -lineinfo -m64 --compiler-bindir="$(VCInstallDir)bin"  --compiler-options=/MT,/Zi -I"..\..\.." -D_ITERATOR_DEBUG_LEVEL=0 -DNDEBUG -DCUDA -arch=sm_50 -prec-div=false -prec-sqrt=false -ftz=true -use_fast_math -c src\render.cu -o intermediate\$(Configuration)\rendercuda.obj</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">intermediate\$(Configuration)\rendercuda.obj</Outputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">src\disney.h;src\render.h</AdditionalInputs>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

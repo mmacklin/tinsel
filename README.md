@@ -1,7 +1,7 @@
 Tinsel
 ======
 
-A lightweight CPU/GPU path tracer focusing on speed and simplicity. It offers a single flexible BSDF model based on Disney's physically principled BRDF extended to specular transmission / subsurface scattering. Tinsel was originally designed for rendering out physics based animations and supports batch rendering directly to movie files.
+A lightweight CPU/GPU path tracer focusing on speed and simplicity. It offers a single flexible BSDF based on Disney's physically principled BRDF extended to specular transmission / subsurface scattering.
 
 Features
 --------
@@ -13,12 +13,39 @@ Features
 - CPU or GPU tracing and shading
 - Interactive OpenGL progressive mode
 - Affine and deformable motion blur
-- Gaussian reconstruction filter
+- Gaussian and box reconstruction filters
 - Instanced triangle mesh primitives
-- AABB tree with SAH and splitting
+- AABB tree with SAH and various splitting heuristics
 - Batch mode for animation rendering
-- Simple scene description format
+- Simple scene description .tin format
 - Windows / macOS / Linux support
+- Wavefront tracing mode
+- Non-Local Means noise filtering
+- Tungsten scene loader
+
+Images
+------
+
+Ajax bust in gold (courtesy http://forum.jotero.com)
+
+![Image 1](images/ajax.png)
+
+Ajax bust in plaster (courtesy http://forum.jotero.com)
+
+![Image 2](images/ajax_ss.png )
+
+Glass Buddha with specular transmission (courtesy Stanford 3D Scanning Respository http://graphics.stanford.edu/data/3Dscanrep/)
+
+![Image 3](images/glass_buddha.png)
+
+Jade Buddha with sub-surface scattering (courtesy Stanford 3D Scanning Respository http://graphics.stanford.edu/data/3Dscanrep/)
+
+![Image 4](images/jade_buddha.png)
+
+Recreation of the Disney Hyperion test scene, https://www.disneyanimation.com/technology/innovations/hyperion.
+
+![Image 5](images/hyper_small.png)
+
 
 Example Scene
 -------------
@@ -97,34 +124,34 @@ tinsel -spp 100 frame%d.tin output.mp4
 Todo List
 ---------
 
-[x] Multiple importance sampling
-[x] Mesh affine transformation support
-[ ] Mesh, Disc, Sphere, Plane primitives
-[x] Mesh sampling
-[ ] Multi material meshes or .obj conversion
-[x] SAH and BVH splitting heuristics
-[x] Clean up mesh allocations
-[x] Command line interface
-[x] Scene sky parameters
-[x] Scene camera parameters
-[x] Scene include files
-[x] Scene camera definition
-[x] Tone mapping
-[ ] Bloom filter
-[ ] Blackbody emitters
-[x] Output formats
-[x] Triangular noise dither
-[x] NLM noise filter
-[ ] Point sets primitive
-[x] Scene BVH
-[ ] FFmpeg encoding
-[x] Reconstruction filter
-[x] Correctness checks
-[ ] Volume rendering
-[x] Environment maps
-[ ] Lens modelling
-[x] Refraction
-[ ] Examples
+- [x] Multiple importance sampling
+- [x] Mesh affine transformation support
+- [ ] Disc primitive
+- [x] Mesh sampling
+- [ ] Multi material meshes or .obj conversion
+- [x] SAH and BVH splitting heuristics
+- [x] Clean up mesh allocations
+- [x] Command line interface
+- [x] Scene sky parameters
+- [x] Scene camera parameters
+- [x] Scene include files
+- [x] Scene camera definition
+- [x] Tone mapping
+- [ ] Bloom filter
+- [ ] Blackbody emitters
+- [x] Output formats
+- [x] Triangular noise dither
+- [x] NLM noise filter
+- [ ] Point sets primitive
+- [x] Scene BVH
+- [ ] FFmpeg encoding
+- [x] Reconstruction filter
+- [x] Correctness checks
+- [ ] Volume rendering
+- [x] Environment maps
+- [ ] Lens modelling
+- [x] Refraction
+- [x] Examples
 
 Supported Platforms
 -------------------

@@ -69,6 +69,9 @@
     <ClCompile Include="src\wavefront.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\tga.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bvh.h">
@@ -136,6 +139,9 @@
     </ClInclude>
     <ClInclude Include="src\cjson\cJSON.h">
       <Filter>Source Files\cjson</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tga.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
