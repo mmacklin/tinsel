@@ -38,6 +38,14 @@ Ajax bust in plaster (courtesy http://forum.jotero.com)
 
 ![Example Image](images/ajax_ss.png)
 
+Spaceship model courtesy of Benedikt Bitterli (https://benedikt-bitterli.me/resources)
+
+![Example Image](images/spaceship.png)
+
+Coffee maker model courtesy of Benedikt Bitterli (https://benedikt-bitterli.me/resources/)
+
+![Example Image](images/coffee.png)
+
 Glass Buddha with specular transmission (courtesy Stanford 3D Scanning Respository http://graphics.stanford.edu/data/3Dscanrep/)
 
 ![Example Image](images/glass_buddha.png)
@@ -49,6 +57,10 @@ Jade Buddha with sub-surface scattering (courtesy Stanford 3D Scanning Resposito
 Recreation of the Disney Hyperion test scene, https://www.disneyanimation.com/technology/innovations/hyperion.
 
 ![Example Image](images/hyper_small.png)
+
+Recreation of Eric Veach's multiple importance sampling test
+
+![Example Image](images/veach_big.png)
 
 Example Scene
 -------------
@@ -133,7 +145,7 @@ Todo List
 - [ ] Disc primitive
 - [x] Mesh sampling
 - [ ] Multi material meshes or .obj conversion
-- [x] SAH and BVH splitting heuristics
+- [x] SAH and median split BVH build heuristics
 - [x] Clean up mesh allocations
 - [x] Command line interface
 - [x] Scene sky parameters
